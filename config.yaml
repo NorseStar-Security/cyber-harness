@@ -1,0 +1,53 @@
+# aiscan 配置文件
+#
+# 编译时: build.sh 读取此文件，通过 ldflags 将配置固化到二进制
+# 运行时: aiscan 自动加载 ./config.yaml 或 ~/.config/aiscan/config.yaml
+# 优先级: -c 自定义配置 > CLI 参数 > 默认 config.yaml > 编译时固化值
+#
+# 仅填写需要的字段，留空或删除的字段不会覆盖其他来源的值
+
+# LLM Provider 配置
+llm:
+  # openai, deepseek, openrouter, ollama, groq, moonshot, anthropic
+  provider: ""
+  # API base URL（留空使用 provider 默认值）
+  base_url: ""
+  # API key（建议使用环境变量而非写入文件）
+  api_key: ""
+  # 模型名称
+  model: ""
+  # 访问 LLM API 的 HTTP proxy
+  proxy: ""
+
+# Cyberhub 资源服务
+cyberhub:
+  url: ""
+  key: ""
+  # merge 或 override
+  mode: ""
+
+# ACP 协作
+acp:
+  url: ""
+  db: ""
+  node_name: ""
+  space: ""
+
+# 扫描默认值
+scan:
+  # auto, off, low, medium, high, critical
+  verify: ""
+  # 单次验证超时秒数（0 表示不覆盖）
+  verify_timeout: 0
+
+# 通用选项
+misc:
+  debug: false
+  quiet: false
+  no_color: false
+
+# 以下仅 build.sh 使用
+build:
+  osarch: ""
+  tags: ""
+  output: dist
