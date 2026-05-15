@@ -23,7 +23,6 @@ dist/
 *.sock.lock
 aiscan
 spray
-/pkg/scanner/resources/template.go
 
 # Generated build and validation artifacts
 /reports/evidence/
