@@ -22,7 +22,7 @@ dist/
 *.db-*
 *.sock.lock
 aiscan
-spray
+/spray
 
 # Generated build and validation artifacts
 /reports/evidence/
