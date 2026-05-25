@@ -23,6 +23,7 @@ dist/
 *.sock.lock
 aiscan
 /spray
+out/
 
 # Generated build and validation artifacts
 /reports/evidence/
