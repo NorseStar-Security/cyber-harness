@@ -24,6 +24,7 @@ dist/
 aiscan
 /spray
 out/
+scan_results.jsonl
 
 # Generated build and validation artifacts
 /reports/evidence/
