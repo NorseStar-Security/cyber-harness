@@ -26,6 +26,7 @@ aiscan
 out/
 scan_results.jsonl
 pw_driver_bin
+node_modules/
 
 # Generated build and validation artifacts
 /reports/evidence/
