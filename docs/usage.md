@@ -19,6 +19,8 @@ aiscan 是一个 agentic security scanner：它既可以像普通 CLI 一样直�
 - [spray：Web 探测和指纹](#sprayweb-探测和指纹)
 - [zombie：弱口令检测](#zombie弱口令检测)
 - [neutron：POC 检测](#neutronpoc-检测)
+- [katana：Web 爬虫（仅 full 版）](#katanaweb-爬虫仅-full-版)
+- [passive：网络空间搜索（仅 full 版）](#passive网络空间搜索仅-full-版)
 - [cyberhub：资源查询](#cyberhub资源查询)
 - [IOA：协作模式](#ioa协作模式)
 - [Cyberhub 资源服务](#cyberhub-资源服务)
@@ -138,6 +140,7 @@ aiscan neutron -h
 
 | 参数 | 说明 |
 | --- | --- |
+| `--proxy` | Scanner 代理，支持 `socks5://`、`trojan://`、`vless://`、`clash://`（订阅自动负载均衡） |
 | `--cyberhub-url` | Cyberhub 资源服务 URL |
 | `--cyberhub-key` | Cyberhub API key |
 | `--cyberhub-mode` | 资源模式：`merge`（默认）或 `override` |
@@ -327,8 +330,10 @@ full 模式额外增加：
 | `-j, --json` | JSON Lines 输出 | |
 | `--report` | Markdown 报告输出 | |
 | `-f, --file` | 输出写入文件（不含 ANSI 颜色） | |
+| `-F, --format` | 聚合资产报告写入文件 | |
+| `--trace` | 显示内部 pipeline 事件流（调试用） | |
 | `--no-color` | 禁用终端颜色 | |
-| `--debug` | 打印事件流水线 trace | |
+| `--debug` | 启用 trace + 底层扫描器 debug 日志 | |
 
 并发分配策略（`--thread` 默认 1000）：
 
@@ -497,7 +502,8 @@ agent 通过 bash 伪命令调用以下工具：
 - `search fetch <url>` — 抓取网页内容
 - `search cyberhub <args>` — 查询本地指纹库和 POC 模板
 - `proxy` — 代理节点管理
-- `tmux` — 后台任务管理
+- `tmux` — 后台任务管理（长时间命令自动转入后台）
+- `subagent` — 子 agent（可创建同步/异步/分支子任务）
 
 此外还有通用工具：`bash`（shell 命令）、`read`/`write`（文件）、`glob`（文件搜索）。
 
@@ -626,6 +632,58 @@ aiscan neutron -l targets.txt --tags cve,rce -c 10 --rate-limit 20
 aiscan neutron -u http://target.example -t ./pocs --id shiro-detect -j -o loots.jsonl
 aiscan neutron -u http://target.example --template-list
 ```
+
+---
+
+## katana：Web 爬虫（仅 full 版）
+
+`katana` 集成 projectdiscovery/katana，用于深度 Web 爬取和参数发现。
+
+```bash
+aiscan-full katana -u https://target.example -d 3 -jc
+aiscan-full katana -u https://target.example -d 2 -silent -jsonl
+aiscan-full katana -u https://target.example -f qurl
+aiscan-full katana -list urls.txt -d 2 -jc -timeout 60
+```
+
+| 参数 | 说明 |
+| --- | --- |
+| `-u, -list` | 目标 URL 或 URL 文件 |
+| `-d` | 爬取深度（默认 3） |
+| `-jc` | 启用 JavaScript 爬取 |
+| `-timeout` | 超时秒数（默认 120） |
+| `-f, -field` | 输出字段：`url`, `path`, `qurl`, `qpath`, `file`, `key`, `value`, `kv`, `dir` 等 |
+| `-sf, -store-field` | 存储字段 |
+| `-em, -extension-match` | 匹配扩展名 |
+| `-ef, -extension-filter` | 过滤扩展名 |
+| `-jsonl` | JSON Lines 输出 |
+| `-silent` | 静默模式 |
+
+---
+
+## passive：网络空间搜索（仅 full 版）
+
+`passive` 集成 projectdiscovery/uncover，支持 FOFA / Hunter 等网络空间搜索引擎。
+
+```bash
+aiscan-full passive -s fofa 'domain="example.com"'
+aiscan-full passive -s hunter 'domain.suffix="example.com"'
+aiscan-full passive -s shodan-idb '192.0.2.4'
+```
+
+| 参数 | 说明 |
+| --- | --- |
+| `-s <source>` | 数据源（必填）：`fofa`, `hunter`, `shodan-idb` 等 |
+
+需要在全局参数或配置文件中设置对应的 API key：
+
+| 参数 | 环境变量 | 说明 |
+| --- | --- | --- |
+| `--fofa-email` | `FOFA_EMAIL` | FOFA 账号邮箱 |
+| `--fofa-key` | `FOFA_KEY` | FOFA API key |
+| `--hunter-api-key` | `HUNTER_API_KEY` | Hunter API key |
+| `--recon-proxy` | — | 搜索引擎代理 |
+| `--recon-limit` | — | 单次查询资产上限（0 = 无限） |
 
 ---
 
