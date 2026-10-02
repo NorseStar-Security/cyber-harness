@@ -75,6 +75,13 @@ cyber.yaml
 aiscan.yaml
 .runlogs/harness/
 
+# Live acceptance and local browser test output
+/.runlogs/
+/pkg/exts/jev/.runlogs/
+/test-results/
+/sweep-*.yaml
+/web/frontend/sweep-root.yaml
+
 # Generated build and validation artifacts
 /reports/evidence/
 /docs/evidence/
