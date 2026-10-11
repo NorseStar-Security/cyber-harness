@@ -9,7 +9,6 @@ import (
 	operationpb "github.com/chainreactors/cyber/aop/operation"
 	"github.com/chainreactors/cyber/core/types"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -45,12 +44,16 @@ func (b *aopBridge) consume(event *aop.Event) (resultErr error) {
 		b.sessionStarted(event.SessionId, state)
 		return nil
 	}
-	if event.GetSessionEnded() != nil {
-		if state := b.sessions[event.SessionId]; state != nil {
-			b.sessionEnded(event.SessionId, state, event.GetSessionEnded().Reason, stamp(event))
-			b.endedSessions.put(event.SessionId, state)
+	if ended := event.GetSessionEnded(); ended != nil {
+		b.finishSession(event.SessionId, stamp(event))
+		state := b.sessions[event.SessionId]
+		if state != nil {
+			b.sessionEnded(event.SessionId, state, ended.Reason, stamp(event))
 			delete(b.sessions, event.SessionId)
+		} else {
+			state = &session{ctx: context.Background()}
 		}
+		b.endedSessions.put(event.SessionId, state)
 		return nil
 	}
 	ref := new(operationpb.Ref)
@@ -77,7 +80,7 @@ func (b *aopBridge) consume(event *aop.Event) (resultErr error) {
 		return b.request(event, run)
 	}
 	if usage := event.GetUsage(); usage != nil {
-		if len(run.llm) > 0 {
+		if run.llm != nil {
 			b.finishRequests(run, usage, stamp(event))
 		} else {
 			b.fact(event, ref, usageSummary(usage)...)
@@ -85,8 +88,18 @@ func (b *aopBridge) consume(event *aop.Event) (resultErr error) {
 		return nil
 	}
 	if message := event.GetMessage(); message != nil {
-		if message.Role == "assistant" && len(run.llm) > 0 {
-			run.llm[len(run.llm)-1].end = stamp(event)
+		if message.Role == "assistant" && run.llm != nil {
+			// Empty assistant messages discard a failed streamed attempt.
+			if len(message.Content) > 0 {
+				run.llm.end = stamp(event)
+				for _, content := range message.Content {
+					if call := content.GetToolCall(); call != nil && call.Id != "" {
+						b.callSources.put(turnKey{event.SessionId, call.Id}, trace.ContextWithSpanContext(context.Background(), run.llm.span.SpanContext()))
+					}
+				}
+			} else {
+				run.llm.end = time.Time{}
+			}
 		}
 		if b.capture {
 			encoded, err := protojson.Marshal(message)
@@ -99,27 +112,32 @@ func (b *aopBridge) consume(event *aop.Event) (resultErr error) {
 				run.span.SetAttributes(attribute.String("input.value", content))
 			}
 			if message.Role == "assistant" {
+				if len(message.Content) == 0 {
+					content = ""
+				}
 				run.span.SetAttributes(attribute.String("output.value", content))
-				if len(run.llm) > 0 {
-					run.llm[len(run.llm)-1].span.SetAttributes(attribute.String("output.value", content))
+				if run.llm != nil {
+					run.llm.span.SetAttributes(attribute.String("output.value", content))
 				}
 			}
 		}
 	}
 	if ended := event.GetTurnEnded(); ended != nil {
-		if ended.Error != nil {
-			run.span.SetStatus(codes.Error, ended.Error.Message)
-		}
-		if (ended.Error != nil || ended.StopReason == "canceled") && len(run.llm) > 0 {
-			last := run.llm[len(run.llm)-1]
-			if ended.Error != nil {
-				last.span.SetStatus(codes.Error, ended.Error.Message)
-			} else {
-				last.span.SetStatus(codes.Error, "request canceled")
+		if ended.Error != nil || ended.StopReason == "canceled" {
+			kind, message := "error", "turn canceled"
+			if ended.StopReason == "canceled" {
+				kind = "canceled"
 			}
-			last.span.SetAttributes(attribute.String("cyber.stop_reason", ended.StopReason), attribute.Bool("cyber.llm.end_estimated", true))
-			if last.end.IsZero() {
-				last.end = stamp(event)
+			if ended.Error != nil {
+				message = ended.Error.Message
+			}
+			failSpan(run.span, kind, message)
+			// Usage follows tool execution. An already observed model response
+			// must survive a later tool failure or caller cancellation.
+			if run.llm != nil && run.llm.end.IsZero() {
+				failSpan(run.llm.span, kind, message)
+				run.llm.span.SetAttributes(attribute.String("cyber.stop_reason", ended.StopReason), attribute.Bool("cyber.llm.end_estimated", true))
+				run.llm.end = stamp(event)
 			}
 		}
 		b.finishRequests(run, nil, stamp(event))
@@ -133,9 +151,6 @@ func (b *aopBridge) consume(event *aop.Event) (resultErr error) {
 		b.endedTurns.put(key, trace.ContextWithSpanContext(context.Background(), run.span.SpanContext()))
 		delete(b.turns, key)
 		return nil
-	}
-	if failure := event.GetError(); failure != nil && len(run.llm) > 0 {
-		run.llm[len(run.llm)-1].span.SetStatus(codes.Error, failure.Message)
 	}
 	if call := event.GetToolCall(); call != nil {
 		b.fact(event, ref, attribute.String("cyber.call.id", call.Id), attribute.String("tool.name", call.Name))
@@ -187,18 +202,22 @@ func (b *aopBridge) operation(event *aop.Event, ref *operationpb.Ref) (bool, err
 	spanKind := "CHAIN"
 	if kind == "tool" {
 		spanKind = "TOOL"
-		attrs = append(attrs, attribute.String("tool.name", name))
+		attrs = append(attrs, attribute.String("tool.name", name), attribute.String("gen_ai.operation.name", "execute_tool"), attribute.String("gen_ai.tool.name", name), attribute.String("gen_ai.tool.call.id", ref.CallId))
 	}
-	state := b.startScope(event, key, kind+"."+name, spanKind, at, scopeKey{event.SessionId, "operation", ref.ParentOperationId}, false, attrs...)
+	spanName := kind + "." + name
+	if kind == "tool" {
+		spanName = "execute_tool " + name
+	}
+	state := b.startScope(event, key, spanName, spanKind, at, scopeKey{event.SessionId, "operation", ref.ParentOperationId}, false, attrs...)
 	if state == nil {
 		return true, nil
 	}
-	if ref.CallId != "" {
+	if kind == "tool" && ref.CallId != "" {
 		b.calls.put(turnKey{event.SessionId, ref.CallId}, trace.ContextWithSpanContext(context.Background(), state.span.SpanContext()))
 	}
 	if completed != nil {
 		if completed.Failure != nil {
-			state.span.SetStatus(codes.Error, completed.Failure.Message)
+			failSpan(state.span, failureType(completed.Failure.Kind), completed.Failure.Message)
 			state.span.SetAttributes(attribute.String("cyber.failure.kind", completed.Failure.Kind.String()))
 			state.span.RecordError(fmt.Errorf("%s", completed.Failure.Message), trace.WithTimestamp(stamp(event)))
 		}
@@ -211,15 +230,21 @@ func (b *aopBridge) request(event *aop.Event, run *turn) error {
 	if _, err := aop.FindTypedExtension(event, detail); err != nil {
 		return err
 	}
-	// An observed response followed by another request without usage is not proof
-	// of a retry. Preserve that missing accounting instead of guessing.
-	if len(run.llm) > 0 && !run.llm[len(run.llm)-1].end.IsZero() {
-		b.finishRequests(run, nil, stamp(event))
-	}
-	if len(run.llm) > 0 {
-		previous := run.llm[len(run.llm)-1]
-		previous.end = stamp(event)
-		previous.span.SetAttributes(attribute.Bool("cyber.llm.end_estimated", true))
+	run.requests++
+	if run.llm != nil {
+		// AOP reports cumulative usage for a logical call. Record retry evidence
+		// on that call instead of inventing per-attempt duration/token pairs.
+		if !run.llm.end.IsZero() {
+			run.llm.span.SetAttributes(attribute.Bool("cyber.llm.grouping.uncertain", true))
+		}
+		run.llm.attempts++
+		run.llm.end = time.Time{}
+		if b.capture {
+			run.llm.span.SetAttributes(attribute.String("output.value", ""))
+			run.span.SetAttributes(attribute.String("output.value", ""))
+		}
+		b.addFact(run.llm.span, event, []attribute.KeyValue{attribute.Int("cyber.llm.attempt", run.llm.attempts)})
+		return nil
 	}
 	model := detail.Model
 	if model == "" {
@@ -227,61 +252,79 @@ func (b *aopBridge) request(event *aop.Event, run *turn) error {
 			model = state.model
 		}
 	}
-	run.requests++
-	run.model = model
-	attrs := append(attributes(event), attribute.String("openinference.span.kind", "LLM"), attribute.String("llm.model_name", model), attribute.String("gen_ai.request.model", model), attribute.String("gen_ai.operation.name", "chat"), attribute.Int("cyber.llm.request", run.requests), attribute.Int("cyber.llm.messages", int(detail.Messages)), attribute.Bool("cyber.llm.stream", detail.Stream), attribute.Int("gen_ai.request.max_tokens", int(detail.MaxTokens)))
+	attrs := append(attributes(event), attribute.String("openinference.span.kind", "LLM"), attribute.String("gen_ai.operation.name", "chat"), attribute.String("gen_ai.provider.name", b.provider), attribute.Int("cyber.llm.request", run.requests), attribute.Int("cyber.llm.messages", int(detail.Messages)), attribute.Bool("gen_ai.request.stream", detail.Stream), attribute.String("cyber.usage.scope", "logical_request"))
+	if model != "" {
+		attrs = append(attrs, attribute.String("llm.model_name", model), attribute.String("gen_ai.request.model", model))
+	}
+	if detail.MaxTokens > 0 {
+		attrs = append(attrs, attribute.Int("gen_ai.request.max_tokens", int(detail.MaxTokens)))
+	}
 	if b.capture && run.input != "" {
 		attrs = append(attrs, attribute.String("input.value", run.input), attribute.String("cyber.input.scope", "latest_user_message"))
 	}
-	ctx, span := b.tracer.Start(run.ctx, "llm."+model, trace.WithTimestamp(stamp(event)), trace.WithSpanKind(trace.SpanKindClient), trace.WithAttributes(attrs...))
+	name := "chat"
+	if model != "" {
+		name += " " + model
+	}
+	ctx, span := b.tracer.Start(run.ctx, name, trace.WithTimestamp(stamp(event)), trace.WithSpanKind(trace.SpanKindClient), trace.WithAttributes(attrs...))
 	run.modelCtx = ctx
-	run.llm = append(run.llm, &requestSpan{span: span, start: stamp(event)})
+	run.llm = &requestSpan{span: span, start: stamp(event), attempts: 1}
+	b.addFact(span, event, []attribute.KeyValue{attribute.Int("cyber.llm.attempt", 1)})
 	return nil
 }
 func (b *aopBridge) finishRequests(run *turn, usage *aop.TokenUsage, at time.Time) {
-	if len(run.llm) == 0 {
+	request := run.llm
+	if request == nil {
 		return
 	}
-	aggregate := len(run.llm) > 1 || usage.GetDetail()["requests"] > 1
-	for _, request := range run.llm {
-		end := request.end
-		if end.IsZero() {
-			end = at
-			request.span.SetAttributes(attribute.Bool("cyber.llm.end_estimated", true))
-		}
-		if usage != nil && !aggregate {
-			setUsage(request.span, usage)
-		} else {
-			request.span.SetAttributes(attribute.Bool("cyber.usage.missing", true))
-		}
-		if usage == nil && request.end.IsZero() {
+	end := request.end
+	if end.IsZero() {
+		end = at
+		request.span.SetAttributes(attribute.Bool("cyber.llm.end_estimated", true))
+	}
+	request.span.SetAttributes(attribute.Int("cyber.llm.observed_attempts", request.attempts))
+	if usage != nil {
+		setUsage(request.span, usage)
+	} else {
+		request.span.SetAttributes(attribute.Bool("cyber.usage.missing", true))
+		if request.end.IsZero() {
+			failSpan(request.span, "incomplete", "request completion was not observed")
 			request.span.SetAttributes(attribute.Bool("cyber.incomplete", true))
 		}
-		endAt(request.span, request.start, end)
 	}
-	if usage != nil && aggregate {
-		// The current AOP stream supplies retry totals, not per-attempt usage.
-		// Put accounting on a CHAIN projection; never attribute all tokens to the
-		// final provider request or duplicate them on each attempt.
-		last := run.llm[len(run.llm)-1]
-		end := last.end
-		if end.IsZero() {
-			end = at
-		}
-		ctx, span := b.tracer.Start(run.ctx, "llm.retry_usage", trace.WithTimestamp(run.llm[0].start), trace.WithAttributes(attribute.String("openinference.span.kind", "CHAIN"), attribute.String("cyber.usage.scope", "request_group"), attribute.Int("cyber.llm.observed_requests", len(run.llm)), attribute.String("gen_ai.request.model", run.model)))
-		run.modelCtx = ctx
-		setUsage(span, usage)
-		endAt(span, run.llm[0].start, end)
-	}
+	endAt(request.span, request.start, end)
 	run.llm = nil
+}
+func failureType(kind operationpb.FailureKind) string {
+	switch kind {
+	case operationpb.FailureKind_FAILURE_KIND_DENIED:
+		return "denied"
+	case operationpb.FailureKind_FAILURE_KIND_START_FAILED:
+		return "start_failed"
+	case operationpb.FailureKind_FAILURE_KIND_CANCELED:
+		return "canceled"
+	case operationpb.FailureKind_FAILURE_KIND_TIMEOUT:
+		return "timeout"
+	case operationpb.FailureKind_FAILURE_KIND_PANIC:
+		return "panic"
+	default:
+		return "error"
+	}
 }
 func usageSummary(usage *aop.TokenUsage) []attribute.KeyValue {
 	return []attribute.KeyValue{attribute.Int64("cyber.tokens.total", int64(usage.TotalTokens)), attribute.Int64("cyber.tokens.input", int64(usage.InputTokens)), attribute.Int64("cyber.tokens.output", int64(usage.OutputTokens))}
 }
 func setUsage(span trace.Span, usage *aop.TokenUsage) {
-	span.SetAttributes(attribute.Int64("llm.token_count.prompt", int64(usage.InputTokens)), attribute.Int64("llm.token_count.completion", int64(usage.OutputTokens)), attribute.Int64("llm.token_count.total", int64(usage.TotalTokens)), attribute.Int64("gen_ai.usage.input_tokens", int64(usage.InputTokens)), attribute.Int64("gen_ai.usage.output_tokens", int64(usage.OutputTokens)), attribute.Bool("cyber.usage.missing", usage.Detail["usage_missing"] > 0))
+	span.SetAttributes(attribute.Bool("cyber.usage.missing", usage.Detail["usage_missing"] > 0))
 	for key, value := range usage.Detail {
 		span.SetAttributes(attribute.Int64("cyber.usage.detail."+key, int64(value)))
+	}
+	if requests := usage.Detail["requests"]; requests > 0 && usage.Detail["usage_missing"] >= requests {
+		// All attempts lack usage: the accumulator's zero is not reported usage.
+		return
+	}
+	span.SetAttributes(attribute.Int64("llm.token_count.prompt", int64(usage.InputTokens)), attribute.Int64("llm.token_count.completion", int64(usage.OutputTokens)), attribute.Int64("llm.token_count.total", int64(usage.TotalTokens)), attribute.Int64("gen_ai.usage.input_tokens", int64(usage.InputTokens)), attribute.Int64("gen_ai.usage.output_tokens", int64(usage.OutputTokens)))
+	for key, value := range usage.Detail {
 		switch key {
 		case "cache_read":
 			span.SetAttributes(attribute.Int64("gen_ai.usage.cache_read.input_tokens", int64(value)))
@@ -291,7 +334,5 @@ func setUsage(span trace.Span, usage *aop.TokenUsage) {
 			span.SetAttributes(attribute.Int64("gen_ai.usage.reasoning.output_tokens", int64(value)))
 		}
 	}
-	if usage.Model != "" {
-		span.SetAttributes(attribute.String("gen_ai.response.model", usage.Model), attribute.String("llm.model_name", usage.Model))
-	}
+	// Usage.Model is the configured request alias, not an observed response model.
 }

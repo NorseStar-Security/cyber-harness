@@ -190,20 +190,22 @@ func buildAIScanProfile(config config) (*aiscanProfile, error) {
 		values = append(values, output)
 	}
 	lookup := envLookup(config.Option)
-	if endpoint, _ := lookup("OTEL_EXPORTER_OTLP_ENDPOINT"); strings.TrimSpace(endpoint) != "" {
-		service, _ := lookup("OTEL_SERVICE_NAME")
-		project, _ := lookup("CYBER_OTEL_PROJECT")
-		capture, _ := lookup("CYBER_OTEL_CAPTURE_CONTENT")
-		observer, err := otelext.New(otelext.Options{Endpoint: endpoint, ServiceName: service, Project: project, CaptureContent: capture == "true"})
+	options, err := otelext.OptionsFromEnv(lookup)
+	if err != nil {
+		return nil, err
+	}
+	otelEnabled := options.Endpoint != "" || options.TraceEndpoint != "" || options.LogEndpoint != "" || options.MetricEndpoint != ""
+	if otelEnabled {
+		options.ProviderName = config.Base.Provider.Config.Provider
+		observer, err := otelext.New(options)
 		if err != nil {
 			return nil, err
 		}
 		values = append(values, observer)
 	}
 	observeKinds := config.Observe
-	// OTel consumes existing operation events emitted by observe. Explicit
-	// --observe selections remain exact; otherwise enable execution lifecycles.
-	if endpoint, _ := lookup("OTEL_EXPORTER_OTLP_ENDPOINT"); strings.TrimSpace(endpoint) != "" && len(observeKinds) == 0 {
+	// Export existing operation facts whenever any OTel signal is configured.
+	if otelEnabled && len(observeKinds) == 0 {
 		observeKinds = []observeext.Kind{observeext.Tools, observeext.Commands, observeext.Processes}
 	}
 	if len(observeKinds) > 0 {

@@ -24,6 +24,7 @@ docker compose -f examples/observability/docker/docker-compose.yaml up -d --wait
 
 ```powershell
 $env:OTEL_EXPORTER_OTLP_ENDPOINT = 'http://127.0.0.1:24318'
+$env:OTEL_EXPORTER_OTLP_PROTOCOL = 'http/protobuf'
 $env:OTEL_SERVICE_NAME = 'cyber-harness'
 $env:CYBER_OTEL_PROJECT = 'cyber-harness'
 go run ./cmd/aiscan agent --prompt '用 Bash 执行 pwd，然后解释结果'
@@ -31,25 +32,27 @@ go run ./cmd/aiscan agent --prompt '用 Bash 执行 pwd，然后解释结果'
 
 OTel 开启且未显式选择 `--observe` 时，自动启用现有 tools / commands / processes 观测。需要文件/HTTP 事实时使用 `--observe tools,commands,processes,files,http`；显式选择保持原样。OTLP 客户端使用 HTTP，gRPC 端口供其他客户端使用。
 
+也可仅配置 `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` / `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` / `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` 启用对应信号；这些是完整 URL，优先于全局 endpoint，路径不会被改写。对应 signal 的 protocol 设置同样优先，目前只支持 `http/protobuf`。GenAI 语义固定到 v1.41.0，Resource 中可查看 `cyber.otel.gen_ai.version`。
+
 复杂任务可用正常 `--task-file`，例如审查代码、生成统计程序、执行已有测试并输出报告。`--output <路径>` 保存 canonical AOP JSONL，可与后端记录对照；`--output-format json` 输出最终结果及 usage。JSONL 中 protobuf uint64 是数字字符串，统计只累计顶层 usage，不能再次累计 TurnEnded 的 usage 摘要或 assistant 消息内的工具调用。
 
 默认不导出消息正文。`CYBER_OTEL_CAPTURE_CONTENT=true` 开启最多 4096 字节的输入输出和事件正文。此开关不采集原始 provider frames 或流式 delta；AOP 日志不等于自动采集任意 stdout。
 
 ## 查看数据
 
-SigNoz 按 `service.name` 筛选；每个进程中的扩展实例还有独立 `service.instance.id`，可关联同一次执行的三个信号。Traces 中根 `agent.turn` 展开模型、工具、命令和进程；Logs 中可见 Session/Turn、operation、usage、outcome 和 trace/span ID。Phoenix 的对应项目使用 AGENT / LLM / TOOL / CHAIN 展示同一 trace。
+SigNoz 按 `service.name` 筛选；每个进程中的扩展实例还有独立 `service.instance.id`，可关联同一次执行的三个信号。Traces 中根 `invoke_agent [agent name]` 展开 `chat [model]`、`execute_tool <name>`、命令和进程；Logs 中可见 Session/Turn、operation、usage、outcome 和 trace/span ID。Phoenix 的对应项目使用 AGENT / LLM / TOOL / CHAIN 展示同一 trace。
 
 | 指标 | 用途 |
 | --- | --- |
 | `cyber.agent.sessions` / `.active` / `cyber.agent.session.duration` | Session 开始/结束转换、活跃数与耗时 |
 | `cyber.agent.turns` / `.active` / `cyber.agent.turn.duration` | Turn outcome、活跃数与耗时 |
 | `cyber.scope.completed` / `.active` / `.duration` | tool / command / process 和其他机制的状态及耗时 |
-| `cyber.model.requests` / `cyber.model.usage.missing` | 模型请求数与缺失 usage 覆盖 |
+| `cyber.model.requests` / `cyber.model.usage.missing` | 逻辑模型调用数（包含自动重试）与缺失 usage 覆盖 |
 | `cyber.model.tokens` | input / output / total；总量只筛 `gen_ai.token.type=total` |
 | `gen_ai.client.operation.duration` / `gen_ai.client.token.usage` | 模型耗时和 token histogram |
 | `cyber.aop.events` / `cyber.otel.events.dropped` | 消费的事实和已观察到的订阅丢弃 |
 
-指标不以 Session/Turn/operation ID 为标签。`cyber.agent.sessions` 是状态转换计数，筛 `cyber.lifecycle.state=started` 才表示启动的 Session 数。累计 input/output/total 不可三者相加。SigNoz 将 histogram 保存为 `.sum` / `.count` / `.bucket` 序列。
+指标不以 Session/Turn/operation ID 为标签。`cyber.agent.sessions` 是状态转换计数，筛 `cyber.lifecycle.state=started` 才表示启动的 Session 数。累计 input/output/total 不可三者相加。标准模型指标带 operation/provider 和已知 request model；失败 duration 的 `error.type` 与 trace 一致。两个 histogram 都按同一逻辑调用记录，SigNoz 保存为 `.sum` / `.count` / `.bucket` 序列。
 
 任务进度按生命周期和正在执行的工具展示，不估算百分比。tokens 在 AOP usage 到达后更新；当前 StandardLoop 在本轮工具结果收集后发布 usage，长工具会延后该响应计量。模型 active 表示请求投影尚未收尾，不保证此时网络请求仍在进行。startup / recap 等辅助请求没有完整 AOP usage，因此已报告 tokens 不等于整个进程或网关账单。
 
@@ -74,13 +77,15 @@ FROM (
 
 该查询用于累计末值核对，不表示当前时间窗口内的速率。长期服务可在 SigNoz 创建按时间范围计算的看板和告警。
 
-2026-10-11 的工作区验收执行了真实模型销售/SLO/审计任务，获得 138,297 tokens、22 模型请求、28 工具、361 logs / 69 spans；随后正式 CLI 执行仓库审查、Go 测试和统计脚本修复，含一次超时取消，共 211,744 tokens、21 模型请求、29 工具、374 logs / 63 spans。JSONL、CLI usage、SigNoz trace/log/metric 与 Phoenix traces 核对一致，活跃数最终归零。Agent 生成的报表另行验收，CLI completed 不替代业务正确性。测试代码、验收夹具、运行脚本、截图、凭据和临时产物保留在本地，未纳入此变更。
+2026-10-11 本轮验收使用正式 CLI 和真实 `gpt-6-sol` 分析 AOP 历史归档、编写 Python analyzer、执行自检并恢复工具失败：114,242 tokens、10 个逻辑模型调用、10 个工具调用（4 个失败）、158 logs / 29 spans。JSONL、CLI usage、SigNoz trace/log/metric 与 Phoenix 的 29 spans 核对一致，98 个非流式 AOP facts 均有对应日志，任务成功且活跃数最终归零。生成报表另行验收，正确计算历史输入的 138,297 tokens / 22 请求 / 28 工具，这不属于本轮 token 消耗。
+
+本地 AOP 回放另覆盖 delegation、compact/eval、guardrail、JEV、retry、取消和未完成：7 traces / 23 spans / 210 tokens、113 logs、15 类指标 / 99 序列；真实 Harness + HTTP/SSE 夹具覆盖 7 spans / 250 tokens。回放验收与真实模型覆盖分开记录。测试代码、验收夹具、运行脚本、截图、凭据和临时产物保留在本地，未纳入此变更。
 
 ## 嵌入式宿主与关闭
 
 在事件流提供者之后、执行者之前安装 `otelext.New(Options{Endpoint: ...})`；需要工具/命令/进程生命周期时安装现有 `observe`。三个 SDK 独立，Resource 一致，不修改全局 provider。MetricInterval 默认 10 秒，Flush / Close 也导出指标。
 
-先结束生产者、Session 与后台工作，再关闭 OTel。Flush 不强制结束运行中的任务；Close 将未完成 scope/Turn/Session 标记 incomplete 并归零活跃数。导出失败和已观察到的 AOP 订阅丢弃由 Flush/Close 返回；Log SDK 内部丢弃尚未计量。其他事实缺口见设计文档与 [Issue #175](https://github.com/chainreactors/cyber-harness/issues/175)。
+先结束生产者、Session 与后台工作，再关闭 OTel。SessionEnded 立即收尾所属孤儿 Turn/scope，不提前关闭不同 Session 的后台 Agent。Flush 不强制结束运行中的任务；Close 将剩余 scope/Turn/Session 标记 incomplete 并归零活跃数。Close 超时返回 `ErrCloseIncomplete`，扩展继续清理，后续 Close 可等待完成。导出失败和已观察到的 AOP 订阅丢弃由 Flush/Close 返回；Log SDK 内部丢弃尚未计量。其他事实缺口见设计文档与 [Issue #175](https://github.com/chainreactors/cyber-harness/issues/175)。
 
 ```powershell
 docker compose -f examples/observability/docker/docker-compose.yaml stop

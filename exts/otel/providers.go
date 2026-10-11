@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"sync"
 	"time"
 
@@ -16,30 +15,30 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 )
 
-const instrumentationName = "github.com/chainreactors/cyber/exts/otel"
-
-func otlpURL(endpoint, signal string) string {
-	value, _ := url.JoinPath(endpoint, "v1", signal)
-	return value
-}
+const (
+	instrumentationName    = "github.com/chainreactors/cyber/exts/otel"
+	instrumentationVersion = "0.2.0"
+	// Pin one complete GenAI dialect; SDK versions evolve independently.
+	genAIVersion = "1.41.0"
+)
 
 func (e *Extension) loadSignals(ctx context.Context, res *resource.Resource) error {
-	if !e.options.DisableLogs && (e.options.Endpoint != "" || e.options.LogExporter != nil) {
+	if !e.options.DisableLogs && (e.options.LogEndpoint != "" || e.options.LogExporter != nil) {
 		exporter := e.options.LogExporter
 		if exporter == nil {
 			var err error
-			exporter, err = otlploghttp.New(ctx, otlploghttp.WithEndpointURL(otlpURL(e.options.Endpoint, "logs")), otlploghttp.WithTimeout(5*time.Second))
+			exporter, err = otlploghttp.New(ctx, otlploghttp.WithEndpointURL(e.options.LogEndpoint), otlploghttp.WithTimeout(5*time.Second))
 			if err != nil {
 				return err
 			}
 		}
 		e.logs = sdklog.NewLoggerProvider(sdklog.WithResource(res), sdklog.WithProcessor(sdklog.NewBatchProcessor(&checkedLogExporter{Exporter: exporter, failures: &e.failures}, sdklog.WithMaxQueueSize(2048), sdklog.WithExportMaxBatchSize(512), sdklog.WithExportInterval(100*time.Millisecond), sdklog.WithExportTimeout(5*time.Second))))
 	}
-	if !e.options.DisableMetrics && (e.options.Endpoint != "" || e.options.MetricExporter != nil) {
+	if !e.options.DisableMetrics && (e.options.MetricEndpoint != "" || e.options.MetricExporter != nil) {
 		exporter := e.options.MetricExporter
 		if exporter == nil {
 			var err error
-			exporter, err = otlpmetrichttp.New(ctx, otlpmetrichttp.WithEndpointURL(otlpURL(e.options.Endpoint, "metrics")), otlpmetrichttp.WithTimeout(5*time.Second))
+			exporter, err = otlpmetrichttp.New(ctx, otlpmetrichttp.WithEndpointURL(e.options.MetricEndpoint), otlpmetrichttp.WithTimeout(5*time.Second))
 			if err != nil {
 				return err
 			}

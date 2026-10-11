@@ -10,7 +10,6 @@ import (
 	operationpb "github.com/chainreactors/cyber/aop/operation"
 	"github.com/chainreactors/cyber/core/types"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
@@ -89,7 +88,7 @@ func (b *aopBridge) statusScope(event *aop.Event, kind, id, state, failure strin
 	}
 	current.span.SetAttributes(attrs...)
 	if failure != "" {
-		current.span.SetStatus(codes.Error, failure)
+		failSpan(current.span, "error", failure)
 	}
 	b.endScope(key, stamp(event))
 	return nil
@@ -210,7 +209,7 @@ func (b *aopBridge) jev(event *aop.Event, runtime protoreflect.Message) error {
 	}
 	key := scopeKey{event.SessionId, "jev", id}
 	parent := scopeKey{event.SessionId, "jev", textField(detail, "parent_request_id")}
-	attrs = append(attrs, attribute.String("cyber.mechanism.kind", "jev"), attribute.String("cyber.jev.kind", kind), attribute.String("cyber.request.id", id), attribute.String("cyber.request.parent_id", parent.id), attribute.String("cyber.jev.purpose", textField(detail, "purpose")), attribute.Int64("cyber.jev.attempt", int64(uintField(detail, "attempt"))), attribute.String("cyber.jev.phase", textField(detail, "phase")), attribute.String("cyber.jev.error_stage", textField(detail, "error_stage")), attribute.String("gen_ai.request.reasoning_effort", textField(detail, "requested_effort")))
+	attrs = append(attrs, attribute.String("cyber.mechanism.kind", "jev"), attribute.String("cyber.jev.kind", kind), attribute.String("cyber.request.id", id), attribute.String("cyber.request.parent_id", parent.id), attribute.String("cyber.jev.purpose", textField(detail, "purpose")), attribute.Int64("cyber.jev.attempt", int64(uintField(detail, "attempt"))), attribute.String("cyber.jev.phase", textField(detail, "phase")), attribute.String("cyber.jev.error_stage", textField(detail, "error_stage")), attribute.String("cyber.jev.requested_effort", textField(detail, "requested_effort")))
 	spanKind := "CHAIN"
 	if kind == "decision" || kind == "compiler_round" || strings.HasSuffix(kind, "_llm") {
 		spanKind = "LLM"
@@ -219,6 +218,15 @@ func (b *aopBridge) jev(event *aop.Event, runtime protoreflect.Message) error {
 	// atomic rounds. Never bill it as a leaf: rounds can arrive after its End.
 	if kind == "reflex_llm" {
 		spanKind = "CHAIN"
+	}
+	if spanKind == "LLM" {
+		// JEV's evaluator is a separate client dialect. Generation calls expose
+		// no provider/model fact; do not borrow the main Agent's configuration.
+		operation, provider := "chat", "unknown"
+		if kind == "decision" {
+			operation, provider = "evaluate", "jev"
+		}
+		attrs = append(attrs, attribute.String("gen_ai.operation.name", operation), attribute.String("gen_ai.provider.name", provider))
 	}
 	at := stamp(event)
 	if finished && b.scopes[key] == nil {
@@ -242,7 +250,7 @@ func (b *aopBridge) jev(event *aop.Event, runtime protoreflect.Message) error {
 	}
 	state.span.SetAttributes(attrs...)
 	if failure := textField(detail, "error"); failure != "" {
-		state.span.SetStatus(codes.Error, failure)
+		failSpan(state.span, "error", failure)
 	}
 	usage, err := reportedUsage(detail)
 	if err != nil {

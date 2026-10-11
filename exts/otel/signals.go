@@ -3,7 +3,6 @@ package otel
 import (
 	"context"
 	"errors"
-	"strings"
 	"sync"
 	"time"
 
@@ -29,12 +28,12 @@ type signals struct {
 func newSignals(logs *sdklog.LoggerProvider, metrics *sdkmetric.MeterProvider) (*signals, error) {
 	s := new(signals)
 	if logs != nil {
-		s.logger = logs.Logger(instrumentationName)
+		s.logger = logs.Logger(instrumentationName, otellog.WithInstrumentationVersion(instrumentationVersion))
 	}
 	if metrics == nil {
 		return s, nil
 	}
-	meter := metrics.Meter(instrumentationName)
+	meter := metrics.Meter(instrumentationName, metric.WithInstrumentationVersion(instrumentationVersion))
 	var errs []error
 	counter := func(name, unit, description string) metric.Int64Counter {
 		value, err := meter.Int64Counter(name, metric.WithUnit(unit), metric.WithDescription(description))
@@ -56,7 +55,7 @@ func newSignals(logs *sdklog.LoggerProvider, metrics *sdkmetric.MeterProvider) (
 	s.sessions = counter("cyber.agent.sessions", "{session}", "Observed Agent session lifecycle transitions")
 	s.turns = counter("cyber.agent.turns", "{turn}", "Completed Agent turns, including incomplete turns")
 	s.scopes = counter("cyber.scope.completed", "{scope}", "Completed execution scopes by kind and outcome")
-	s.requests = counter("cyber.model.requests", "{request}", "Observed model requests; retry accounting and compiler summaries excluded")
+	s.requests = counter("cyber.model.requests", "{request}", "Logical model calls, including retries; compiler summaries excluded")
 	s.tokens = counter("cyber.model.tokens", "{token}", "Reported input/output tokens, counted once per available accounting fact")
 	s.missing = counter("cyber.model.usage.missing", "{request}", "Model requests without complete reported usage")
 	s.sessionsActive = active("cyber.agent.sessions.active", "Sessions with observed start and no observed end")
@@ -65,9 +64,10 @@ func newSignals(logs *sdklog.LoggerProvider, metrics *sdkmetric.MeterProvider) (
 	s.sessionDuration = duration("cyber.agent.session.duration", "Observed Agent session lifetime")
 	s.turnDuration = duration("cyber.agent.turn.duration", "Observed Agent turn duration")
 	s.scopeDuration = duration("cyber.scope.duration", "Observed execution scope duration, including mechanisms")
-	s.modelDuration = duration("gen_ai.client.operation.duration", "Observed model request duration; estimated endpoints marked in trace/logs")
 	var err error
-	s.tokenUsage, err = meter.Int64Histogram("gen_ai.client.token.usage", metric.WithUnit("{token}"), metric.WithDescription("Reported input/output token usage; summaries excluded"), metric.WithExplicitBucketBoundaries(1, 10, 50, 100, 500, 1000, 5000, 10000, 50000, 100000))
+	s.modelDuration, err = meter.Float64Histogram("gen_ai.client.operation.duration", metric.WithUnit("s"), metric.WithDescription("Logical model call duration, including automatic retries"), metric.WithExplicitBucketBoundaries(.01, .02, .04, .08, .16, .32, .64, 1.28, 2.56, 5.12, 10.24, 20.48, 40.96, 81.92))
+	errs = append(errs, err)
+	s.tokenUsage, err = meter.Int64Histogram("gen_ai.client.token.usage", metric.WithUnit("{token}"), metric.WithDescription("Reported input/output token usage; summaries excluded"), metric.WithExplicitBucketBoundaries(1, 4, 16, 64, 256, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304, 16777216, 67108864))
 	errs = append(errs, err)
 	return s, errors.Join(errs...)
 }
@@ -148,7 +148,7 @@ func (t signalTracer) Start(ctx context.Context, name string, opts ...trace.Span
 	for _, attr := range config.Attributes() {
 		span.attrs[attr.Key] = attr.Value
 	}
-	span.kind = scopeKind(name, span.attrs)
+	span.kind = scopeKind(span.attrs)
 	labels := []attribute.KeyValue{attribute.String("cyber.scope.kind", span.kind)}
 	if s.scopesActive != nil {
 		s.scopesActive.Add(ctx, 1, metric.WithAttributes(labels...))
@@ -200,14 +200,11 @@ func (s *signalSpan) SetName(name string) {
 		s.Span.SetName(name)
 	}
 }
-func scopeKind(name string, attrs map[attribute.Key]attribute.Value) string {
-	if name == "agent.turn" {
+func scopeKind(attrs map[attribute.Key]attribute.Value) string {
+	if attrs["gen_ai.operation.name"].AsString() == "invoke_agent" {
 		return "turn"
 	}
-	if name == "llm.retry_usage" {
-		return "accounting"
-	}
-	if strings.HasPrefix(name, "llm.") {
+	if attrs["openinference.span.kind"].AsString() == "LLM" {
 		return "llm"
 	}
 	if kind := attrs["cyber.operation.kind"].AsString(); kind != "" {
@@ -290,13 +287,17 @@ func (s *signalSpan) End(opts ...trace.SpanEndOption) {
 		if model == "" {
 			model = s.attrs["llm.model_name"].AsString()
 		}
-		if model == "" {
-			model = "unknown"
+		modelLabels := []attribute.KeyValue{attribute.String("gen_ai.operation.name", s.attrs["gen_ai.operation.name"].AsString()), attribute.String("gen_ai.provider.name", s.attrs["gen_ai.provider.name"].AsString())}
+		if model != "" {
+			modelLabels = append(modelLabels, attribute.String("gen_ai.request.model", model))
 		}
-		modelLabels := []attribute.KeyValue{attribute.String("gen_ai.operation.name", "chat"), attribute.String("gen_ai.request.model", model)}
 		if s.attrs["openinference.span.kind"].AsString() == "LLM" {
 			metrics.requests.Add(s.ctx, 1, metric.WithAttributes(append(modelLabels, attribute.String("cyber.outcome", outcome))...))
-			metrics.modelDuration.Record(s.ctx, duration, metric.WithAttributes(modelLabels...))
+			durationLabels := append([]attribute.KeyValue(nil), modelLabels...)
+			if value := s.attrs["error.type"].AsString(); value != "" {
+				durationLabels = append(durationLabels, attribute.String("error.type", value))
+			}
+			metrics.modelDuration.Record(s.ctx, duration, metric.WithAttributes(durationLabels...))
 			if s.attrs["cyber.usage.missing"].AsBool() {
 				metrics.missing.Add(s.ctx, 1, metric.WithAttributes(modelLabels...))
 			}
@@ -310,7 +311,9 @@ func (s *signalSpan) End(opts ...trace.SpanEndOption) {
 				attrs := append(append([]attribute.KeyValue(nil), modelLabels...), attribute.String("gen_ai.token.type", token.kind), attribute.String("cyber.usage.scope", accounting))
 				count := s.attrs[attribute.Key(token.key)].AsInt64()
 				metrics.tokens.Add(s.ctx, count, metric.WithAttributes(attrs...))
-				metrics.tokenUsage.Record(s.ctx, count, metric.WithAttributes(attrs...))
+				if s.kind == "llm" {
+					metrics.tokenUsage.Record(s.ctx, count, metric.WithAttributes(append(append([]attribute.KeyValue(nil), modelLabels...), attribute.String("gen_ai.token.type", token.kind))...))
+				}
 			}
 			metrics.tokens.Add(s.ctx, s.attrs["llm.token_count.total"].AsInt64(), metric.WithAttributes(append(append([]attribute.KeyValue(nil), modelLabels...), attribute.String("gen_ai.token.type", "total"), attribute.String("cyber.usage.scope", accounting))...))
 		}

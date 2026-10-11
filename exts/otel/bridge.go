@@ -19,6 +19,7 @@ import (
 type aopBridge struct {
 	tracer        trace.Tracer
 	capture       bool
+	provider      string
 	signals       *signals
 	turns         map[turnKey]*turn
 	sessions      map[string]*session
@@ -28,6 +29,7 @@ type aopBridge struct {
 	endedScopes   *recent[scopeKey, context.Context]
 	endedSessions *recent[string, *session]
 	calls         *recent[turnKey, context.Context]
+	callSources   *recent[turnKey, context.Context]
 }
 
 type turnKey struct{ session, turn string }
@@ -42,16 +44,16 @@ type session struct {
 type turn struct {
 	ctx      context.Context
 	modelCtx context.Context
-	model    string
 	span     trace.Span
 	requests int
-	llm      []*requestSpan
+	llm      *requestSpan
 	input    string
 	last     time.Time
 }
 type requestSpan struct {
 	span       trace.Span
 	start, end time.Time
+	attempts   int
 }
 type scopeSpan struct {
 	ctx         context.Context
@@ -102,7 +104,7 @@ func newAOPBridge(tracer trace.Tracer, capture bool) *aopBridge {
 	return &aopBridge{tracer: tracer, capture: capture,
 		turns: make(map[turnKey]*turn), sessions: make(map[string]*session), scopes: make(map[scopeKey]*scopeSpan),
 		seen: newRecent[turnKey, bool](), endedTurns: newRecent[turnKey, context.Context](),
-		endedScopes: newRecent[scopeKey, context.Context](), endedSessions: newRecent[string, *session](), calls: newRecent[turnKey, context.Context]()}
+		endedScopes: newRecent[scopeKey, context.Context](), endedSessions: newRecent[string, *session](), calls: newRecent[turnKey, context.Context](), callSources: newRecent[turnKey, context.Context](), provider: "unknown"}
 }
 func stamp(event *aop.Event) time.Time {
 	if event.EmittedAt != nil {
@@ -112,7 +114,7 @@ func stamp(event *aop.Event) time.Time {
 }
 func attributes(event *aop.Event) []attribute.KeyValue {
 	return []attribute.KeyValue{
-		attribute.String("cyber.session.id", event.SessionId), attribute.String("session.id", event.SessionId),
+		attribute.String("cyber.session.id", event.SessionId), attribute.String("session.id", event.SessionId), attribute.String("gen_ai.conversation.id", event.SessionId),
 		attribute.String("cyber.turn.id", event.TurnId), attribute.String("cyber.emitter", event.Emitter),
 		attribute.String("aop.event.id", event.Id), attribute.Int64("aop.event.seq", int64(event.Seq)),
 	}
@@ -129,6 +131,9 @@ func (b *aopBridge) ensureTurn(event *aop.Event) *turn {
 	if key.session == "" || key.turn == "" {
 		return nil
 	}
+	if _, ended := b.endedSessions.get(event.SessionId); ended {
+		return nil
+	}
 	if _, ended := b.endedTurns.get(key); ended {
 		return nil
 	}
@@ -139,13 +144,21 @@ func (b *aopBridge) ensureTurn(event *aop.Event) *turn {
 		return existing
 	}
 	ctx := context.Background()
-	attrs := append(attributes(event), attribute.String("openinference.span.kind", "AGENT"), attribute.Bool("cyber.start_missing", event.GetTurnStarted() == nil))
+	attrs := append(attributes(event), attribute.String("openinference.span.kind", "AGENT"), attribute.String("gen_ai.operation.name", "invoke_agent"), attribute.String("gen_ai.provider.name", b.provider), attribute.Bool("cyber.start_missing", event.GetTurnStarted() == nil))
+	name := "invoke_agent"
 	opts := []trace.SpanStartOption{trace.WithTimestamp(stamp(event))}
 	if state := b.session(event.SessionId); state != nil {
 		attrs = append(attrs, attribute.String("cyber.parent.session.id", state.parent), attribute.String("cyber.parent.call.id", state.call))
 		background := false
 		if d := state.delegation; d != nil {
 			background = d.RunMode == types.DelegationRunBackground
+			if d.AgentName != "" {
+				name += " " + d.AgentName
+				attrs = append(attrs, attribute.String("gen_ai.agent.name", d.AgentName))
+			}
+			if d.AgentId != "" {
+				attrs = append(attrs, attribute.String("gen_ai.agent.id", d.AgentId))
+			}
 			attrs = append(attrs, attribute.String("cyber.agent.id", d.AgentId), attribute.String("cyber.agent.name", d.AgentName), attribute.String("cyber.agent.type", d.AgentType), attribute.String("cyber.agent.run_mode", d.RunMode), attribute.String("cyber.agent.context_mode", d.ContextMode))
 			if b.capture {
 				attrs = append(attrs, attribute.String("cyber.agent.task", clip(d.Task)))
@@ -165,7 +178,7 @@ func (b *aopBridge) ensureTurn(event *aop.Event) *turn {
 		}
 	}
 	opts = append(opts, trace.WithAttributes(attrs...))
-	ctx, span := b.tracer.Start(ctx, "agent.turn", opts...)
+	ctx, span := b.tracer.Start(ctx, name, opts...)
 	if state := b.sessions[event.SessionId]; state != nil {
 		state.ctx = ctx
 	}
@@ -180,6 +193,9 @@ func (b *aopBridge) scopeContext(key scopeKey) (context.Context, bool) {
 	return b.endedScopes.get(key)
 }
 func (b *aopBridge) startScope(event *aop.Event, key scopeKey, name, kind string, at time.Time, parent scopeKey, background bool, attrs ...attribute.KeyValue) *scopeSpan {
+	if _, ended := b.endedSessions.get(event.SessionId); ended {
+		return nil
+	}
 	if existing := b.scopes[key]; existing != nil {
 		return existing
 	}
@@ -190,6 +206,18 @@ func (b *aopBridge) startScope(event *aop.Event, key scopeKey, name, kind string
 	opts := []trace.SpanStartOption{trace.WithTimestamp(at)}
 	attrs = append(attributes(event), attrs...)
 	attrs = append(attrs, attribute.String("openinference.span.kind", kind))
+	if kind == "TOOL" {
+		// Only an assistant's actual tool-call ID proves model causality.
+		for _, attr := range attrs {
+			if attr.Key == "gen_ai.tool.call.id" {
+				if source, ok := b.callSources.get(turnKey{event.SessionId, attr.Value.AsString()}); ok {
+					opts = append(opts, trace.WithLinks(trace.Link{SpanContext: trace.SpanContextFromContext(source)}))
+					attrs = append(attrs, sourceAttributes(source)...)
+				}
+				break
+			}
+		}
+	}
 	if parent.id != "" {
 		if known, ok := b.scopeContext(parent); ok {
 			ctx = known
@@ -300,26 +328,62 @@ func (b *aopBridge) fact(event *aop.Event, ref *operationpb.Ref, extra ...attrib
 	_, span := b.tracer.Start(ctx, "aop."+aop.Kind(event), opts...)
 	span.End(trace.WithTimestamp(stamp(event)))
 }
-func (b *aopBridge) finishOpen() {
+
+// finishSession ends only work owned by this Session. A delegated background
+// Agent has a different Session identity and outlives its caller independently.
+func (b *aopBridge) finishSession(id string, at time.Time) {
 	for key, state := range b.scopes {
-		state.span.SetStatus(codes.Error, "scope completion was not observed")
+		if key.session != id {
+			continue
+		}
+		failSpan(state.span, "incomplete", "scope completion was not observed")
 		state.span.SetAttributes(attribute.Bool("cyber.incomplete", true))
-		b.endScope(key, state.last)
+		b.endScope(key, at)
 	}
 	for key, run := range b.turns {
-		for _, request := range run.llm {
-			if request.end.IsZero() {
-				request.span.SetStatus(codes.Error, "request completion was not observed")
-			}
+		if key.session != id {
+			continue
 		}
-		b.finishRequests(run, nil, run.last)
-		run.span.SetStatus(codes.Error, "turn completion was not observed")
+		b.finishRequests(run, nil, at)
+		failSpan(run.span, "incomplete", "turn completion was not observed")
 		run.span.SetAttributes(attribute.Bool("cyber.incomplete", true))
-		run.span.End(trace.WithTimestamp(run.last))
+		run.span.End(trace.WithTimestamp(at))
+		b.endedTurns.put(key, trace.ContextWithSpanContext(context.Background(), run.span.SpanContext()))
 		delete(b.turns, key)
 	}
+}
+func (b *aopBridge) finishOpen() {
+	// Partial streams need not contain SessionStarted. Use each owner's latest
+	// observation so shutdown cannot end a span before its last known event.
+	last := make(map[string]time.Time)
+	for key, state := range b.scopes {
+		if state.last.After(last[key.session]) {
+			last[key.session] = state.last
+		}
+	}
+	for key, run := range b.turns {
+		if run.last.After(last[key.session]) {
+			last[key.session] = run.last
+		}
+	}
 	for id, state := range b.sessions {
-		b.sessionEnded(id, state, "incomplete", state.last)
+		if state.last.After(last[id]) {
+			last[id] = state.last
+		}
+	}
+	for id, at := range last {
+		b.finishSession(id, at)
+	}
+	for id, state := range b.sessions {
+		b.sessionEnded(id, state, "incomplete", last[id])
+		b.endedSessions.put(id, state)
 		delete(b.sessions, id)
 	}
+}
+
+// Error classes come from AOP's finite outcomes, never from arbitrary messages.
+// A handled/retryable error is an event; only terminal failures set error.type.
+func failSpan(span trace.Span, kind, message string) {
+	span.SetStatus(codes.Error, message)
+	span.SetAttributes(attribute.String("error.type", kind))
 }
