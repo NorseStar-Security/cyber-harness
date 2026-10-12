@@ -48,7 +48,7 @@ type SystemServiceClient interface {
 // connect.WithGRPC() or connect.WithGRPCWeb() options.
 //
 // The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.example or https://acme.example/grpc).
+// http://api.acme.com or https://acme.com/grpc).
 func NewSystemServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) SystemServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
 	systemServiceMethods := File_rpc_system_proto.Services().ByName("SystemService").Methods()

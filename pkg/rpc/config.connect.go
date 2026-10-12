@@ -67,7 +67,7 @@ type ConfigServiceClient interface {
 // connect.WithGRPC() or connect.WithGRPCWeb() options.
 //
 // The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.example or https://acme.example/grpc).
+// http://api.acme.com or https://acme.com/grpc).
 func NewConfigServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) ConfigServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
 	configServiceMethods := File_rpc_config_proto.Services().ByName("ConfigService").Methods()

@@ -131,7 +131,7 @@ func (e *Extension) Load(scope *extension.Scope) error {
 	if err := e.loadSignals(scope.Init(), res); err != nil {
 		return err
 	}
-	var tracer trace.Tracer = noop.NewTracerProvider().Tracer(instrumentationName)
+	tracer := noop.NewTracerProvider().Tracer(instrumentationName)
 	if e.provider != nil {
 		tracer = e.provider.Tracer(instrumentationName, trace.WithInstrumentationVersion(instrumentationVersion))
 	}
