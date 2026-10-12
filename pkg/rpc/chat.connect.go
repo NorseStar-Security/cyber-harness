@@ -74,7 +74,7 @@ type SessionServiceClient interface {
 // connect.WithGRPC() or connect.WithGRPCWeb() options.
 //
 // The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.example or https://acme.example/grpc).
+// http://api.acme.com or https://acme.com/grpc).
 func NewSessionServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) SessionServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
 	sessionServiceMethods := File_rpc_chat_proto.Services().ByName("SessionService").Methods()
