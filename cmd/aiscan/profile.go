@@ -28,6 +28,7 @@ import (
 	nativeext "github.com/chainreactors/cyber/exts/native"
 	nodeext "github.com/chainreactors/cyber/exts/node"
 	observeext "github.com/chainreactors/cyber/exts/observe"
+	otelext "github.com/chainreactors/cyber/exts/otel"
 	proxyext "github.com/chainreactors/cyber/exts/proxy"
 	ptyext "github.com/chainreactors/cyber/exts/pty"
 	recapext "github.com/chainreactors/cyber/exts/recap"
@@ -188,8 +189,27 @@ func buildAIScanProfile(config config) (*aiscanProfile, error) {
 		}
 		values = append(values, output)
 	}
-	if len(config.Observe) > 0 {
-		observer, err := observeext.New(observeext.Options{Kinds: config.Observe})
+	lookup := envLookup(config.Option)
+	options, err := otelext.OptionsFromEnv(lookup)
+	if err != nil {
+		return nil, err
+	}
+	otelEnabled := options.Endpoint != "" || options.TraceEndpoint != "" || options.LogEndpoint != "" || options.MetricEndpoint != ""
+	if otelEnabled {
+		options.ProviderName = config.Base.Provider.Config.Provider
+		observer, err := otelext.New(options)
+		if err != nil {
+			return nil, err
+		}
+		values = append(values, observer)
+	}
+	observeKinds := config.Observe
+	// Export existing operation facts whenever any OTel signal is configured.
+	if otelEnabled && len(observeKinds) == 0 {
+		observeKinds = []observeext.Kind{observeext.Tools, observeext.Commands, observeext.Processes}
+	}
+	if len(observeKinds) > 0 {
+		observer, err := observeext.New(observeext.Options{Kinds: observeKinds})
 		if err != nil {
 			return nil, err
 		}
