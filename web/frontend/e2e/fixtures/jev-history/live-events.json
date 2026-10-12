@@ -34,11 +34,17 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0441",
           "purpose": "jev_claim",
-          "questions": {
+          "claims": {
             "claim0": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"60ef6ba0a24d6d54a\":\"Synthetic fixture value 1\",\"e41e913501b8667ec\":\"Synthetic fixture value 2\",\"0894c800598969656\":\"Synthetic fixture value 3\",\"defer\":\"Synthetic fixture value 4\",\"new\":\"Synthetic fixture value 5\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"60ef6ba0a24d6d54a\":\"Synthetic fixture value 1\",\"e41e913501b8667ec\":\"Synthetic fixture value 2\",\"0894c800598969656\":\"Synthetic fixture value 3\",\"defer\":\"Synthetic fixture value 4\",\"new\":\"Synthetic fixture value 5\"}}",
+              "options": [
+                "60ef6ba0a24d6d54a",
+                "e41e913501b8667ec",
+                "0894c800598969656",
+                "defer",
+                "new"
+              ]
             }
           }
         }
@@ -61,9 +67,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0441",
           "purpose": "jev_claim",
-          "answers": {
+          "evaluations": {
             "claim0": {
-              "type": "choice",
               "choice": "0894c800598969656",
               "probabilities": {
                 "60ef6ba0a24d6d54a": 0.5,
@@ -126,26 +131,38 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0445",
           "purpose": "jev_reflex",
-          "questions": {
+          "claims": {
             "60ef6ba0a24d6d54a": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 6\",\"include\":\"Synthetic fixture value 7\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 6\",\"include\":\"Synthetic fixture value 7\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "e41e913501b8667ec": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 8\",\"include\":\"Synthetic fixture value 9\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 8\",\"include\":\"Synthetic fixture value 9\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "0894c800598969656": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 10\",\"include\":\"Synthetic fixture value 11\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 10\",\"include\":\"Synthetic fixture value 11\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "synthetic-identity-0177": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"synthetic-identity-0177\":\"Synthetic fixture value 12\",\"defer\":\"Synthetic fixture value 13\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"synthetic-identity-0177\":\"Synthetic fixture value 12\",\"defer\":\"Synthetic fixture value 13\"}}",
+              "options": [
+                "synthetic-identity-0177",
+                "defer"
+              ]
             }
           }
         }
@@ -169,9 +186,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0445",
           "purpose": "jev_reflex",
-          "answers": {
+          "evaluations": {
             "60ef6ba0a24d6d54a": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -180,7 +196,6 @@
               "confidence": 1
             },
             "e41e913501b8667ec": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -189,7 +204,6 @@
               "confidence": 1
             },
             "0894c800598969656": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -198,7 +212,6 @@
               "confidence": 0.99
             },
             "synthetic-identity-0177": {
-              "type": "choice",
               "choice": "defer",
               "probabilities": {
                 "synthetic-identity-0177": 0.5,
@@ -276,16 +289,28 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0451",
           "purpose": "jev_claim",
-          "questions": {
+          "claims": {
             "claim0": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"60ef6ba0a24d6d54a\":\"Synthetic fixture value 14\",\"e41e913501b8667ec\":\"Synthetic fixture value 15\",\"0894c800598969656\":\"Synthetic fixture value 16\",\"defer\":\"Synthetic fixture value 17\",\"new\":\"Synthetic fixture value 18\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"60ef6ba0a24d6d54a\":\"Synthetic fixture value 14\",\"e41e913501b8667ec\":\"Synthetic fixture value 15\",\"0894c800598969656\":\"Synthetic fixture value 16\",\"defer\":\"Synthetic fixture value 17\",\"new\":\"Synthetic fixture value 18\"}}",
+              "options": [
+                "60ef6ba0a24d6d54a",
+                "e41e913501b8667ec",
+                "0894c800598969656",
+                "defer",
+                "new"
+              ]
             },
             "claim1": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"60ef6ba0a24d6d54a\":\"Synthetic fixture value 19\",\"e41e913501b8667ec\":\"Synthetic fixture value 20\",\"0894c800598969656\":\"Synthetic fixture value 21\",\"defer\":\"Synthetic fixture value 22\",\"new\":\"Synthetic fixture value 23\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"60ef6ba0a24d6d54a\":\"Synthetic fixture value 19\",\"e41e913501b8667ec\":\"Synthetic fixture value 20\",\"0894c800598969656\":\"Synthetic fixture value 21\",\"defer\":\"Synthetic fixture value 22\",\"new\":\"Synthetic fixture value 23\"}}",
+              "options": [
+                "60ef6ba0a24d6d54a",
+                "e41e913501b8667ec",
+                "0894c800598969656",
+                "defer",
+                "new"
+              ]
             }
           }
         }
@@ -327,9 +352,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0451",
           "purpose": "jev_claim",
-          "answers": {
+          "evaluations": {
             "claim0": {
-              "type": "choice",
               "choice": "0894c800598969656",
               "probabilities": {
                 "60ef6ba0a24d6d54a": 0.5,
@@ -341,7 +365,6 @@
               "confidence": 0.2
             },
             "claim1": {
-              "type": "choice",
               "choice": "0894c800598969656",
               "probabilities": {
                 "60ef6ba0a24d6d54a": 0.5,
@@ -404,26 +427,38 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0456",
           "purpose": "jev_reflex",
-          "questions": {
+          "claims": {
             "60ef6ba0a24d6d54a": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 24\",\"include\":\"Synthetic fixture value 25\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 24\",\"include\":\"Synthetic fixture value 25\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "e41e913501b8667ec": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 26\",\"include\":\"Synthetic fixture value 27\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 26\",\"include\":\"Synthetic fixture value 27\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "0894c800598969656": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 28\",\"include\":\"Synthetic fixture value 29\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 28\",\"include\":\"Synthetic fixture value 29\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "synthetic-identity-0177": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"synthetic-identity-0177\":\"Synthetic fixture value 30\",\"defer\":\"Synthetic fixture value 31\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"synthetic-identity-0177\":\"Synthetic fixture value 30\",\"defer\":\"Synthetic fixture value 31\"}}",
+              "options": [
+                "synthetic-identity-0177",
+                "defer"
+              ]
             }
           }
         }
@@ -466,9 +501,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0456",
           "purpose": "jev_reflex",
-          "answers": {
+          "evaluations": {
             "60ef6ba0a24d6d54a": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -477,7 +511,6 @@
               "confidence": 1
             },
             "e41e913501b8667ec": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -486,7 +519,6 @@
               "confidence": 1
             },
             "0894c800598969656": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -495,7 +527,6 @@
               "confidence": 0.98
             },
             "synthetic-identity-0177": {
-              "type": "choice",
               "choice": "defer",
               "probabilities": {
                 "synthetic-identity-0177": 0.5,
@@ -573,16 +604,28 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0463",
           "purpose": "jev_claim",
-          "questions": {
+          "claims": {
             "claim0": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"60ef6ba0a24d6d54a\":\"Synthetic fixture value 32\",\"e41e913501b8667ec\":\"Synthetic fixture value 33\",\"0894c800598969656\":\"Synthetic fixture value 34\",\"defer\":\"Synthetic fixture value 35\",\"new\":\"Synthetic fixture value 36\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"60ef6ba0a24d6d54a\":\"Synthetic fixture value 32\",\"e41e913501b8667ec\":\"Synthetic fixture value 33\",\"0894c800598969656\":\"Synthetic fixture value 34\",\"defer\":\"Synthetic fixture value 35\",\"new\":\"Synthetic fixture value 36\"}}",
+              "options": [
+                "60ef6ba0a24d6d54a",
+                "e41e913501b8667ec",
+                "0894c800598969656",
+                "defer",
+                "new"
+              ]
             },
             "claim1": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"60ef6ba0a24d6d54a\":\"Synthetic fixture value 37\",\"e41e913501b8667ec\":\"Synthetic fixture value 38\",\"0894c800598969656\":\"Synthetic fixture value 39\",\"defer\":\"Synthetic fixture value 40\",\"new\":\"Synthetic fixture value 41\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"60ef6ba0a24d6d54a\":\"Synthetic fixture value 37\",\"e41e913501b8667ec\":\"Synthetic fixture value 38\",\"0894c800598969656\":\"Synthetic fixture value 39\",\"defer\":\"Synthetic fixture value 40\",\"new\":\"Synthetic fixture value 41\"}}",
+              "options": [
+                "60ef6ba0a24d6d54a",
+                "e41e913501b8667ec",
+                "0894c800598969656",
+                "defer",
+                "new"
+              ]
             }
           }
         }
@@ -605,9 +648,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0463",
           "purpose": "jev_claim",
-          "answers": {
+          "evaluations": {
             "claim0": {
-              "type": "choice",
               "choice": "60ef6ba0a24d6d54a",
               "probabilities": {
                 "60ef6ba0a24d6d54a": 0.5,
@@ -619,7 +661,6 @@
               "confidence": 0.54
             },
             "claim1": {
-              "type": "choice",
               "choice": "60ef6ba0a24d6d54a",
               "probabilities": {
                 "60ef6ba0a24d6d54a": 0.5,
@@ -682,26 +723,38 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0467",
           "purpose": "jev_reflex",
-          "questions": {
+          "claims": {
             "60ef6ba0a24d6d54a": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 42\",\"include\":\"Synthetic fixture value 43\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 42\",\"include\":\"Synthetic fixture value 43\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "e41e913501b8667ec": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 44\",\"include\":\"Synthetic fixture value 45\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 44\",\"include\":\"Synthetic fixture value 45\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "0894c800598969656": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 46\",\"include\":\"Synthetic fixture value 47\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 46\",\"include\":\"Synthetic fixture value 47\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "synthetic-identity-0177": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"synthetic-identity-0177\":\"Synthetic fixture value 48\",\"defer\":\"Synthetic fixture value 49\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"synthetic-identity-0177\":\"Synthetic fixture value 48\",\"defer\":\"Synthetic fixture value 49\"}}",
+              "options": [
+                "synthetic-identity-0177",
+                "defer"
+              ]
             }
           }
         }
@@ -725,9 +778,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0467",
           "purpose": "jev_reflex",
-          "answers": {
+          "evaluations": {
             "60ef6ba0a24d6d54a": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -736,7 +788,6 @@
               "confidence": 0.98
             },
             "e41e913501b8667ec": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -745,7 +796,6 @@
               "confidence": 0.99
             },
             "0894c800598969656": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -754,7 +804,6 @@
               "confidence": 0.99
             },
             "synthetic-identity-0177": {
-              "type": "choice",
               "choice": "defer",
               "probabilities": {
                 "synthetic-identity-0177": 0.5,
@@ -832,16 +881,28 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0472",
           "purpose": "jev_claim",
-          "questions": {
+          "claims": {
             "claim0": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"60ef6ba0a24d6d54a\":\"Synthetic fixture value 50\",\"e41e913501b8667ec\":\"Synthetic fixture value 51\",\"0894c800598969656\":\"Synthetic fixture value 52\",\"defer\":\"Synthetic fixture value 53\",\"new\":\"Synthetic fixture value 54\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"60ef6ba0a24d6d54a\":\"Synthetic fixture value 50\",\"e41e913501b8667ec\":\"Synthetic fixture value 51\",\"0894c800598969656\":\"Synthetic fixture value 52\",\"defer\":\"Synthetic fixture value 53\",\"new\":\"Synthetic fixture value 54\"}}",
+              "options": [
+                "60ef6ba0a24d6d54a",
+                "e41e913501b8667ec",
+                "0894c800598969656",
+                "defer",
+                "new"
+              ]
             },
             "claim1": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"60ef6ba0a24d6d54a\":\"Synthetic fixture value 55\",\"e41e913501b8667ec\":\"Synthetic fixture value 56\",\"0894c800598969656\":\"Synthetic fixture value 57\",\"defer\":\"Synthetic fixture value 58\",\"new\":\"Synthetic fixture value 59\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"60ef6ba0a24d6d54a\":\"Synthetic fixture value 55\",\"e41e913501b8667ec\":\"Synthetic fixture value 56\",\"0894c800598969656\":\"Synthetic fixture value 57\",\"defer\":\"Synthetic fixture value 58\",\"new\":\"Synthetic fixture value 59\"}}",
+              "options": [
+                "60ef6ba0a24d6d54a",
+                "e41e913501b8667ec",
+                "0894c800598969656",
+                "defer",
+                "new"
+              ]
             }
           }
         }
@@ -883,9 +944,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0472",
           "purpose": "jev_claim",
-          "answers": {
+          "evaluations": {
             "claim0": {
-              "type": "choice",
               "choice": "60ef6ba0a24d6d54a",
               "probabilities": {
                 "60ef6ba0a24d6d54a": 0.5,
@@ -897,7 +957,6 @@
               "confidence": 0.82
             },
             "claim1": {
-              "type": "choice",
               "choice": "60ef6ba0a24d6d54a",
               "probabilities": {
                 "60ef6ba0a24d6d54a": 0.5,
@@ -960,26 +1019,38 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0478",
           "purpose": "jev_reflex",
-          "questions": {
+          "claims": {
             "60ef6ba0a24d6d54a": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 60\",\"include\":\"Synthetic fixture value 61\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 60\",\"include\":\"Synthetic fixture value 61\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "e41e913501b8667ec": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 62\",\"include\":\"Synthetic fixture value 63\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 62\",\"include\":\"Synthetic fixture value 63\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "0894c800598969656": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 64\",\"include\":\"Synthetic fixture value 65\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 64\",\"include\":\"Synthetic fixture value 65\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "synthetic-identity-0177": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"synthetic-identity-0177\":\"Synthetic fixture value 66\",\"defer\":\"Synthetic fixture value 67\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"synthetic-identity-0177\":\"Synthetic fixture value 66\",\"defer\":\"Synthetic fixture value 67\"}}",
+              "options": [
+                "synthetic-identity-0177",
+                "defer"
+              ]
             }
           }
         }
@@ -1003,9 +1074,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0478",
           "purpose": "jev_reflex",
-          "answers": {
+          "evaluations": {
             "60ef6ba0a24d6d54a": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -1014,7 +1084,6 @@
               "confidence": 0.99
             },
             "e41e913501b8667ec": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -1023,7 +1092,6 @@
               "confidence": 0.99
             },
             "0894c800598969656": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -1032,7 +1100,6 @@
               "confidence": 1
             },
             "synthetic-identity-0177": {
-              "type": "choice",
               "choice": "defer",
               "probabilities": {
                 "synthetic-identity-0177": 0.5,
@@ -1110,11 +1177,17 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0483",
           "purpose": "jev_claim",
-          "questions": {
+          "claims": {
             "claim0": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"60ef6ba0a24d6d54a\":\"Synthetic fixture value 68\",\"e41e913501b8667ec\":\"Synthetic fixture value 69\",\"0894c800598969656\":\"Synthetic fixture value 70\",\"defer\":\"Synthetic fixture value 71\",\"new\":\"Synthetic fixture value 72\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"60ef6ba0a24d6d54a\":\"Synthetic fixture value 68\",\"e41e913501b8667ec\":\"Synthetic fixture value 69\",\"0894c800598969656\":\"Synthetic fixture value 70\",\"defer\":\"Synthetic fixture value 71\",\"new\":\"Synthetic fixture value 72\"}}",
+              "options": [
+                "60ef6ba0a24d6d54a",
+                "e41e913501b8667ec",
+                "0894c800598969656",
+                "defer",
+                "new"
+              ]
             }
           }
         }
@@ -1156,9 +1229,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0483",
           "purpose": "jev_claim",
-          "answers": {
+          "evaluations": {
             "claim0": {
-              "type": "choice",
               "choice": "60ef6ba0a24d6d54a",
               "probabilities": {
                 "60ef6ba0a24d6d54a": 0.5,
@@ -1221,26 +1293,38 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0489",
           "purpose": "jev_reflex",
-          "questions": {
+          "claims": {
             "60ef6ba0a24d6d54a": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 73\",\"include\":\"Synthetic fixture value 74\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 73\",\"include\":\"Synthetic fixture value 74\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "e41e913501b8667ec": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 75\",\"include\":\"Synthetic fixture value 76\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 75\",\"include\":\"Synthetic fixture value 76\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "0894c800598969656": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 77\",\"include\":\"Synthetic fixture value 78\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 77\",\"include\":\"Synthetic fixture value 78\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "synthetic-identity-0177": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"synthetic-identity-0177\":\"Synthetic fixture value 79\",\"defer\":\"Synthetic fixture value 80\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"synthetic-identity-0177\":\"Synthetic fixture value 79\",\"defer\":\"Synthetic fixture value 80\"}}",
+              "options": [
+                "synthetic-identity-0177",
+                "defer"
+              ]
             }
           }
         }
@@ -1264,9 +1348,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0489",
           "purpose": "jev_reflex",
-          "answers": {
+          "evaluations": {
             "60ef6ba0a24d6d54a": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -1275,7 +1358,6 @@
               "confidence": 0.99
             },
             "e41e913501b8667ec": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -1284,7 +1366,6 @@
               "confidence": 1
             },
             "0894c800598969656": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -1293,7 +1374,6 @@
               "confidence": 1
             },
             "synthetic-identity-0177": {
-              "type": "choice",
               "choice": "synthetic-identity-0177",
               "probabilities": {
                 "synthetic-identity-0177": 0.5,
@@ -1977,11 +2057,17 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0524",
           "purpose": "jev_claim",
-          "questions": {
+          "claims": {
             "claim0": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"60ef6ba0a24d6d54a\":\"Synthetic fixture value 85\",\"e41e913501b8667ec\":\"Synthetic fixture value 86\",\"0894c800598969656\":\"Synthetic fixture value 87\",\"defer\":\"Synthetic fixture value 88\",\"new\":\"Synthetic fixture value 89\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"60ef6ba0a24d6d54a\":\"Synthetic fixture value 85\",\"e41e913501b8667ec\":\"Synthetic fixture value 86\",\"0894c800598969656\":\"Synthetic fixture value 87\",\"defer\":\"Synthetic fixture value 88\",\"new\":\"Synthetic fixture value 89\"}}",
+              "options": [
+                "60ef6ba0a24d6d54a",
+                "e41e913501b8667ec",
+                "0894c800598969656",
+                "defer",
+                "new"
+              ]
             }
           }
         }
@@ -2004,9 +2090,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0524",
           "purpose": "jev_claim",
-          "answers": {
+          "evaluations": {
             "claim0": {
-              "type": "choice",
               "choice": "60ef6ba0a24d6d54a",
               "probabilities": {
                 "60ef6ba0a24d6d54a": 0.5,
@@ -2107,11 +2192,17 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0302",
           "purpose": "jev_claim",
-          "questions": {
+          "claims": {
             "claim0": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"1eae434e55c440826\":\"Synthetic fixture value 90\",\"8b7f9c05e25286b14\":\"Synthetic fixture value 91\",\"ec502a90451aaadd5\":\"Synthetic fixture value 92\",\"defer\":\"Synthetic fixture value 93\",\"new\":\"Synthetic fixture value 94\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"1eae434e55c440826\":\"Synthetic fixture value 90\",\"8b7f9c05e25286b14\":\"Synthetic fixture value 91\",\"ec502a90451aaadd5\":\"Synthetic fixture value 92\",\"defer\":\"Synthetic fixture value 93\",\"new\":\"Synthetic fixture value 94\"}}",
+              "options": [
+                "1eae434e55c440826",
+                "8b7f9c05e25286b14",
+                "ec502a90451aaadd5",
+                "defer",
+                "new"
+              ]
             }
           }
         }
@@ -2134,9 +2225,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0302",
           "purpose": "jev_claim",
-          "answers": {
+          "evaluations": {
             "claim0": {
-              "type": "choice",
               "choice": "1eae434e55c440826",
               "probabilities": {
                 "1eae434e55c440826": 0.5,
@@ -2199,26 +2289,38 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0306",
           "purpose": "jev_reflex",
-          "questions": {
+          "claims": {
             "1eae434e55c440826": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 95\",\"include\":\"Synthetic fixture value 96\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 95\",\"include\":\"Synthetic fixture value 96\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "8b7f9c05e25286b14": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 97\",\"include\":\"Synthetic fixture value 98\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 97\",\"include\":\"Synthetic fixture value 98\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "ec502a90451aaadd5": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 99\",\"include\":\"Synthetic fixture value 100\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 99\",\"include\":\"Synthetic fixture value 100\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "synthetic-identity-0177": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"synthetic-identity-0177\":\"Synthetic fixture value 101\",\"defer\":\"Synthetic fixture value 102\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"synthetic-identity-0177\":\"Synthetic fixture value 101\",\"defer\":\"Synthetic fixture value 102\"}}",
+              "options": [
+                "synthetic-identity-0177",
+                "defer"
+              ]
             }
           }
         }
@@ -2242,9 +2344,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0306",
           "purpose": "jev_reflex",
-          "answers": {
+          "evaluations": {
             "1eae434e55c440826": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -2253,7 +2354,6 @@
               "confidence": 0.98
             },
             "8b7f9c05e25286b14": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -2262,7 +2362,6 @@
               "confidence": 0.99
             },
             "ec502a90451aaadd5": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -2271,7 +2370,6 @@
               "confidence": 1
             },
             "synthetic-identity-0177": {
-              "type": "choice",
               "choice": "defer",
               "probabilities": {
                 "synthetic-identity-0177": 0.5,
@@ -2349,16 +2447,28 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0311",
           "purpose": "jev_claim",
-          "questions": {
+          "claims": {
             "claim0": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"1eae434e55c440826\":\"Synthetic fixture value 103\",\"8b7f9c05e25286b14\":\"Synthetic fixture value 104\",\"ec502a90451aaadd5\":\"Synthetic fixture value 105\",\"defer\":\"Synthetic fixture value 106\",\"new\":\"Synthetic fixture value 107\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"1eae434e55c440826\":\"Synthetic fixture value 103\",\"8b7f9c05e25286b14\":\"Synthetic fixture value 104\",\"ec502a90451aaadd5\":\"Synthetic fixture value 105\",\"defer\":\"Synthetic fixture value 106\",\"new\":\"Synthetic fixture value 107\"}}",
+              "options": [
+                "1eae434e55c440826",
+                "8b7f9c05e25286b14",
+                "ec502a90451aaadd5",
+                "defer",
+                "new"
+              ]
             },
             "claim1": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"1eae434e55c440826\":\"Synthetic fixture value 108\",\"8b7f9c05e25286b14\":\"Synthetic fixture value 109\",\"ec502a90451aaadd5\":\"Synthetic fixture value 110\",\"defer\":\"Synthetic fixture value 111\",\"new\":\"Synthetic fixture value 112\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"1eae434e55c440826\":\"Synthetic fixture value 108\",\"8b7f9c05e25286b14\":\"Synthetic fixture value 109\",\"ec502a90451aaadd5\":\"Synthetic fixture value 110\",\"defer\":\"Synthetic fixture value 111\",\"new\":\"Synthetic fixture value 112\"}}",
+              "options": [
+                "1eae434e55c440826",
+                "8b7f9c05e25286b14",
+                "ec502a90451aaadd5",
+                "defer",
+                "new"
+              ]
             }
           }
         }
@@ -2381,9 +2491,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0311",
           "purpose": "jev_claim",
-          "answers": {
+          "evaluations": {
             "claim0": {
-              "type": "choice",
               "choice": "1eae434e55c440826",
               "probabilities": {
                 "1eae434e55c440826": 0.5,
@@ -2395,7 +2504,6 @@
               "confidence": 0.34
             },
             "claim1": {
-              "type": "choice",
               "choice": "1eae434e55c440826",
               "probabilities": {
                 "1eae434e55c440826": 0.5,
@@ -2458,26 +2566,38 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0315",
           "purpose": "jev_reflex",
-          "questions": {
+          "claims": {
             "1eae434e55c440826": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 113\",\"include\":\"Synthetic fixture value 114\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 113\",\"include\":\"Synthetic fixture value 114\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "8b7f9c05e25286b14": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 115\",\"include\":\"Synthetic fixture value 116\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 115\",\"include\":\"Synthetic fixture value 116\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "ec502a90451aaadd5": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 117\",\"include\":\"Synthetic fixture value 118\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 117\",\"include\":\"Synthetic fixture value 118\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "synthetic-identity-0177": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"synthetic-identity-0177\":\"Synthetic fixture value 119\",\"defer\":\"Synthetic fixture value 120\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"synthetic-identity-0177\":\"Synthetic fixture value 119\",\"defer\":\"Synthetic fixture value 120\"}}",
+              "options": [
+                "synthetic-identity-0177",
+                "defer"
+              ]
             }
           }
         }
@@ -2520,9 +2640,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0315",
           "purpose": "jev_reflex",
-          "answers": {
+          "evaluations": {
             "1eae434e55c440826": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -2531,7 +2650,6 @@
               "confidence": 0.96
             },
             "8b7f9c05e25286b14": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -2540,7 +2658,6 @@
               "confidence": 0.99
             },
             "ec502a90451aaadd5": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -2549,7 +2666,6 @@
               "confidence": 1
             },
             "synthetic-identity-0177": {
-              "type": "choice",
               "choice": "defer",
               "probabilities": {
                 "synthetic-identity-0177": 0.5,
@@ -2627,11 +2743,17 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0322",
           "purpose": "jev_claim",
-          "questions": {
+          "claims": {
             "claim0": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"1eae434e55c440826\":\"Synthetic fixture value 121\",\"8b7f9c05e25286b14\":\"Synthetic fixture value 122\",\"ec502a90451aaadd5\":\"Synthetic fixture value 123\",\"defer\":\"Synthetic fixture value 124\",\"new\":\"Synthetic fixture value 125\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"1eae434e55c440826\":\"Synthetic fixture value 121\",\"8b7f9c05e25286b14\":\"Synthetic fixture value 122\",\"ec502a90451aaadd5\":\"Synthetic fixture value 123\",\"defer\":\"Synthetic fixture value 124\",\"new\":\"Synthetic fixture value 125\"}}",
+              "options": [
+                "1eae434e55c440826",
+                "8b7f9c05e25286b14",
+                "ec502a90451aaadd5",
+                "defer",
+                "new"
+              ]
             }
           }
         }
@@ -2654,9 +2776,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0322",
           "purpose": "jev_claim",
-          "answers": {
+          "evaluations": {
             "claim0": {
-              "type": "choice",
               "choice": "1eae434e55c440826",
               "probabilities": {
                 "1eae434e55c440826": 0.5,
@@ -2738,26 +2859,38 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0328",
           "purpose": "jev_reflex",
-          "questions": {
+          "claims": {
             "1eae434e55c440826": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 126\",\"include\":\"Synthetic fixture value 127\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 126\",\"include\":\"Synthetic fixture value 127\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "8b7f9c05e25286b14": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 128\",\"include\":\"Synthetic fixture value 129\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 128\",\"include\":\"Synthetic fixture value 129\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "ec502a90451aaadd5": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 130\",\"include\":\"Synthetic fixture value 131\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 130\",\"include\":\"Synthetic fixture value 131\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "synthetic-identity-0177": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"synthetic-identity-0177\":\"Synthetic fixture value 132\",\"defer\":\"Synthetic fixture value 133\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"synthetic-identity-0177\":\"Synthetic fixture value 132\",\"defer\":\"Synthetic fixture value 133\"}}",
+              "options": [
+                "synthetic-identity-0177",
+                "defer"
+              ]
             }
           }
         }
@@ -2781,9 +2914,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0328",
           "purpose": "jev_reflex",
-          "answers": {
+          "evaluations": {
             "1eae434e55c440826": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -2792,7 +2924,6 @@
               "confidence": 0.98
             },
             "8b7f9c05e25286b14": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -2801,7 +2932,6 @@
               "confidence": 0.99
             },
             "ec502a90451aaadd5": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -2810,7 +2940,6 @@
               "confidence": 1
             },
             "synthetic-identity-0177": {
-              "type": "choice",
               "choice": "defer",
               "probabilities": {
                 "synthetic-identity-0177": 0.5,
@@ -2888,11 +3017,17 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0333",
           "purpose": "jev_claim",
-          "questions": {
+          "claims": {
             "claim0": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"1eae434e55c440826\":\"Synthetic fixture value 134\",\"8b7f9c05e25286b14\":\"Synthetic fixture value 135\",\"ec502a90451aaadd5\":\"Synthetic fixture value 136\",\"defer\":\"Synthetic fixture value 137\",\"new\":\"Synthetic fixture value 138\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"1eae434e55c440826\":\"Synthetic fixture value 134\",\"8b7f9c05e25286b14\":\"Synthetic fixture value 135\",\"ec502a90451aaadd5\":\"Synthetic fixture value 136\",\"defer\":\"Synthetic fixture value 137\",\"new\":\"Synthetic fixture value 138\"}}",
+              "options": [
+                "1eae434e55c440826",
+                "8b7f9c05e25286b14",
+                "ec502a90451aaadd5",
+                "defer",
+                "new"
+              ]
             }
           }
         }
@@ -2915,9 +3050,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0333",
           "purpose": "jev_claim",
-          "answers": {
+          "evaluations": {
             "claim0": {
-              "type": "choice",
               "choice": "1eae434e55c440826",
               "probabilities": {
                 "1eae434e55c440826": 0.5,
@@ -2999,26 +3133,38 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0339",
           "purpose": "jev_reflex",
-          "questions": {
+          "claims": {
             "1eae434e55c440826": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 139\",\"include\":\"Synthetic fixture value 140\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 139\",\"include\":\"Synthetic fixture value 140\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "8b7f9c05e25286b14": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 141\",\"include\":\"Synthetic fixture value 142\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 141\",\"include\":\"Synthetic fixture value 142\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "ec502a90451aaadd5": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 143\",\"include\":\"Synthetic fixture value 144\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 143\",\"include\":\"Synthetic fixture value 144\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "synthetic-identity-0177": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"synthetic-identity-0177\":\"Synthetic fixture value 145\",\"defer\":\"Synthetic fixture value 146\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"synthetic-identity-0177\":\"Synthetic fixture value 145\",\"defer\":\"Synthetic fixture value 146\"}}",
+              "options": [
+                "synthetic-identity-0177",
+                "defer"
+              ]
             }
           }
         }
@@ -3042,9 +3188,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0339",
           "purpose": "jev_reflex",
-          "answers": {
+          "evaluations": {
             "1eae434e55c440826": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -3053,7 +3198,6 @@
               "confidence": 0.98
             },
             "8b7f9c05e25286b14": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -3062,7 +3206,6 @@
               "confidence": 0.99
             },
             "ec502a90451aaadd5": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -3071,7 +3214,6 @@
               "confidence": 1
             },
             "synthetic-identity-0177": {
-              "type": "choice",
               "choice": "defer",
               "probabilities": {
                 "synthetic-identity-0177": 0.5,
@@ -3149,16 +3291,28 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0344",
           "purpose": "jev_claim",
-          "questions": {
+          "claims": {
             "claim0": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"1eae434e55c440826\":\"Synthetic fixture value 147\",\"8b7f9c05e25286b14\":\"Synthetic fixture value 148\",\"ec502a90451aaadd5\":\"Synthetic fixture value 149\",\"defer\":\"Synthetic fixture value 150\",\"new\":\"Synthetic fixture value 151\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"1eae434e55c440826\":\"Synthetic fixture value 147\",\"8b7f9c05e25286b14\":\"Synthetic fixture value 148\",\"ec502a90451aaadd5\":\"Synthetic fixture value 149\",\"defer\":\"Synthetic fixture value 150\",\"new\":\"Synthetic fixture value 151\"}}",
+              "options": [
+                "1eae434e55c440826",
+                "8b7f9c05e25286b14",
+                "ec502a90451aaadd5",
+                "defer",
+                "new"
+              ]
             },
             "claim1": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"1eae434e55c440826\":\"Synthetic fixture value 152\",\"8b7f9c05e25286b14\":\"Synthetic fixture value 153\",\"ec502a90451aaadd5\":\"Synthetic fixture value 154\",\"defer\":\"Synthetic fixture value 155\",\"new\":\"Synthetic fixture value 156\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"1eae434e55c440826\":\"Synthetic fixture value 152\",\"8b7f9c05e25286b14\":\"Synthetic fixture value 153\",\"ec502a90451aaadd5\":\"Synthetic fixture value 154\",\"defer\":\"Synthetic fixture value 155\",\"new\":\"Synthetic fixture value 156\"}}",
+              "options": [
+                "1eae434e55c440826",
+                "8b7f9c05e25286b14",
+                "ec502a90451aaadd5",
+                "defer",
+                "new"
+              ]
             }
           }
         }
@@ -3200,9 +3354,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0344",
           "purpose": "jev_claim",
-          "answers": {
+          "evaluations": {
             "claim0": {
-              "type": "choice",
               "choice": "1eae434e55c440826",
               "probabilities": {
                 "1eae434e55c440826": 0.5,
@@ -3214,7 +3367,6 @@
               "confidence": 0.8
             },
             "claim1": {
-              "type": "choice",
               "choice": "1eae434e55c440826",
               "probabilities": {
                 "1eae434e55c440826": 0.5,
@@ -3277,26 +3429,38 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0350",
           "purpose": "jev_reflex",
-          "questions": {
+          "claims": {
             "1eae434e55c440826": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 157\",\"include\":\"Synthetic fixture value 158\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 157\",\"include\":\"Synthetic fixture value 158\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "8b7f9c05e25286b14": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 159\",\"include\":\"Synthetic fixture value 160\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 159\",\"include\":\"Synthetic fixture value 160\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "ec502a90451aaadd5": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 161\",\"include\":\"Synthetic fixture value 162\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 161\",\"include\":\"Synthetic fixture value 162\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "synthetic-identity-0177": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"synthetic-identity-0177\":\"Synthetic fixture value 163\",\"defer\":\"Synthetic fixture value 164\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"synthetic-identity-0177\":\"Synthetic fixture value 163\",\"defer\":\"Synthetic fixture value 164\"}}",
+              "options": [
+                "synthetic-identity-0177",
+                "defer"
+              ]
             }
           }
         }
@@ -3320,9 +3484,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0350",
           "purpose": "jev_reflex",
-          "answers": {
+          "evaluations": {
             "1eae434e55c440826": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -3331,7 +3494,6 @@
               "confidence": 0.98
             },
             "8b7f9c05e25286b14": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -3340,7 +3502,6 @@
               "confidence": 0.99
             },
             "ec502a90451aaadd5": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -3349,7 +3510,6 @@
               "confidence": 1
             },
             "synthetic-identity-0177": {
-              "type": "choice",
               "choice": "defer",
               "probabilities": {
                 "synthetic-identity-0177": 0.5,
@@ -3427,11 +3587,17 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0355",
           "purpose": "jev_claim",
-          "questions": {
+          "claims": {
             "claim0": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"1eae434e55c440826\":\"Synthetic fixture value 165\",\"8b7f9c05e25286b14\":\"Synthetic fixture value 166\",\"ec502a90451aaadd5\":\"Synthetic fixture value 167\",\"defer\":\"Synthetic fixture value 168\",\"new\":\"Synthetic fixture value 169\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"1eae434e55c440826\":\"Synthetic fixture value 165\",\"8b7f9c05e25286b14\":\"Synthetic fixture value 166\",\"ec502a90451aaadd5\":\"Synthetic fixture value 167\",\"defer\":\"Synthetic fixture value 168\",\"new\":\"Synthetic fixture value 169\"}}",
+              "options": [
+                "1eae434e55c440826",
+                "8b7f9c05e25286b14",
+                "ec502a90451aaadd5",
+                "defer",
+                "new"
+              ]
             }
           }
         }
@@ -3454,9 +3620,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0355",
           "purpose": "jev_claim",
-          "answers": {
+          "evaluations": {
             "claim0": {
-              "type": "choice",
               "choice": "1eae434e55c440826",
               "probabilities": {
                 "1eae434e55c440826": 0.5,
@@ -3519,26 +3684,38 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0359",
           "purpose": "jev_reflex",
-          "questions": {
+          "claims": {
             "1eae434e55c440826": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 170\",\"include\":\"Synthetic fixture value 171\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 170\",\"include\":\"Synthetic fixture value 171\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "8b7f9c05e25286b14": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 172\",\"include\":\"Synthetic fixture value 173\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 172\",\"include\":\"Synthetic fixture value 173\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "ec502a90451aaadd5": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 174\",\"include\":\"Synthetic fixture value 175\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 174\",\"include\":\"Synthetic fixture value 175\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "synthetic-identity-0177": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"synthetic-identity-0177\":\"Synthetic fixture value 176\",\"defer\":\"Synthetic fixture value 177\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"synthetic-identity-0177\":\"Synthetic fixture value 176\",\"defer\":\"Synthetic fixture value 177\"}}",
+              "options": [
+                "synthetic-identity-0177",
+                "defer"
+              ]
             }
           }
         }
@@ -3562,9 +3739,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0359",
           "purpose": "jev_reflex",
-          "answers": {
+          "evaluations": {
             "1eae434e55c440826": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -3573,7 +3749,6 @@
               "confidence": 0.98
             },
             "8b7f9c05e25286b14": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -3582,7 +3757,6 @@
               "confidence": 0.98
             },
             "ec502a90451aaadd5": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -3591,7 +3765,6 @@
               "confidence": 1
             },
             "synthetic-identity-0177": {
-              "type": "choice",
               "choice": "defer",
               "probabilities": {
                 "synthetic-identity-0177": 0.5,
@@ -3669,16 +3842,28 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0364",
           "purpose": "jev_claim",
-          "questions": {
+          "claims": {
             "claim0": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"1eae434e55c440826\":\"Synthetic fixture value 178\",\"8b7f9c05e25286b14\":\"Synthetic fixture value 179\",\"ec502a90451aaadd5\":\"Synthetic fixture value 180\",\"defer\":\"Synthetic fixture value 181\",\"new\":\"Synthetic fixture value 182\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"1eae434e55c440826\":\"Synthetic fixture value 178\",\"8b7f9c05e25286b14\":\"Synthetic fixture value 179\",\"ec502a90451aaadd5\":\"Synthetic fixture value 180\",\"defer\":\"Synthetic fixture value 181\",\"new\":\"Synthetic fixture value 182\"}}",
+              "options": [
+                "1eae434e55c440826",
+                "8b7f9c05e25286b14",
+                "ec502a90451aaadd5",
+                "defer",
+                "new"
+              ]
             },
             "claim1": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"1eae434e55c440826\":\"Synthetic fixture value 183\",\"8b7f9c05e25286b14\":\"Synthetic fixture value 184\",\"ec502a90451aaadd5\":\"Synthetic fixture value 185\",\"defer\":\"Synthetic fixture value 186\",\"new\":\"Synthetic fixture value 187\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"1eae434e55c440826\":\"Synthetic fixture value 183\",\"8b7f9c05e25286b14\":\"Synthetic fixture value 184\",\"ec502a90451aaadd5\":\"Synthetic fixture value 185\",\"defer\":\"Synthetic fixture value 186\",\"new\":\"Synthetic fixture value 187\"}}",
+              "options": [
+                "1eae434e55c440826",
+                "8b7f9c05e25286b14",
+                "ec502a90451aaadd5",
+                "defer",
+                "new"
+              ]
             }
           }
         }
@@ -3701,9 +3886,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0364",
           "purpose": "jev_claim",
-          "answers": {
+          "evaluations": {
             "claim0": {
-              "type": "choice",
               "choice": "1eae434e55c440826",
               "probabilities": {
                 "1eae434e55c440826": 0.5,
@@ -3715,7 +3899,6 @@
               "confidence": 0.75
             },
             "claim1": {
-              "type": "choice",
               "choice": "1eae434e55c440826",
               "probabilities": {
                 "1eae434e55c440826": 0.5,
@@ -3778,26 +3961,38 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0368",
           "purpose": "jev_reflex",
-          "questions": {
+          "claims": {
             "1eae434e55c440826": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 188\",\"include\":\"Synthetic fixture value 189\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 188\",\"include\":\"Synthetic fixture value 189\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "8b7f9c05e25286b14": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 190\",\"include\":\"Synthetic fixture value 191\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 190\",\"include\":\"Synthetic fixture value 191\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "ec502a90451aaadd5": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 192\",\"include\":\"Synthetic fixture value 193\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 192\",\"include\":\"Synthetic fixture value 193\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "synthetic-identity-0177": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"synthetic-identity-0177\":\"Synthetic fixture value 194\",\"defer\":\"Synthetic fixture value 195\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"synthetic-identity-0177\":\"Synthetic fixture value 194\",\"defer\":\"Synthetic fixture value 195\"}}",
+              "options": [
+                "synthetic-identity-0177",
+                "defer"
+              ]
             }
           }
         }
@@ -3840,9 +4035,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0368",
           "purpose": "jev_reflex",
-          "answers": {
+          "evaluations": {
             "1eae434e55c440826": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -3851,7 +4045,6 @@
               "confidence": 0.98
             },
             "8b7f9c05e25286b14": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -3860,7 +4053,6 @@
               "confidence": 0.99
             },
             "ec502a90451aaadd5": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -3869,7 +4061,6 @@
               "confidence": 1
             },
             "synthetic-identity-0177": {
-              "type": "choice",
               "choice": "defer",
               "probabilities": {
                 "synthetic-identity-0177": 0.5,
@@ -3947,11 +4138,17 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0375",
           "purpose": "jev_claim",
-          "questions": {
+          "claims": {
             "claim0": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"1eae434e55c440826\":\"Synthetic fixture value 196\",\"8b7f9c05e25286b14\":\"Synthetic fixture value 197\",\"ec502a90451aaadd5\":\"Synthetic fixture value 198\",\"defer\":\"Synthetic fixture value 199\",\"new\":\"Synthetic fixture value 200\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"1eae434e55c440826\":\"Synthetic fixture value 196\",\"8b7f9c05e25286b14\":\"Synthetic fixture value 197\",\"ec502a90451aaadd5\":\"Synthetic fixture value 198\",\"defer\":\"Synthetic fixture value 199\",\"new\":\"Synthetic fixture value 200\"}}",
+              "options": [
+                "1eae434e55c440826",
+                "8b7f9c05e25286b14",
+                "ec502a90451aaadd5",
+                "defer",
+                "new"
+              ]
             }
           }
         }
@@ -3974,9 +4171,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0375",
           "purpose": "jev_claim",
-          "answers": {
+          "evaluations": {
             "claim0": {
-              "type": "choice",
               "choice": "1eae434e55c440826",
               "probabilities": {
                 "1eae434e55c440826": 0.5,
@@ -4039,26 +4235,38 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0379",
           "purpose": "jev_reflex",
-          "questions": {
+          "claims": {
             "1eae434e55c440826": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 201\",\"include\":\"Synthetic fixture value 202\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 201\",\"include\":\"Synthetic fixture value 202\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "8b7f9c05e25286b14": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 203\",\"include\":\"Synthetic fixture value 204\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 203\",\"include\":\"Synthetic fixture value 204\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "ec502a90451aaadd5": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 205\",\"include\":\"Synthetic fixture value 206\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 205\",\"include\":\"Synthetic fixture value 206\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "synthetic-identity-0177": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"synthetic-identity-0177\":\"Synthetic fixture value 207\",\"defer\":\"Synthetic fixture value 208\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"synthetic-identity-0177\":\"Synthetic fixture value 207\",\"defer\":\"Synthetic fixture value 208\"}}",
+              "options": [
+                "synthetic-identity-0177",
+                "defer"
+              ]
             }
           }
         }
@@ -4082,9 +4290,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0379",
           "purpose": "jev_reflex",
-          "answers": {
+          "evaluations": {
             "1eae434e55c440826": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -4093,7 +4300,6 @@
               "confidence": 0.98
             },
             "8b7f9c05e25286b14": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -4102,7 +4308,6 @@
               "confidence": 0.98
             },
             "ec502a90451aaadd5": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -4111,7 +4316,6 @@
               "confidence": 1
             },
             "synthetic-identity-0177": {
-              "type": "choice",
               "choice": "defer",
               "probabilities": {
                 "synthetic-identity-0177": 0.5,
@@ -4189,11 +4393,17 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0384",
           "purpose": "jev_claim",
-          "questions": {
+          "claims": {
             "claim0": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"1eae434e55c440826\":\"Synthetic fixture value 209\",\"8b7f9c05e25286b14\":\"Synthetic fixture value 210\",\"ec502a90451aaadd5\":\"Synthetic fixture value 211\",\"defer\":\"Synthetic fixture value 212\",\"new\":\"Synthetic fixture value 213\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"1eae434e55c440826\":\"Synthetic fixture value 209\",\"8b7f9c05e25286b14\":\"Synthetic fixture value 210\",\"ec502a90451aaadd5\":\"Synthetic fixture value 211\",\"defer\":\"Synthetic fixture value 212\",\"new\":\"Synthetic fixture value 213\"}}",
+              "options": [
+                "1eae434e55c440826",
+                "8b7f9c05e25286b14",
+                "ec502a90451aaadd5",
+                "defer",
+                "new"
+              ]
             }
           }
         }
@@ -4216,9 +4426,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0384",
           "purpose": "jev_claim",
-          "answers": {
+          "evaluations": {
             "claim0": {
-              "type": "choice",
               "choice": "1eae434e55c440826",
               "probabilities": {
                 "1eae434e55c440826": 0.5,
@@ -4281,26 +4490,38 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0388",
           "purpose": "jev_reflex",
-          "questions": {
+          "claims": {
             "1eae434e55c440826": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 214\",\"include\":\"Synthetic fixture value 215\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 214\",\"include\":\"Synthetic fixture value 215\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "8b7f9c05e25286b14": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 216\",\"include\":\"Synthetic fixture value 217\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 216\",\"include\":\"Synthetic fixture value 217\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "ec502a90451aaadd5": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 218\",\"include\":\"Synthetic fixture value 219\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 218\",\"include\":\"Synthetic fixture value 219\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "synthetic-identity-0177": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"synthetic-identity-0177\":\"Synthetic fixture value 220\",\"defer\":\"Synthetic fixture value 221\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"synthetic-identity-0177\":\"Synthetic fixture value 220\",\"defer\":\"Synthetic fixture value 221\"}}",
+              "options": [
+                "synthetic-identity-0177",
+                "defer"
+              ]
             }
           }
         }
@@ -4343,9 +4564,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0388",
           "purpose": "jev_reflex",
-          "answers": {
+          "evaluations": {
             "1eae434e55c440826": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -4354,7 +4574,6 @@
               "confidence": 0.98
             },
             "8b7f9c05e25286b14": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -4363,7 +4582,6 @@
               "confidence": 0.99
             },
             "ec502a90451aaadd5": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -4372,7 +4590,6 @@
               "confidence": 1
             },
             "synthetic-identity-0177": {
-              "type": "choice",
               "choice": "defer",
               "probabilities": {
                 "synthetic-identity-0177": 0.5,
@@ -4450,11 +4667,17 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0395",
           "purpose": "jev_claim",
-          "questions": {
+          "claims": {
             "claim0": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"1eae434e55c440826\":\"Synthetic fixture value 222\",\"8b7f9c05e25286b14\":\"Synthetic fixture value 223\",\"ec502a90451aaadd5\":\"Synthetic fixture value 224\",\"defer\":\"Synthetic fixture value 225\",\"new\":\"Synthetic fixture value 226\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"1eae434e55c440826\":\"Synthetic fixture value 222\",\"8b7f9c05e25286b14\":\"Synthetic fixture value 223\",\"ec502a90451aaadd5\":\"Synthetic fixture value 224\",\"defer\":\"Synthetic fixture value 225\",\"new\":\"Synthetic fixture value 226\"}}",
+              "options": [
+                "1eae434e55c440826",
+                "8b7f9c05e25286b14",
+                "ec502a90451aaadd5",
+                "defer",
+                "new"
+              ]
             }
           }
         }
@@ -4477,9 +4700,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0395",
           "purpose": "jev_claim",
-          "answers": {
+          "evaluations": {
             "claim0": {
-              "type": "choice",
               "choice": "1eae434e55c440826",
               "probabilities": {
                 "1eae434e55c440826": 0.5,
@@ -4542,26 +4764,38 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0399",
           "purpose": "jev_reflex",
-          "questions": {
+          "claims": {
             "1eae434e55c440826": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 227\",\"include\":\"Synthetic fixture value 228\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 227\",\"include\":\"Synthetic fixture value 228\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "8b7f9c05e25286b14": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 229\",\"include\":\"Synthetic fixture value 230\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 229\",\"include\":\"Synthetic fixture value 230\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "ec502a90451aaadd5": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 231\",\"include\":\"Synthetic fixture value 232\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 231\",\"include\":\"Synthetic fixture value 232\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "synthetic-identity-0177": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"synthetic-identity-0177\":\"Synthetic fixture value 233\",\"defer\":\"Synthetic fixture value 234\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"synthetic-identity-0177\":\"Synthetic fixture value 233\",\"defer\":\"Synthetic fixture value 234\"}}",
+              "options": [
+                "synthetic-identity-0177",
+                "defer"
+              ]
             }
           }
         }
@@ -4585,9 +4819,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0399",
           "purpose": "jev_reflex",
-          "answers": {
+          "evaluations": {
             "1eae434e55c440826": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -4596,7 +4829,6 @@
               "confidence": 0.98
             },
             "8b7f9c05e25286b14": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -4605,7 +4837,6 @@
               "confidence": 1
             },
             "ec502a90451aaadd5": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -4614,7 +4845,6 @@
               "confidence": 0.98
             },
             "synthetic-identity-0177": {
-              "type": "choice",
               "choice": "synthetic-identity-0177",
               "probabilities": {
                 "synthetic-identity-0177": 0.5,
@@ -5298,11 +5528,17 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0434",
           "purpose": "jev_claim",
-          "questions": {
+          "claims": {
             "claim0": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"1eae434e55c440826\":\"Synthetic fixture value 236\",\"8b7f9c05e25286b14\":\"Synthetic fixture value 237\",\"ec502a90451aaadd5\":\"Synthetic fixture value 238\",\"defer\":\"Synthetic fixture value 239\",\"new\":\"Synthetic fixture value 240\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"1eae434e55c440826\":\"Synthetic fixture value 236\",\"8b7f9c05e25286b14\":\"Synthetic fixture value 237\",\"ec502a90451aaadd5\":\"Synthetic fixture value 238\",\"defer\":\"Synthetic fixture value 239\",\"new\":\"Synthetic fixture value 240\"}}",
+              "options": [
+                "1eae434e55c440826",
+                "8b7f9c05e25286b14",
+                "ec502a90451aaadd5",
+                "defer",
+                "new"
+              ]
             }
           }
         }
@@ -5325,9 +5561,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0434",
           "purpose": "jev_claim",
-          "answers": {
+          "evaluations": {
             "claim0": {
-              "type": "choice",
               "choice": "1eae434e55c440826",
               "probabilities": {
                 "1eae434e55c440826": 0.5,
@@ -5428,11 +5663,16 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0531",
           "purpose": "jev_claim",
-          "questions": {
+          "claims": {
             "claim0": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"50759353ece00982e\":\"Synthetic fixture value 241\",\"f1cd4cfc8eb6f9617\":\"Synthetic fixture value 242\",\"defer\":\"Synthetic fixture value 243\",\"new\":\"Synthetic fixture value 244\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"50759353ece00982e\":\"Synthetic fixture value 241\",\"f1cd4cfc8eb6f9617\":\"Synthetic fixture value 242\",\"defer\":\"Synthetic fixture value 243\",\"new\":\"Synthetic fixture value 244\"}}",
+              "options": [
+                "50759353ece00982e",
+                "f1cd4cfc8eb6f9617",
+                "defer",
+                "new"
+              ]
             }
           }
         }
@@ -5455,9 +5695,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0531",
           "purpose": "jev_claim",
-          "answers": {
+          "evaluations": {
             "claim0": {
-              "type": "choice",
               "choice": "f1cd4cfc8eb6f9617",
               "probabilities": {
                 "50759353ece00982e": 0.5,
@@ -5519,21 +5758,30 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0535",
           "purpose": "jev_reflex",
-          "questions": {
+          "claims": {
             "50759353ece00982e": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 245\",\"include\":\"Synthetic fixture value 246\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 245\",\"include\":\"Synthetic fixture value 246\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "f1cd4cfc8eb6f9617": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 247\",\"include\":\"Synthetic fixture value 248\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 247\",\"include\":\"Synthetic fixture value 248\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "synthetic-identity-0177": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"synthetic-identity-0177\":\"Synthetic fixture value 249\",\"defer\":\"Synthetic fixture value 250\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"synthetic-identity-0177\":\"Synthetic fixture value 249\",\"defer\":\"Synthetic fixture value 250\"}}",
+              "options": [
+                "synthetic-identity-0177",
+                "defer"
+              ]
             }
           }
         }
@@ -5557,9 +5805,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0535",
           "purpose": "jev_reflex",
-          "answers": {
+          "evaluations": {
             "50759353ece00982e": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -5568,7 +5815,6 @@
               "confidence": 0.99
             },
             "f1cd4cfc8eb6f9617": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -5577,7 +5823,6 @@
               "confidence": 0.98
             },
             "synthetic-identity-0177": {
-              "type": "choice",
               "choice": "defer",
               "probabilities": {
                 "synthetic-identity-0177": 0.5,
@@ -5655,16 +5900,26 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0540",
           "purpose": "jev_claim",
-          "questions": {
+          "claims": {
             "claim0": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"50759353ece00982e\":\"Synthetic fixture value 251\",\"f1cd4cfc8eb6f9617\":\"Synthetic fixture value 252\",\"defer\":\"Synthetic fixture value 253\",\"new\":\"Synthetic fixture value 254\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"50759353ece00982e\":\"Synthetic fixture value 251\",\"f1cd4cfc8eb6f9617\":\"Synthetic fixture value 252\",\"defer\":\"Synthetic fixture value 253\",\"new\":\"Synthetic fixture value 254\"}}",
+              "options": [
+                "50759353ece00982e",
+                "f1cd4cfc8eb6f9617",
+                "defer",
+                "new"
+              ]
             },
             "claim1": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"50759353ece00982e\":\"Synthetic fixture value 255\",\"f1cd4cfc8eb6f9617\":\"Synthetic fixture value 256\",\"defer\":\"Synthetic fixture value 257\",\"new\":\"Synthetic fixture value 258\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"50759353ece00982e\":\"Synthetic fixture value 255\",\"f1cd4cfc8eb6f9617\":\"Synthetic fixture value 256\",\"defer\":\"Synthetic fixture value 257\",\"new\":\"Synthetic fixture value 258\"}}",
+              "options": [
+                "50759353ece00982e",
+                "f1cd4cfc8eb6f9617",
+                "defer",
+                "new"
+              ]
             }
           }
         }
@@ -5706,9 +5961,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0540",
           "purpose": "jev_claim",
-          "answers": {
+          "evaluations": {
             "claim0": {
-              "type": "choice",
               "choice": "f1cd4cfc8eb6f9617",
               "probabilities": {
                 "50759353ece00982e": 0.5,
@@ -5719,7 +5973,6 @@
               "confidence": 0.75
             },
             "claim1": {
-              "type": "choice",
               "choice": "f1cd4cfc8eb6f9617",
               "probabilities": {
                 "50759353ece00982e": 0.5,
@@ -5781,21 +6034,30 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0546",
           "purpose": "jev_reflex",
-          "questions": {
+          "claims": {
             "50759353ece00982e": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 259\",\"include\":\"Synthetic fixture value 260\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 259\",\"include\":\"Synthetic fixture value 260\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "f1cd4cfc8eb6f9617": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 261\",\"include\":\"Synthetic fixture value 262\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 261\",\"include\":\"Synthetic fixture value 262\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "synthetic-identity-0177": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"synthetic-identity-0177\":\"Synthetic fixture value 263\",\"defer\":\"Synthetic fixture value 264\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"synthetic-identity-0177\":\"Synthetic fixture value 263\",\"defer\":\"Synthetic fixture value 264\"}}",
+              "options": [
+                "synthetic-identity-0177",
+                "defer"
+              ]
             }
           }
         }
@@ -5819,9 +6081,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0546",
           "purpose": "jev_reflex",
-          "answers": {
+          "evaluations": {
             "50759353ece00982e": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -5830,7 +6091,6 @@
               "confidence": 0.99
             },
             "f1cd4cfc8eb6f9617": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -5839,7 +6099,6 @@
               "confidence": 0.97
             },
             "synthetic-identity-0177": {
-              "type": "choice",
               "choice": "defer",
               "probabilities": {
                 "synthetic-identity-0177": 0.5,
@@ -5917,11 +6176,16 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0551",
           "purpose": "jev_claim",
-          "questions": {
+          "claims": {
             "claim0": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"50759353ece00982e\":\"Synthetic fixture value 265\",\"f1cd4cfc8eb6f9617\":\"Synthetic fixture value 266\",\"defer\":\"Synthetic fixture value 267\",\"new\":\"Synthetic fixture value 268\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"50759353ece00982e\":\"Synthetic fixture value 265\",\"f1cd4cfc8eb6f9617\":\"Synthetic fixture value 266\",\"defer\":\"Synthetic fixture value 267\",\"new\":\"Synthetic fixture value 268\"}}",
+              "options": [
+                "50759353ece00982e",
+                "f1cd4cfc8eb6f9617",
+                "defer",
+                "new"
+              ]
             }
           }
         }
@@ -5963,9 +6227,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0551",
           "purpose": "jev_claim",
-          "answers": {
+          "evaluations": {
             "claim0": {
-              "type": "choice",
               "choice": "f1cd4cfc8eb6f9617",
               "probabilities": {
                 "50759353ece00982e": 0.5,
@@ -6027,21 +6290,30 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0557",
           "purpose": "jev_reflex",
-          "questions": {
+          "claims": {
             "50759353ece00982e": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 269\",\"include\":\"Synthetic fixture value 270\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 269\",\"include\":\"Synthetic fixture value 270\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "f1cd4cfc8eb6f9617": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"defer\":\"Synthetic fixture value 271\",\"include\":\"Synthetic fixture value 272\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"defer\":\"Synthetic fixture value 271\",\"include\":\"Synthetic fixture value 272\"}}",
+              "options": [
+                "defer",
+                "include"
+              ]
             },
             "synthetic-identity-0177": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"synthetic-identity-0177\":\"Synthetic fixture value 273\",\"defer\":\"Synthetic fixture value 274\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"synthetic-identity-0177\":\"Synthetic fixture value 273\",\"defer\":\"Synthetic fixture value 274\"}}",
+              "options": [
+                "synthetic-identity-0177",
+                "defer"
+              ]
             }
           }
         }
@@ -6065,9 +6337,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0557",
           "purpose": "jev_reflex",
-          "answers": {
+          "evaluations": {
             "50759353ece00982e": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -6076,7 +6347,6 @@
               "confidence": 0.99
             },
             "f1cd4cfc8eb6f9617": {
-              "type": "choice",
               "choice": "include",
               "probabilities": {
                 "defer": 0.5,
@@ -6085,7 +6355,6 @@
               "confidence": 0.99
             },
             "synthetic-identity-0177": {
-              "type": "choice",
               "choice": "synthetic-identity-0177",
               "probabilities": {
                 "synthetic-identity-0177": 0.5,
@@ -6844,16 +7113,26 @@
         "decisionRequest": {
           "requestId": "synthetic-identity-0597",
           "purpose": "jev_claim",
-          "questions": {
+          "claims": {
             "claim0": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"50759353ece00982e\":\"Synthetic fixture value 278\",\"f1cd4cfc8eb6f9617\":\"Synthetic fixture value 279\",\"defer\":\"Synthetic fixture value 280\",\"new\":\"Synthetic fixture value 281\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"50759353ece00982e\":\"Synthetic fixture value 278\",\"f1cd4cfc8eb6f9617\":\"Synthetic fixture value 279\",\"defer\":\"Synthetic fixture value 280\",\"new\":\"Synthetic fixture value 281\"}}",
+              "options": [
+                "50759353ece00982e",
+                "f1cd4cfc8eb6f9617",
+                "defer",
+                "new"
+              ]
             },
             "claim1": {
               "type": "choice",
-              "instructionsJson": "\"\\\"Synthetic fixture instruction.\\\"\"",
-              "criteriaJson": "{\"50759353ece00982e\":\"Synthetic fixture value 282\",\"f1cd4cfc8eb6f9617\":\"Synthetic fixture value 283\",\"defer\":\"Synthetic fixture value 284\",\"new\":\"Synthetic fixture value 285\"}"
+              "context": "{\"instructions\":\"\\\"Synthetic fixture instruction.\\\"\",\"criteria\":{\"50759353ece00982e\":\"Synthetic fixture value 282\",\"f1cd4cfc8eb6f9617\":\"Synthetic fixture value 283\",\"defer\":\"Synthetic fixture value 284\",\"new\":\"Synthetic fixture value 285\"}}",
+              "options": [
+                "50759353ece00982e",
+                "f1cd4cfc8eb6f9617",
+                "defer",
+                "new"
+              ]
             }
           }
         }
@@ -6876,9 +7155,8 @@
         "decisionResult": {
           "requestId": "synthetic-identity-0597",
           "purpose": "jev_claim",
-          "answers": {
+          "evaluations": {
             "claim0": {
-              "type": "choice",
               "choice": "50759353ece00982e",
               "probabilities": {
                 "50759353ece00982e": 0.5,
@@ -6889,7 +7167,6 @@
               "confidence": 0.41
             },
             "claim1": {
-              "type": "choice",
               "choice": "50759353ece00982e",
               "probabilities": {
                 "50759353ece00982e": 0.5,
