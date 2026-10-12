@@ -57,7 +57,7 @@ type ScanServiceClient interface {
 // or connect.WithGRPCWeb() options.
 //
 // The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.example or https://acme.example/grpc).
+// http://api.acme.com or https://acme.com/grpc).
 func NewScanServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) ScanServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
 	scanServiceMethods := File_rpc_scan_proto.Services().ByName("ScanService").Methods()

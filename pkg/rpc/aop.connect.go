@@ -48,7 +48,7 @@ type AOPServiceClient interface {
 // connect.WithGRPCWeb() options.
 //
 // The URL supplied here should be the base URL for the Connect or gRPC server (for example,
-// http://api.acme.example or https://acme.example/grpc).
+// http://api.acme.com or https://acme.com/grpc).
 func NewAOPServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AOPServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
 	aOPServiceMethods := File_rpc_aop_proto.Services().ByName("AOPService").Methods()
