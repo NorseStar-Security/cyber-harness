@@ -72,25 +72,6 @@ func newSignals(logs *sdklog.LoggerProvider, metrics *sdkmetric.MeterProvider) (
 	return s, errors.Join(errs...)
 }
 
-func logAttribute(attr attribute.KeyValue) otellog.KeyValue {
-	key := string(attr.Key)
-	switch attr.Value.Type() {
-	case attribute.BOOL:
-		return otellog.Bool(key, attr.Value.AsBool())
-	case attribute.INT64:
-		return otellog.Int64(key, attr.Value.AsInt64())
-	case attribute.FLOAT64:
-		return otellog.Float64(key, attr.Value.AsFloat64())
-	case attribute.STRINGSLICE:
-		var values []otellog.Value
-		for _, value := range attr.Value.AsStringSlice() {
-			values = append(values, otellog.StringValue(value))
-		}
-		return otellog.Slice(key, values...)
-	default:
-		return otellog.String(key, attr.Value.AsString())
-	}
-}
 func (s *signals) emit(ctx context.Context, name string, at time.Time, severity otellog.Severity, attrs ...attribute.KeyValue) {
 	if s == nil || s.logger == nil {
 		return
@@ -99,7 +80,7 @@ func (s *signals) emit(ctx context.Context, name string, at time.Time, severity 
 	record.SetTimestamp(at)
 	record.SetObservedTimestamp(time.Now())
 	record.SetEventName(name)
-	record.SetBody(otellog.StringValue(name))
+	record.SetBody(attribute.StringValue(name))
 	record.SetSeverity(severity)
 	switch severity {
 	case otellog.SeverityError:
@@ -109,10 +90,8 @@ func (s *signals) emit(ctx context.Context, name string, at time.Time, severity 
 	default:
 		record.SetSeverityText("INFO")
 	}
-	record.AddAttributes(otellog.String("cyber.event.name", name), otellog.String("cyber.log.id", aop.EnvelopeID()))
-	for _, attr := range attrs {
-		record.AddAttributes(logAttribute(attr))
-	}
+	record.AddAttributes(attribute.String("cyber.event.name", name), attribute.String("cyber.log.id", aop.EnvelopeID()))
+	record.AddAttributes(attrs...)
 	s.logger.Emit(ctx, record)
 }
 func (s *signals) dropped(ctx context.Context, count uint64) {

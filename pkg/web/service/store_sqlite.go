@@ -178,7 +178,7 @@ func (s *SQLiteStore) ListSessions(ctx context.Context, limit int) ([]*types.Ses
 		limit = 100
 	}
 	var models []sessionModel
-	if err := s.orm.NewSelect().Model(&models).Column("session_json").OrderExpr("updated_at DESC").Limit(limit).Scan(ctx); err != nil {
+	if err := s.orm.NewSelect().Model(&models).Column("session_json").OrderExpr("updated_at DESC").Limit(int64(limit)).Scan(ctx); err != nil {
 		return nil, err
 	}
 	sessions, err := sessionsFromModels(models)
@@ -203,7 +203,7 @@ func (s *SQLiteStore) ListSessionPage(ctx context.Context, offset, limit int, fi
 	if limit > 500 {
 		limit = 500
 	}
-	query := s.orm.NewSelect().Model((*sessionModel)(nil)).Column("session_json").OrderExpr("updated_at DESC, id DESC").Limit(limit + 1).Offset(offset)
+	query := s.orm.NewSelect().Model((*sessionModel)(nil)).Column("session_json").OrderExpr("updated_at DESC, id DESC").Limit(int64(limit + 1)).Offset(int64(offset))
 	if filters == nil {
 		filters = &types.ListSessionsRequest{}
 	}
@@ -474,7 +474,7 @@ func (s *SQLiteStore) ListAOPEventPage(ctx context.Context, sessionID string, be
 		limit = 10000
 	}
 	query := s.orm.NewSelect().Model((*aopEventModel)(nil)).Column("cursor", "event_proto").
-		Where("session_id = ?", sessionID).OrderExpr("cursor DESC").Limit(limit + 1)
+		Where("session_id = ?", sessionID).OrderExpr("cursor DESC").Limit(int64(limit + 1))
 	if before > 0 {
 		query = query.Where("cursor < ?", before)
 	}
@@ -511,7 +511,7 @@ func (s *SQLiteStore) ListAOPEventsAfter(ctx context.Context, sessionID string, 
 		if limit > 10000 {
 			limit = 10000
 		}
-		query = query.Limit(limit)
+		query = query.Limit(int64(limit))
 	}
 	var models []aopEventModel
 	if err := query.Model(&models).Scan(ctx); err != nil {

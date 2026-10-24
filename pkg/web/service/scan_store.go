@@ -80,7 +80,7 @@ func (s *SQLiteStore) List(ctx context.Context, limit int) ([]*scanpb.Scan, erro
 		limit = 50
 	}
 	var models []scanModel
-	if err := s.orm.NewSelect().Model(&models).OrderExpr("created_at DESC").Limit(limit).Scan(ctx); err != nil {
+	if err := s.orm.NewSelect().Model(&models).OrderExpr("created_at DESC").Limit(int64(limit)).Scan(ctx); err != nil {
 		return nil, err
 	}
 	scans := make([]*scanpb.Scan, 0, len(models))
