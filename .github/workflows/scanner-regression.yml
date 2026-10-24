@@ -16,8 +16,6 @@ jobs:
   public-functional:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
-    env:
-      CYBER_INTEGRATION: '1'
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -33,11 +31,11 @@ jobs:
       - name: Load the build editions
         run: grep -Ev '^[[:space:]]*(#|$)' editions.env >> "$GITHUB_ENV"
 
-      - name: Run bounded public scanner regressions
+      - name: Run scanner functional regressions
         run: |
-          go test -tags "$FULL_CAPS_TAGS integration" -count=1 -timeout 8m -v \
-            -run 'Test(ScannerPublicIntegration|FullScannerPublicIntegration)$' \
-            ./tools
+          go test -tags "$FULL_CAPS_TAGS" -count=1 -timeout 8m -v \
+            -run 'Test(ScannerFunctionalRegression|FullScannerFunctionalRegression)$' \
+            ./exts/scanner
 
   race-stress:
     runs-on: ubuntu-22.04
