@@ -38,11 +38,11 @@ flowchart LR
 
 证据一旦就绪，就在当前边界判断是否编译，包括第一个任务；来源任务不构成等待条件。Claim 定义判断的语义范围，Reflex 持有可执行函数、参数 schema、原生契约、效果次数及验证记录。一个 Reflex 可以覆盖多个 Claim，Claim 不保存“已消费”标记。
 
-编译失败保留 Claim，证据或契约不足时可以保留待验证候选。修复只有通过验证并成功持久化后才替换原 Reflex；失败保留原源码。Reflex 退役也不会删除它覆盖的 Claim，后续证据可以再次触发编译。`learning=frozen` 禁止学习写入，仍允许临时判断和已验证 Reflex 的复用。
+编译失败保留 Claim，提交的源码和具体诊断记录在编译事件与审计日志中，不写入库。修复通过验证并成功持久化后发布新 Reflex，同时在同一个库中归档原定义；失败保留原来的发布结果。退役只记录归档事实和原因，后续编译可以读取原源码，归档程序不参与执行或覆盖判定。`learning=frozen` 禁止学习写入，仍允许临时判断和已验证 Reflex 的复用。
 
 后台 Claim 生成和编译的单次 LLM 请求使用 30 分钟兜底期限，独立于前台 Provider 的短请求超时。总编译期限 `compilation_timeout` 默认 `0`，允许普通编译 Agent 持续生成、验证和修复；显式配置正值才增加整体兜底。扩展关闭或宿主取消仍立即终止请求。超时用于回收异常挂起，不用于限制正常编译耗时。
 
-编译器沿用宿主 Agent 的临时 Provider 错误重试策略；取消、非重试错误和已耗尽的上下文仍终止。`finish_reason: length` 表示不完整输出，即使包含看似完整的工具调用也不会执行；编译器将输出预算从 16,384 逐步扩大到 65,536 后重新生成，并保留每次请求的用量。上下文不足或最高预算仍耗尽时报告明确失败，保留 Claim 和已取得的修复候选。
+编译器沿用宿主 Agent 的临时 Provider 错误重试策略；取消、非重试错误和已耗尽的上下文仍终止。`finish_reason: length` 表示不完整输出，即使包含看似完整的工具调用也不会执行；编译器将输出预算从 16,384 逐步扩大到 65,536 后重新生成，并保留每次请求的用量。上下文不足或最高预算仍耗尽时报告明确失败，保留 Claim 和编译诊断。
 
 JEV 判定使用 32 KiB 的私有证据投影，编译回放另保留完整的宿主调用/结果轨迹。投影省略早期证据不会删除编译器的实际记录；自动归纳和普通 `jev compile` 使用相同边界。独立语义评审超出 Claim 上下文限制时返回 `review_input_limit`，要求编译器简化重复分支后重新验证，不能通过截断证据或跳过审查发布。
 
@@ -50,7 +50,13 @@ JEV 判定使用 32 KiB 的私有证据投影，编译回放另保留完整的�
 
 运行时参数提取直接接收原始约束文本、当前证据和 schema，省去源码与样例。截断时将输出预算从 2,048 逐步增加到 8,192，全部尝试计入前台用量，部分值不进入执行。宿主提供一次提取专用的唯一名称，仅供 schema 明确描述的新建资源使用；已有句柄和业务字段仍须来自当前证据。运行时审查直接读取原始约束文本，按 schema 解释字段的编码形式；绑定判定只接收当前调用的工具协议，宿主继续验证完整原生契约及效果身份。结构化原生结果直接保存为 JSON，避免重复转义挤出实际轨迹，原始日志和 JavaScript 读取接口保留原值。接管及验证的整体期限使用 30 分钟兜底。参数交接失败且没有保留或派发任何效果时，释放普通执行；同一输入下不反复选择这个失败函数，新用户输入或不同函数可再尝试。存在已知或未知效果时继续保护日志，避免重复写入。
 
-持久库使用 `format: "claim/2"`。升级时，缺少版本号或使用 `claim/1` 的旧库会按原始字节一次性归档到 `library-backup-*.json`，随后通过正常持久化流程建立当前版本的空库，前台启动和关闭模式均可继续。旧库中的 Claim 语义与 Reflex 验证记录保留在归档中，后续任务重新学习并按当前机制验证。未知的较新版本、损坏文件和当前版本中的非法字段仍报错，保留原文件。供应商的 questions/answers JSON 只在 Provider 内部转换，运行与扩展统一使用 Claim / Evaluation，不提供额外 wire 包或公开 Request / Response。
+持久库只有 `claims` 和 `reflexes` 两个集合。Claim 记录包含统一的 `claim` 内容与来源 `task`；Reflex 由可执行的 `Program` 和 Claim 归属、依赖摘要、归档事实组成。Claim ID 只取决于 Claim 内容，Reflex ID 只取决于 Program；来源任务、Claim 归属和归档不会改变它们的身份。库限制为 32 个 Claim、16 个已发布程序和 2 MiB，归档程序计入总字节容量。写入仍通过临时文件、同步与原子替换完成，持久化成功后才更新内存。
+
+首版只接受这一种结构。库没有格式版本、候选集合、旧格式读取、自动迁移或备份扫描路径。未知字段、损坏内容、失效引用和不匹配的内容 ID 直接报错，原文件不被重写。已发布程序加载时重新检查源码与当前原生契约；失去资格的定义在本库归档，重新发布必须再次通过验证。
+
+编译器只接收完整的 JSON 产物或 `null`。产物声明 `when`、`decide`、`observe`、参数 schema、效果步骤及可选 readers；`observe` 是 `js:` 开头的同步函数，入口缺失直接进入编译诊断，不补造默认描述。示例 `arguments` 仅用于本次回放，发布时从内存与持久库一起去除。源码、参数、效果身份、原生契约、完整回放和语义评审始终走同一条校验路径。
+
+资格直接使用生成的 `ReflexQualification` 类型。协议中的 `qualification`、`steps`、`parameters_schema`、`archived` 和 `archive_reason` 均为结构化字段，界面不再解析资格或 manifest 的 JSON 字符串。事件仍保留发生时的定义快照，历史回放不查询最新库来替代当时源码。供应商的 questions/answers JSON 只在 Provider 内部转换，运行与扩展统一使用 Claim / Evaluation。
 
 ## 普通 Reflex 的自举
 
@@ -95,8 +101,8 @@ const complete = jev({type: "noul", context: "当前真实结果已经完成用�
 ```text
 go test ./agent/provider/jev ./exts/jev ./exts/guardrail ./pkg/web/service ./cmd/aiscan -count=1 -timeout 120s
 go test -tags 'emptytemplates forceposix full netgo noembed osusergo sqlite' ./agent/provider/jev ./exts/jev ./exts/guardrail ./pkg/web/service ./cmd/aiscan -count=1 -timeout 120s
-go test -race ./exts/jev -run 'TestClaim|TestOrdinaryReflex|TestReflexV2(Compiler|Frozen|.*Effect|.*Unknown|.*Steer)' -count=1 -timeout 120s
-go test -tags 'full sqlite' ./cmd/aiscan -run '^TestJEVProfileStreamingCompilationRuntimeAndWebReplay$' -count=1 -timeout 120s
+go test -race ./exts/jev -run 'TestClaim|TestOrdinaryReflex|TestReflex(Compiler|Frozen|.*Effect|.*Unknown|.*Steer)' -count=1 -timeout 120s
+go test -tags 'full sqlite' ./cmd/aiscan -run '^TestJEVProfileStreamingCompilationRuntimeAndProtocolEvents$' -count=1 -timeout 120s
 ```
 
 普通测试只替换模型推理，仍使用真实宿主和验证器。`TestLiveClaimToReflexPipeline` 提供两个明确区分的真实接口模式：设置 `JEV_PIPELINE_LIVE=1` 和 `TYPESAFE_API_KEY`，所有 JEV 判定调用真实接口，LLM 生成仍由固定测试响应提供；额外设置 `JEV_PIPELINE_LLM_LIVE=1`、`CYBER_API_KEY`、`CYBER_BASE_URL`、`CYBER_MODEL`、`CYBER_PROVIDER`，则 Claim 生成、编译、参数提取和最终整理也调用真实 LLM。

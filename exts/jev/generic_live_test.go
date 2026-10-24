@@ -141,7 +141,7 @@ func TestLiveAutomaticObserveWithNativeTools(t *testing.T) {
 		}
 	}
 	rows := map[string][]benchmarkRow{}
-	reflexes := map[string]reflexRecord{}
+	reflexes := map[string]Reflex{}
 	report := map[string]any{"model": model, "jev_model": jevapi.DefaultModel, "base_url": base, "declaration_effort": os.Getenv("JEV_DECLARATION_EFFORT"), "pairs": pairs, "real_llm": true, "real_jev": true, "command_registry": false, "tool_adapters": false, "cost_known": false, "created": time.Now().UTC(), "runs": rows, "evidence_directory": directory}
 	checkpoint := func() {
 		report["library"] = reflexes

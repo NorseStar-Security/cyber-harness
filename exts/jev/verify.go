@@ -16,7 +16,7 @@ type replayResult struct {
 	candidates map[string]binding
 }
 type observationReplay struct {
-	reflex       *Reflex
+	reflex       *Program
 	capabilities map[string]any
 	messages     []map[string]any
 	omitted      int
@@ -24,7 +24,7 @@ type observationReplay struct {
 	cache        map[string]replayResult
 }
 
-func newObservationReplay(reflex *Reflex, state json.RawMessage, capabilities map[string]any) (*observationReplay, error) {
+func newObservationReplay(reflex *Program, state json.RawMessage, capabilities map[string]any) (*observationReplay, error) {
 	var projection struct {
 		Messages []map[string]any `json:"messages"`
 		Omitted  int              `json:"omitted_evidence"`
@@ -74,7 +74,7 @@ var errProbeStop = errors.New("pure probe reached native dispatch")
 // Explore finite semantic branches, replaying only exact recorded call/result
 // pairs. No provider or native tool is invoked during publication checks.
 // The exact same program and bridges are used in foreground execution.
-func probeReflexArguments(ctx context.Context, reflex *Reflex, input, args map[string]any, results []map[string]any, allowMissing bool) (json.RawMessage, map[string]binding, error) {
+func probeReflexArguments(ctx context.Context, reflex *Program, input, args map[string]any, results []map[string]any, allowMissing bool) (json.RawMessage, map[string]binding, error) {
 	candidates := map[string]binding{}
 	states := []any{}
 	queue := []map[string]string{{}}
@@ -252,14 +252,14 @@ func (r *observationReplay) evaluate(ctx context.Context, input json.RawMessage,
 	}
 	return facts, candidates, err
 }
-func observationWitnesses(ctx context.Context, reflex *Reflex, state json.RawMessage, capabilities map[string]any) ([]map[string]any, error) {
+func observationWitnesses(ctx context.Context, reflex *Program, state json.RawMessage, capabilities map[string]any) ([]map[string]any, error) {
 	r, err := newObservationReplay(reflex, state, capabilities)
 	if err != nil {
 		return nil, err
 	}
 	return r.witnesses(ctx)
 }
-func verifyObserve(ctx context.Context, reflex *Reflex, state json.RawMessage, capabilities map[string]any) error {
+func verifyObserve(ctx context.Context, reflex *Program, state json.RawMessage, capabilities map[string]any) error {
 	r, err := newObservationReplay(reflex, state, capabilities)
 	if err != nil {
 		return err

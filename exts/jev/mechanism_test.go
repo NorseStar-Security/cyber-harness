@@ -34,8 +34,8 @@ const laboratorySource = `js:function(context,args){
  return {report:{count:{evidence:state.call_id,path:["data","count"]},receipt:{evidence:state.call_id,path:["data","receipt"]}}};
 }`
 
-func laboratoryReflex() Reflex {
-	return Reflex{APIVersion: 2, When: "add requested items", Decide: "use actual results", Observe: laboratorySource, LegacySuite: "laboratory", Steps: map[string]StepDefinition{"add": {Contract: "lab", CountArgument: "count"}}, Parameters: json.RawMessage(`{"type":"object","required":["actor","query","count"],"properties":{"actor":{"type":"string"},"query":{"type":"boolean"},"count":{"type":"integer","minimum":1,"maximum":2}},"additionalProperties":false}`), arguments: map[string]any{"actor": "initial", "query": true, "count": 2}}
+func laboratoryReflex() Program {
+	return Program{When: "add requested items", Decide: "use actual results", Observe: laboratorySource, Steps: map[string]StepDefinition{"add": {Contract: "lab", CountArgument: "count"}}, Parameters: json.RawMessage(`{"type":"object","required":["actor","query","count"],"properties":{"actor":{"type":"string"},"query":{"type":"boolean"},"count":{"type":"integer","minimum":1,"maximum":2}},"additionalProperties":false}`), arguments: map[string]any{"actor": "initial", "query": true, "count": 2}}
 }
 func laboratorySuite() VerificationSuite {
 	contract := NativeContract{ID: "lab", Version: "1", Classify: func(c NativeCall) (Access, error) {
@@ -151,7 +151,7 @@ func testLaboratory(t *testing.T) *Extension {
 	}
 	return e
 }
-func TestReflexV2IndependentQualification(t *testing.T) {
+func TestReflexIndependentQualification(t *testing.T) {
 	e := testLaboratory(t)
 	r := laboratoryReflex()
 	if err := r.validate(); err != nil {
@@ -160,7 +160,7 @@ func TestReflexV2IndependentQualification(t *testing.T) {
 	if err := qualifyIndependent(e, t.Context(), &r, observationCapabilities("bash")); err != nil {
 		t.Fatal(err)
 	}
-	if !e.qualified(reflexRecord{Reflex: r}) || len(r.Proof.Checks) == 0 {
+	if !e.qualified(r) || len(r.Proof.Checks) == 0 {
 		t.Fatal("missing qualification")
 	}
 	mutants := map[string]string{
@@ -191,11 +191,11 @@ func TestReflexV2IndependentQualification(t *testing.T) {
 		})
 	}
 	r.Observe = strings.ReplaceAll(r.Observe, "return {report:", "return {report:") + " "
-	if e.qualified(reflexRecord{Reflex: r}) {
+	if e.qualified(r) {
 		t.Fatal("changed source retained stale proof")
 	}
 }
-func TestReflexV2EffectIdentityConflictAndConcurrency(t *testing.T) {
+func TestReflexEffectIdentityConflictAndConcurrency(t *testing.T) {
 	call := NativeCall{Name: "native", Arguments: json.RawMessage(`{"x":1}`), Step: "add"}
 	ledger := newEffectLedger()
 	if _, cached, err := ledger.reserve("task", call); err != nil || cached {
@@ -235,7 +235,7 @@ func TestReflexV2EffectIdentityConflictAndConcurrency(t *testing.T) {
 		t.Fatalf("concurrent dispatches=%d", attempts)
 	}
 }
-func TestReflexV2InputRevisionAndCancellation(t *testing.T) {
+func TestReflexInputRevisionAndCancellation(t *testing.T) {
 	a := hooks.ContextEvent{SessionID: "s", TurnID: "t", Messages: []*aop.Message{provider.TextMessage("user", "add two")}}
 	b := a
 	b.Messages = append(append([]*aop.Message(nil), a.Messages...), provider.TextMessage("user", "use the existing handle"))
@@ -250,7 +250,7 @@ func TestReflexV2InputRevisionAndCancellation(t *testing.T) {
 		t.Fatal("new task reused identity")
 	}
 }
-func TestReflexV2ClaimTriggerAndCandidate(t *testing.T) {
+func TestReflexClaimTriggerAndCandidate(t *testing.T) {
 	var claimID string
 	compileDecision := false
 	generations := 0
@@ -279,7 +279,7 @@ func TestReflexV2ClaimTriggerAndCandidate(t *testing.T) {
 		if generations > 1 {
 			t.Fatalf("unexpected candidate retry: %s", provider.MessageText(req.Messages[len(req.Messages)-1]))
 		}
-		return reply(provider.TextMessage("assistant", `{"api_version":2,"steps":{"pending":{"contract":"unconfigured","count":1}},"observe":"js:function(){return {defer:'missing supported contract'};}"}`)), nil
+		return reply(provider.TextMessage("assistant", `{"when":"Inspect the current requested native capability","decide":"Report actual results or hand off missing input","steps":{"pending":{"contract":"unconfigured","count":1}},"observe":"js:function(){return {defer:'missing supported contract'};}"}`)), nil
 	})
 	job := declaration{cfg: cfg, task: "first", state: json.RawMessage(`{"messages":[{"role":"user","text":"inspect order"}]}`), focus: []string{"inspect order"}, final: true}
 	if err := e.declare(t.Context(), job); err != nil {
@@ -302,14 +302,14 @@ func TestReflexV2ClaimTriggerAndCandidate(t *testing.T) {
 	if err := e.declare(t.Context(), job); err != nil {
 		t.Fatal(err)
 	}
-	if generations != 1 || len(e.snapshot().Candidates) != 1 || len(e.snapshot().Reflexes) != 0 || len(e.snapshot().Claims) != 1 {
+	if generations != 1 || len(e.snapshot().Reflexes) != 0 || len(e.snapshot().Claims) != 1 {
 		t.Fatal("candidate was published or Claim consumed")
 	}
 }
 
 // Keep cancellation bounded by the caller rather than the deleted 100ms timer.
-func TestReflexV2NoComputeBudget(t *testing.T) {
-	r := Reflex{When: "pure", Decide: "pure", Observe: `js:function(){while(true){}}`}
+func TestReflexNoComputeBudget(t *testing.T) {
+	r := Program{When: "pure", Decide: "pure", Observe: `js:function(){while(true){}}`}
 	_ = r.validate()
 	ctx, cancel := context.WithTimeout(t.Context(), 150*time.Millisecond)
 	defer cancel()

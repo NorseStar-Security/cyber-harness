@@ -40,7 +40,7 @@ func TestRecordedCompilerEvidence(t *testing.T) {
 	for _, artifact := range corpus.Cases {
 		row := map[string]any{"request_id": artifact.ID, "source_bytes": len(artifact.Source)}
 		results = append(results, row)
-		r := Reflex{When: "Recorded capability", Decide: "Use current native evidence", Observe: artifact.Source}
+		r := Program{When: "Recorded capability", Decide: "Use current native evidence", Observe: artifact.Source}
 		if err := r.validate(); err != nil {
 			row["outer_syntax_error"] = err.Error()
 			t.Logf("artifact %d outer syntax rejected: %v", artifact.ID, err)

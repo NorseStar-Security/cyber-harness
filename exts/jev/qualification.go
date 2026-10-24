@@ -11,9 +11,6 @@ import (
 	coretool "github.com/chainreactors/cyber/core/tool"
 )
 
-const reflexABI = 2
-const mechanismFormat = "native-mechanism/1"
-
 var requiredMechanismChecks = []string{"syntax", "parameters", "manifest", "native_contracts", "finite_branches", "recorded_replay", "entry_report"}
 
 type StepDefinition struct {
@@ -29,17 +26,6 @@ const (
 	UnsupportedAccess = coretool.NativeUnsupported
 )
 
-// VerificationRecord certifies mechanism checks and exact recorded replay.
-// Gaps explicitly record unobserved branches; this is not a business proof.
-type VerificationRecord struct {
-	Format         string            `json:"format"`
-	SourceHash     string            `json:"source_hash"`
-	Contracts      map[string]string `json:"contracts"`
-	Checks         []string          `json:"checks"`
-	TrajectoryHash string            `json:"trajectory_hash"`
-	Replayed       int               `json:"replayed"`
-	Gaps           []string          `json:"coverage_gaps,omitempty"`
-}
 type nativeSnapshot struct {
 	Contracts coretool.NativeContracts
 }
@@ -50,10 +36,10 @@ func (e *Extension) nativeSnapshot() nativeSnapshot {
 func (s nativeSnapshot) access(c NativeCall) (Access, error) {
 	return s.Contracts.Access(coretool.NativeCall(c))
 }
-func reflexSourceHash(r Reflex) string { r.Proof = nil; return digest(r) }
-func (e *Extension) qualified(r reflexRecord) bool {
+func reflexSourceHash(r Program) string { r.Proof = nil; return digest(r) }
+func (e *Extension) qualified(r Program) bool {
 	p := r.Proof
-	if r.APIVersion != reflexABI || r.LegacySuite != "" || p == nil || p.Format != mechanismFormat || p.SourceHash != reflexSourceHash(r.Reflex) || p.TrajectoryHash == "" || len(p.Checks) < len(requiredMechanismChecks) {
+	if p == nil || p.SourceHash != reflexSourceHash(r) || p.TrajectoryHash == "" || len(p.Checks) < len(requiredMechanismChecks) {
 		return false
 	}
 	current := e.contracts.Snapshot()
@@ -79,7 +65,7 @@ func (e *Extension) qualified(r reflexRecord) bool {
 	}
 	return true
 }
-func (s nativeSnapshot) validateCall(r *Reflex, c NativeCall, args map[string]any) error {
+func (s nativeSnapshot) validateCall(r *Program, c NativeCall, args map[string]any) error {
 	access, err := s.access(c)
 	if err != nil {
 		return err
@@ -135,13 +121,10 @@ type coverageGap struct {
 
 func (g coverageGap) Error() string { return "mechanism coverage gap: " + g.reason }
 
-func (e *Extension) qualify(ctx context.Context, r *Reflex, caps map[string]any, states ...json.RawMessage) error {
+func (e *Extension) qualify(ctx context.Context, r *Program, caps map[string]any, states ...json.RawMessage) error {
 	ctx, cancel := context.WithTimeout(ctx, decisionBudget)
 	defer cancel()
 	r.Proof = nil
-	if r.APIVersion != reflexABI || r.LegacySuite != "" {
-		return errors.New("qualification requires API 2 native mechanism artifact without suite")
-	}
 	if err := r.validate(); err != nil {
 		return err
 	}
@@ -162,7 +145,7 @@ func (e *Extension) qualify(ctx context.Context, r *Reflex, caps map[string]any,
 		return fmt.Errorf("current example parameters: %w", err)
 	}
 	native := e.nativeSnapshot()
-	proof := &VerificationRecord{Format: mechanismFormat, SourceHash: reflexSourceHash(*r), Contracts: map[string]string{}, Checks: append([]string(nil), requiredMechanismChecks...)}
+	proof := &ReflexQualification{SourceHash: reflexSourceHash(*r), Contracts: map[string]string{}, Checks: append([]string(nil), requiredMechanismChecks...)}
 	for id, step := range r.Steps {
 		if id == "" || len(id) > 64 || (step.Count > 0) == (step.CountArgument != "") || step.Count > maxCandidates || step.Count < 0 {
 			return errors.New("step needs exactly one occurrence bound")
@@ -194,7 +177,7 @@ func (e *Extension) qualify(ctx context.Context, r *Reflex, caps map[string]any,
 		}
 		if err != nil {
 			index := i
-			return compilerValidationError{CompilerDiagnostic{Code: "recorded_capability_unavailable", Stage: "native_contract", Status: "waiting", Message: "The recorded trajectory contains an operation without trusted native classification: " + err.Error(), Call: &index, Expected: result, Actual: call, Action: "Retain the candidate and obtain a real trajectory using supported native operations, or have the native tool owner provide its contract. Source edits cannot fabricate results or split an opaque compound shell result into independently identified operations. inspect_evidence exposes the exact unsupported call."}}
+			return compilerValidationError{CompilerDiagnostic{Code: "recorded_capability_unavailable", Stage: "native_contract", Status: "waiting", Message: "The recorded trajectory contains an operation without trusted native classification: " + err.Error(), Call: &index, Expected: result, Actual: call, Action: "Obtain a real trajectory using supported native operations, or have the native tool owner provide its contract. Source edits cannot fabricate results or split an opaque compound shell result into independently identified operations. inspect_evidence exposes the exact unsupported call."}}
 		}
 	}
 	if err := replay.verify(ctx); err != nil {
@@ -238,21 +221,21 @@ func (e *Extension) qualify(ctx context.Context, r *Reflex, caps map[string]any,
 			if end == replay.boundaries(true)[0] && b.Complete {
 				completeTrajectory = true
 			}
-			proof.Replayed += b.Replayed
+			proof.Replayed += int64(b.Replayed)
 			if b.Gap != "" || b.Stopped {
 				detail := b.Gap
 				if detail == "" {
 					detail = "no matching native evidence"
 				}
-				proof.Gaps = append(proof.Gaps, fmt.Sprintf("boundary %d branch %d: %s", end, i, detail))
+				proof.CoverageGaps = append(proof.CoverageGaps, fmt.Sprintf("boundary %d branch %d: %s", end, i, detail))
 			}
 		}
 	}
 	if len(proof.Contracts) > 0 && proof.Replayed == 0 {
-		return coverageGap{reason: "no generated native call matches the recorded trajectory; " + clip(strings.Join(proof.Gaps, "; "), 1536), diagnostic: initialGap}
+		return coverageGap{reason: "no generated native call matches the recorded trajectory; " + clip(strings.Join(proof.CoverageGaps, "; "), 1536), diagnostic: initialGap}
 	}
 	if !completeTrajectory {
-		return coverageGap{reason: "no complete replay of the current recorded trajectory; " + clip(strings.Join(proof.Gaps, "; "), 1536), diagnostic: initialGap}
+		return coverageGap{reason: "no complete replay of the current recorded trajectory; " + clip(strings.Join(proof.CoverageGaps, "; "), 1536), diagnostic: initialGap}
 	}
 	proof.TrajectoryHash = digest(states[0])
 	r.Proof = proof

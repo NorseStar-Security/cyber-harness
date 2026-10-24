@@ -174,21 +174,22 @@ func (s *VerificationSuite) access(c NativeCall) (Access, error) {
 	}
 	return result, nil
 }
-func (s *VerificationSuite) validateCall(r *Reflex, c NativeCall, args map[string]any) error {
+func (s *VerificationSuite) validateCall(r *Program, c NativeCall, args map[string]any) error {
 	return s.native().validateCall(r, c, args)
 }
-func qualifyIndependent(e *Extension, ctx context.Context, r *Reflex, caps map[string]any) error {
+func qualifyIndependent(e *Extension, ctx context.Context, r *Program, caps map[string]any, suiteIDs ...string) error {
 	if err := r.validate(); err != nil {
 		return err
 	}
 	ctx, cancel := context.WithTimeout(ctx, decisionBudget)
 	defer cancel()
-	if r.APIVersion != reflexABI {
-		return errors.New("qualification requires Reflex API version 2")
+	suiteID := "laboratory"
+	if len(suiteIDs) > 0 {
+		suiteID = suiteIDs[0]
 	}
-	s := testVerification(e).suite(r.LegacySuite)
+	s := testVerification(e).suite(suiteID)
 	if s == nil {
-		return fmt.Errorf("no trusted verification suite %q; source remains a candidate", r.LegacySuite)
+		return fmt.Errorf("no trusted verification suite %q; test oracle unavailable", suiteID)
 	}
 	if len(r.Parameters) > 16<<10 || len(r.Steps) > maxCandidates {
 		return errors.New("Reflex manifest exceeds limits")
@@ -205,12 +206,8 @@ func qualifyIndependent(e *Extension, ctx context.Context, r *Reflex, caps map[s
 	if len(cases) == 0 || len(cases) > 256 {
 		return errors.New("verification suite needs 1-256 independent cases")
 	}
-	proof := &VerificationRecord{Contracts: map[string]string{}}
 	var trajectory []map[string]any
 	var example map[string]any
-	for id, c := range s.Contracts {
-		proof.Contracts[id] = c.Version
-	}
 	seen := map[string]bool{}
 	for _, c := range cases {
 		if c.ID == "" || seen[c.ID] || c.Execute == nil || c.Check == nil {
@@ -305,10 +302,8 @@ func qualifyIndependent(e *Extension, ctx context.Context, r *Reflex, caps map[s
 			example = c.Arguments
 		}
 	}
-	_ = proof
 	original := r.arguments
 	r.arguments = example
-	r.LegacySuite = ""
 	state, _ := json.Marshal(map[string]any{"messages": trajectory})
 	testTrajectories.Store(e, state)
 	err := e.qualify(ctx, r, caps, state)

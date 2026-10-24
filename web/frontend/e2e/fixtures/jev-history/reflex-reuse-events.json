@@ -95,9 +95,67 @@
             "helpers": "98aa22757269c3f695b8e3254b3cba7af0f196d29e5e05db58821ec7e43533db",
             "tool:bash": "e7d02305dd76236efcf891511cbf7be63b6ecfaacc0a9421a045d009a93a271a"
           },
-          "apiVersion": 2,
-          "qualificationJson": "{\"format\":\"native-mechanism/1\",\"source_hash\":\"e46af3fa44bc818400becb939212807ed2a1285c8b3ba10d9b5eaaca943376ec\",\"contracts\":{\"playwright\":\"1\"},\"checks\":[\"syntax\",\"parameters\",\"manifest\",\"native_contracts\",\"finite_branches\",\"recorded_replay\",\"entry_report\"],\"trajectory_hash\":\"304f31107a3ea7ac3f0a14620c8e41daa8aeba8ef51a1216142acbe46b0d40ed\",\"replayed\":15}",
-          "manifestJson": "{\"parameters_schema\":{\"properties\":{\"input_selector\":{\"type\":\"string\"},\"receipt_prefix\":{\"type\":\"string\"},\"session\":{\"type\":\"string\"},\"submit_selector\":{\"type\":\"string\"},\"term\":{\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"url\",\"session\",\"term\",\"input_selector\",\"submit_selector\"],\"type\":\"object\"},\"steps\":{\"click\":{\"contract\":\"playwright\",\"count\":1},\"fill\":{\"contract\":\"playwright\",\"count\":1},\"open\":{\"contract\":\"playwright\",\"count\":1}}}"
+          "qualification": {
+            "sourceHash": "e46af3fa44bc818400becb939212807ed2a1285c8b3ba10d9b5eaaca943376ec",
+            "contracts": {
+              "playwright": "1"
+            },
+            "checks": [
+              "syntax",
+              "parameters",
+              "manifest",
+              "native_contracts",
+              "finite_branches",
+              "recorded_replay",
+              "entry_report"
+            ],
+            "trajectoryHash": "304f31107a3ea7ac3f0a14620c8e41daa8aeba8ef51a1216142acbe46b0d40ed",
+            "replayed": "15"
+          },
+          "steps": {
+            "click": {
+              "contract": "playwright",
+              "count": "1"
+            },
+            "fill": {
+              "contract": "playwright",
+              "count": "1"
+            },
+            "open": {
+              "contract": "playwright",
+              "count": "1"
+            }
+          },
+          "parametersSchema": {
+            "properties": {
+              "input_selector": {
+                "type": "string"
+              },
+              "receipt_prefix": {
+                "type": "string"
+              },
+              "session": {
+                "type": "string"
+              },
+              "submit_selector": {
+                "type": "string"
+              },
+              "term": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "url",
+              "session",
+              "term",
+              "input_selector",
+              "submit_selector"
+            ],
+            "type": "object"
+          }
         }
       }
     }

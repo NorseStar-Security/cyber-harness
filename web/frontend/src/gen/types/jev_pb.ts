@@ -10,13 +10,15 @@ import type { TokenUsage } from "../../../cyber-ui/packages/aop/src/gen/aop/even
 import { file_aop_event } from "../../../cyber-ui/packages/aop/src/gen/aop/event_pb.js";
 import type { Claim, ClaimType, Evaluation } from "../decision/claim_pb.js";
 import { file_decision_claim } from "../decision/claim_pb.js";
+import type { Value } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_struct } from "@bufbuild/protobuf/wkt";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file types/jev.proto.
  */
 export const file_types_jev: GenFile = /*@__PURE__*/
-  fileDesc("Cg90eXBlcy9qZXYucHJvdG8SCWN5YmVyLmpldiKGAQoPQ2xhaW1EZWZpbml0aW9uEgoKAmlkGAEgASgJEiEKBHR5cGUYAiABKA4yEy5kZWNpc2lvbi5DbGFpbVR5cGUSDwoHY29udGV4dBgDIAEoCRIPCgdvcHRpb25zGAQgAygJEhYKDnNvdXJjZV90YXNrX2lkGAUgASgJSgQIBhAHSgQIBxAIIpUDChBSZWZsZXhEZWZpbml0aW9uEgoKAmlkGAEgASgJEgwKBHdoZW4YAiABKAkSDgoGZGVjaWRlGAMgASgJEg8KB29ic2VydmUYBCABKAkSEQoJY2xhaW1faWRzGAUgAygJEjkKB3JlYWRlcnMYBiADKAsyKC5jeWJlci5qZXYuUmVmbGV4RGVmaW5pdGlvbi5SZWFkZXJzRW50cnkSPQoJY29udHJhY3RzGAcgAygLMiouY3liZXIuamV2LlJlZmxleERlZmluaXRpb24uQ29udHJhY3RzRW50cnkSEwoLYXBpX3ZlcnNpb24YCCABKA0SGgoScXVhbGlmaWNhdGlvbl9qc29uGAkgASgJEhUKDW1hbmlmZXN0X2pzb24YCiABKAkSDwoHYmxvY2tlchgLIAEoCRouCgxSZWFkZXJzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ARowCg5Db250cmFjdHNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIhoKCEJvdW5kYXJ5Eg4KBnJlYXNvbhgBIAEoCSI6CgtPYnNlcnZhdGlvbhISCgpzdGF0ZV9qc29uGAEgASgJEhcKD2NhbmRpZGF0ZXNfanNvbhgCIAEoCSKuAQoPRGVjaXNpb25SZXF1ZXN0EhIKCnJlcXVlc3RfaWQYASABKAkSDwoHcHVycG9zZRgCIAEoCRI2CgZjbGFpbXMYAyADKAsyJi5jeWJlci5qZXYuRGVjaXNpb25SZXF1ZXN0LkNsYWltc0VudHJ5Gj4KC0NsYWltc0VudHJ5EgsKA2tleRgBIAEoCRIeCgV2YWx1ZRgCIAEoCzIPLmRlY2lzaW9uLkNsYWltOgI4ASKDAgoORGVjaXNpb25SZXN1bHQSEgoKcmVxdWVzdF9pZBgBIAEoCRIPCgdwdXJwb3NlGAIgASgJEj8KC2V2YWx1YXRpb25zGAMgAygLMiouY3liZXIuamV2LkRlY2lzaW9uUmVzdWx0LkV2YWx1YXRpb25zRW50cnkSEgoKZWxhcHNlZF9tcxgEIAEoAxINCgVlcnJvchgFIAEoCRIeCgV1c2FnZRgGIAEoCzIPLmFvcC5Ub2tlblVzYWdlGkgKEEV2YWx1YXRpb25zRW50cnkSCwoDa2V5GAEgASgJEiMKBXZhbHVlGAIgASgLMhQuZGVjaXNpb24uRXZhbHVhdGlvbjoCOAEiOwoIVGFrZW92ZXISLwoKZGVmaW5pdGlvbhgBIAEoCzIbLmN5YmVyLmpldi5SZWZsZXhEZWZpbml0aW9uIoMBCghEaXNwYXRjaBIbCgRjYWxsGAEgASgLMg0uYW9wLlRvb2xDYWxsEhQKDGNhbmRpZGF0ZV9pZBgCIAEoCRIMCgRyZWFkGAMgASgIEhEKCWVmZmVjdF9pZBgEIAEoCRIPCgdzdGVwX2lkGAUgASgJEhIKCm9jY3VycmVuY2UYBiABKA0iPQoGUmVzdWx0Eh8KBnJlc3VsdBgBIAEoCzIPLmFvcC5Ub29sUmVzdWx0EhIKCmVsYXBzZWRfbXMYAiABKAMiYgoHSGFuZG9mZhIOCgZyZWFzb24YASABKAkSDAoEY29kZRgCIAEoCRIOCgZkZXRhaWwYAyABKAkSFAoMZWZmZWN0c19qc29uGAQgASgJEhMKC3Jlc3VsdF9qc29uGAUgASgJIvoBCgpHZW5lcmF0aW9uEgwKBGtpbmQYASABKAkSDQoFc3RhdGUYAiABKAkSDgoGb3V0cHV0GAMgASgJEg0KBWVycm9yGAQgASgJEhIKCmVsYXBzZWRfbXMYBSABKAMSHgoFdXNhZ2UYBiABKAsyDy5hb3AuVG9rZW5Vc2FnZRISCgpyZXF1ZXN0X2lkGAcgASgJEg8KB2F0dGVtcHQYCCABKA0SEwoLZXJyb3Jfc3RhZ2UYCSABKAkSGAoQcmVxdWVzdGVkX2VmZm9ydBgKIAEoCRIZChFwYXJlbnRfcmVxdWVzdF9pZBgLIAEoCRINCgVwaGFzZRgMIAEoCSK3AQoNTGlicmFyeUNoYW5nZRINCgVzdGF0ZRgBIAEoCRIpCgVjbGFpbRgCIAEoCzIaLmN5YmVyLmpldi5DbGFpbURlZmluaXRpb24SKwoGcmVmbGV4GAMgASgLMhsuY3liZXIuamV2LlJlZmxleERlZmluaXRpb24SGgoScmVwbGFjZWRfcmVmbGV4X2lkGAQgASgJEg4KBnJlYXNvbhgFIAEoCRITCgtlcnJvcl9zdGFnZRgGIAEoCSKNBQoMUnVudGltZUV2ZW50Eg8KB3Rhc2tfaWQYASABKAkSEgoKc2VnbWVudF9pZBgCIAEoCRIbChNwcmV2aW91c19zZWdtZW50X2lkGAMgASgJEgwKBHN0ZXAYBCABKA0SEQoJcmVmbGV4X2lkGAUgASgJEg8KB2NhbGxfaWQYBiABKAkSEgoKYmFja2dyb3VuZBgHIAEoCBITCgtib3VuZGFyeV9pZBgIIAEoCRIQCghjbGFpbV9pZBgJIAEoCRInCghib3VuZGFyeRgKIAEoCzITLmN5YmVyLmpldi5Cb3VuZGFyeUgAEi0KC29ic2VydmF0aW9uGAsgASgLMhYuY3liZXIuamV2Lk9ic2VydmF0aW9uSAASNgoQZGVjaXNpb25fcmVxdWVzdBgMIAEoCzIaLmN5YmVyLmpldi5EZWNpc2lvblJlcXVlc3RIABI0Cg9kZWNpc2lvbl9yZXN1bHQYDSABKAsyGS5jeWJlci5qZXYuRGVjaXNpb25SZXN1bHRIABInCgh0YWtlb3ZlchgOIAEoCzITLmN5YmVyLmpldi5UYWtlb3ZlckgAEicKCGRpc3BhdGNoGA8gASgLMhMuY3liZXIuamV2LkRpc3BhdGNoSAASIwoGcmVzdWx0GBAgASgLMhEuY3liZXIuamV2LlJlc3VsdEgAEiUKB2hhbmRvZmYYESABKAsyEi5jeWJlci5qZXYuSGFuZG9mZkgAEisKCmdlbmVyYXRpb24YEiABKAsyFS5jeWJlci5qZXYuR2VuZXJhdGlvbkgAEjIKDmxpYnJhcnlfY2hhbmdlGBMgASgLMhguY3liZXIuamV2LkxpYnJhcnlDaGFuZ2VIAEIJCgdwYXlsb2FkIicKEUdldExpYnJhcnlSZXF1ZXN0EhIKCnNlc3Npb25faWQYASABKAkiOQoPV2FpdElkbGVSZXF1ZXN0EhIKCnNlc3Npb25faWQYASABKAkSEgoKdGltZW91dF9tcxgCIAEoDSIyChBXYWl0SWRsZVJlc3BvbnNlEg8KB3NldHRsZWQYASABKAgSDQoFZXJyb3IYAiABKAki6AEKEkdldExpYnJhcnlSZXNwb25zZRIMCgRtb2RlGAEgASgJEg4KBnN0YXR1cxgCIAEoCRIQCghyZXZpc2lvbhgEIAEoCRIqCgZjbGFpbXMYBSADKAsyGi5jeWJlci5qZXYuQ2xhaW1EZWZpbml0aW9uEi0KCHJlZmxleGVzGAYgAygLMhsuY3liZXIuamV2LlJlZmxleERlZmluaXRpb24SLwoKY2FuZGlkYXRlcxgHIAMoCzIbLmN5YmVyLmpldi5SZWZsZXhEZWZpbml0aW9uEhAKCGxlYXJuaW5nGAggASgJSgQIAxAEIt0BCg9Qcm90b2NvbE1lc3NhZ2USLwoHcmVxdWVzdBgBIAEoCzIcLmN5YmVyLmpldi5HZXRMaWJyYXJ5UmVxdWVzdEgAEjAKB2xpYnJhcnkYAiABKAsyHS5jeWJlci5qZXYuR2V0TGlicmFyeVJlc3BvbnNlSAASLwoJd2FpdF9pZGxlGAMgASgLMhouY3liZXIuamV2LldhaXRJZGxlUmVxdWVzdEgAEisKBGlkbGUYBCABKAsyGy5jeWJlci5qZXYuV2FpdElkbGVSZXNwb25zZUgAQgkKB21lc3NhZ2VCLVorZ2l0aHViLmNvbS9jaGFpbnJlYWN0b3JzL2N5YmVyL2V4dHMvamV2O2pldmIGcHJvdG8z", [file_aop_content, file_aop_event, file_decision_claim]);
+  fileDesc("Cg90eXBlcy9qZXYucHJvdG8SCWN5YmVyLmpldiKGAQoPQ2xhaW1EZWZpbml0aW9uEgoKAmlkGAEgASgJEiEKBHR5cGUYAiABKA4yEy5kZWNpc2lvbi5DbGFpbVR5cGUSDwoHY29udGV4dBgDIAEoCRIPCgdvcHRpb25zGAQgAygJEhYKDnNvdXJjZV90YXNrX2lkGAUgASgJSgQIBhAHSgQIBxAIIvABChNSZWZsZXhRdWFsaWZpY2F0aW9uEhMKC3NvdXJjZV9oYXNoGAEgASgJEkAKCWNvbnRyYWN0cxgCIAMoCzItLmN5YmVyLmpldi5SZWZsZXhRdWFsaWZpY2F0aW9uLkNvbnRyYWN0c0VudHJ5Eg4KBmNoZWNrcxgDIAMoCRIXCg90cmFqZWN0b3J5X2hhc2gYBCABKAkSEAoIcmVwbGF5ZWQYBSABKAMSFQoNY292ZXJhZ2VfZ2FwcxgGIAMoCRowCg5Db250cmFjdHNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIkUKClJlZmxleFN0ZXASEAoIY29udHJhY3QYASABKAkSDQoFY291bnQYAiABKAMSFgoOY291bnRfYXJndW1lbnQYAyABKAkizAQKEFJlZmxleERlZmluaXRpb24SCgoCaWQYASABKAkSDAoEd2hlbhgCIAEoCRIOCgZkZWNpZGUYAyABKAkSDwoHb2JzZXJ2ZRgEIAEoCRIRCgljbGFpbV9pZHMYBSADKAkSOQoHcmVhZGVycxgGIAMoCzIoLmN5YmVyLmpldi5SZWZsZXhEZWZpbml0aW9uLlJlYWRlcnNFbnRyeRI9Cgljb250cmFjdHMYByADKAsyKi5jeWJlci5qZXYuUmVmbGV4RGVmaW5pdGlvbi5Db250cmFjdHNFbnRyeRI1Cg1xdWFsaWZpY2F0aW9uGAggASgLMh4uY3liZXIuamV2LlJlZmxleFF1YWxpZmljYXRpb24SNQoFc3RlcHMYCSADKAsyJi5jeWJlci5qZXYuUmVmbGV4RGVmaW5pdGlvbi5TdGVwc0VudHJ5EjEKEXBhcmFtZXRlcnNfc2NoZW1hGAogASgLMhYuZ29vZ2xlLnByb3RvYnVmLlZhbHVlEhAKCGFyY2hpdmVkGAsgASgIEhYKDmFyY2hpdmVfcmVhc29uGAwgASgJGi4KDFJlYWRlcnNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBGjAKDkNvbnRyYWN0c0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEaQwoKU3RlcHNFbnRyeRILCgNrZXkYASABKAkSJAoFdmFsdWUYAiABKAsyFS5jeWJlci5qZXYuUmVmbGV4U3RlcDoCOAEiGgoIQm91bmRhcnkSDgoGcmVhc29uGAEgASgJIjoKC09ic2VydmF0aW9uEhIKCnN0YXRlX2pzb24YASABKAkSFwoPY2FuZGlkYXRlc19qc29uGAIgASgJIq4BCg9EZWNpc2lvblJlcXVlc3QSEgoKcmVxdWVzdF9pZBgBIAEoCRIPCgdwdXJwb3NlGAIgASgJEjYKBmNsYWltcxgDIAMoCzImLmN5YmVyLmpldi5EZWNpc2lvblJlcXVlc3QuQ2xhaW1zRW50cnkaPgoLQ2xhaW1zRW50cnkSCwoDa2V5GAEgASgJEh4KBXZhbHVlGAIgASgLMg8uZGVjaXNpb24uQ2xhaW06AjgBIoMCCg5EZWNpc2lvblJlc3VsdBISCgpyZXF1ZXN0X2lkGAEgASgJEg8KB3B1cnBvc2UYAiABKAkSPwoLZXZhbHVhdGlvbnMYAyADKAsyKi5jeWJlci5qZXYuRGVjaXNpb25SZXN1bHQuRXZhbHVhdGlvbnNFbnRyeRISCgplbGFwc2VkX21zGAQgASgDEg0KBWVycm9yGAUgASgJEh4KBXVzYWdlGAYgASgLMg8uYW9wLlRva2VuVXNhZ2UaSAoQRXZhbHVhdGlvbnNFbnRyeRILCgNrZXkYASABKAkSIwoFdmFsdWUYAiABKAsyFC5kZWNpc2lvbi5FdmFsdWF0aW9uOgI4ASI7CghUYWtlb3ZlchIvCgpkZWZpbml0aW9uGAEgASgLMhsuY3liZXIuamV2LlJlZmxleERlZmluaXRpb24igwEKCERpc3BhdGNoEhsKBGNhbGwYASABKAsyDS5hb3AuVG9vbENhbGwSFAoMY2FuZGlkYXRlX2lkGAIgASgJEgwKBHJlYWQYAyABKAgSEQoJZWZmZWN0X2lkGAQgASgJEg8KB3N0ZXBfaWQYBSABKAkSEgoKb2NjdXJyZW5jZRgGIAEoDSI9CgZSZXN1bHQSHwoGcmVzdWx0GAEgASgLMg8uYW9wLlRvb2xSZXN1bHQSEgoKZWxhcHNlZF9tcxgCIAEoAyJiCgdIYW5kb2ZmEg4KBnJlYXNvbhgBIAEoCRIMCgRjb2RlGAIgASgJEg4KBmRldGFpbBgDIAEoCRIUCgxlZmZlY3RzX2pzb24YBCABKAkSEwoLcmVzdWx0X2pzb24YBSABKAki+gEKCkdlbmVyYXRpb24SDAoEa2luZBgBIAEoCRINCgVzdGF0ZRgCIAEoCRIOCgZvdXRwdXQYAyABKAkSDQoFZXJyb3IYBCABKAkSEgoKZWxhcHNlZF9tcxgFIAEoAxIeCgV1c2FnZRgGIAEoCzIPLmFvcC5Ub2tlblVzYWdlEhIKCnJlcXVlc3RfaWQYByABKAkSDwoHYXR0ZW1wdBgIIAEoDRITCgtlcnJvcl9zdGFnZRgJIAEoCRIYChByZXF1ZXN0ZWRfZWZmb3J0GAogASgJEhkKEXBhcmVudF9yZXF1ZXN0X2lkGAsgASgJEg0KBXBoYXNlGAwgASgJIrcBCg1MaWJyYXJ5Q2hhbmdlEg0KBXN0YXRlGAEgASgJEikKBWNsYWltGAIgASgLMhouY3liZXIuamV2LkNsYWltRGVmaW5pdGlvbhIrCgZyZWZsZXgYAyABKAsyGy5jeWJlci5qZXYuUmVmbGV4RGVmaW5pdGlvbhIaChJyZXBsYWNlZF9yZWZsZXhfaWQYBCABKAkSDgoGcmVhc29uGAUgASgJEhMKC2Vycm9yX3N0YWdlGAYgASgJIo0FCgxSdW50aW1lRXZlbnQSDwoHdGFza19pZBgBIAEoCRISCgpzZWdtZW50X2lkGAIgASgJEhsKE3ByZXZpb3VzX3NlZ21lbnRfaWQYAyABKAkSDAoEc3RlcBgEIAEoDRIRCglyZWZsZXhfaWQYBSABKAkSDwoHY2FsbF9pZBgGIAEoCRISCgpiYWNrZ3JvdW5kGAcgASgIEhMKC2JvdW5kYXJ5X2lkGAggASgJEhAKCGNsYWltX2lkGAkgASgJEicKCGJvdW5kYXJ5GAogASgLMhMuY3liZXIuamV2LkJvdW5kYXJ5SAASLQoLb2JzZXJ2YXRpb24YCyABKAsyFi5jeWJlci5qZXYuT2JzZXJ2YXRpb25IABI2ChBkZWNpc2lvbl9yZXF1ZXN0GAwgASgLMhouY3liZXIuamV2LkRlY2lzaW9uUmVxdWVzdEgAEjQKD2RlY2lzaW9uX3Jlc3VsdBgNIAEoCzIZLmN5YmVyLmpldi5EZWNpc2lvblJlc3VsdEgAEicKCHRha2VvdmVyGA4gASgLMhMuY3liZXIuamV2LlRha2VvdmVySAASJwoIZGlzcGF0Y2gYDyABKAsyEy5jeWJlci5qZXYuRGlzcGF0Y2hIABIjCgZyZXN1bHQYECABKAsyES5jeWJlci5qZXYuUmVzdWx0SAASJQoHaGFuZG9mZhgRIAEoCzISLmN5YmVyLmpldi5IYW5kb2ZmSAASKwoKZ2VuZXJhdGlvbhgSIAEoCzIVLmN5YmVyLmpldi5HZW5lcmF0aW9uSAASMgoObGlicmFyeV9jaGFuZ2UYEyABKAsyGC5jeWJlci5qZXYuTGlicmFyeUNoYW5nZUgAQgkKB3BheWxvYWQiJwoRR2V0TGlicmFyeVJlcXVlc3QSEgoKc2Vzc2lvbl9pZBgBIAEoCSI5Cg9XYWl0SWRsZVJlcXVlc3QSEgoKc2Vzc2lvbl9pZBgBIAEoCRISCgp0aW1lb3V0X21zGAIgASgNIjIKEFdhaXRJZGxlUmVzcG9uc2USDwoHc2V0dGxlZBgBIAEoCBINCgVlcnJvchgCIAEoCSK3AQoSR2V0TGlicmFyeVJlc3BvbnNlEgwKBG1vZGUYASABKAkSDgoGc3RhdHVzGAIgASgJEhAKCHJldmlzaW9uGAQgASgJEioKBmNsYWltcxgFIAMoCzIaLmN5YmVyLmpldi5DbGFpbURlZmluaXRpb24SLQoIcmVmbGV4ZXMYBiADKAsyGy5jeWJlci5qZXYuUmVmbGV4RGVmaW5pdGlvbhIQCghsZWFybmluZxgIIAEoCUoECAMQBCLdAQoPUHJvdG9jb2xNZXNzYWdlEi8KB3JlcXVlc3QYASABKAsyHC5jeWJlci5qZXYuR2V0TGlicmFyeVJlcXVlc3RIABIwCgdsaWJyYXJ5GAIgASgLMh0uY3liZXIuamV2LkdldExpYnJhcnlSZXNwb25zZUgAEi8KCXdhaXRfaWRsZRgDIAEoCzIaLmN5YmVyLmpldi5XYWl0SWRsZVJlcXVlc3RIABIrCgRpZGxlGAQgASgLMhsuY3liZXIuamV2LldhaXRJZGxlUmVzcG9uc2VIAEIJCgdtZXNzYWdlQi1aK2dpdGh1Yi5jb20vY2hhaW5yZWFjdG9ycy9jeWJlci9leHRzL2pldjtqZXZiBnByb3RvMw", [file_aop_content, file_aop_event, file_decision_claim, file_google_protobuf_struct]);
 
 /**
  * @generated from message cyber.jev.ClaimDefinition
@@ -54,6 +56,75 @@ export type ClaimDefinition = Message<"cyber.jev.ClaimDefinition"> & {
  */
 export const ClaimDefinitionSchema: GenMessage<ClaimDefinition> = /*@__PURE__*/
   messageDesc(file_types_jev, 0);
+
+/**
+ * @generated from message cyber.jev.ReflexQualification
+ */
+export type ReflexQualification = Message<"cyber.jev.ReflexQualification"> & {
+  /**
+   * @generated from field: string source_hash = 1;
+   */
+  sourceHash: string;
+
+  /**
+   * @generated from field: map<string, string> contracts = 2;
+   */
+  contracts: { [key: string]: string };
+
+  /**
+   * @generated from field: repeated string checks = 3;
+   */
+  checks: string[];
+
+  /**
+   * @generated from field: string trajectory_hash = 4;
+   */
+  trajectoryHash: string;
+
+  /**
+   * @generated from field: int64 replayed = 5;
+   */
+  replayed: bigint;
+
+  /**
+   * @generated from field: repeated string coverage_gaps = 6;
+   */
+  coverageGaps: string[];
+};
+
+/**
+ * Describes the message cyber.jev.ReflexQualification.
+ * Use `create(ReflexQualificationSchema)` to create a new message.
+ */
+export const ReflexQualificationSchema: GenMessage<ReflexQualification> = /*@__PURE__*/
+  messageDesc(file_types_jev, 1);
+
+/**
+ * @generated from message cyber.jev.ReflexStep
+ */
+export type ReflexStep = Message<"cyber.jev.ReflexStep"> & {
+  /**
+   * @generated from field: string contract = 1;
+   */
+  contract: string;
+
+  /**
+   * @generated from field: int64 count = 2;
+   */
+  count: bigint;
+
+  /**
+   * @generated from field: string count_argument = 3;
+   */
+  countArgument: string;
+};
+
+/**
+ * Describes the message cyber.jev.ReflexStep.
+ * Use `create(ReflexStepSchema)` to create a new message.
+ */
+export const ReflexStepSchema: GenMessage<ReflexStep> = /*@__PURE__*/
+  messageDesc(file_types_jev, 2);
 
 /**
  * @generated from message cyber.jev.ReflexDefinition
@@ -95,24 +166,29 @@ export type ReflexDefinition = Message<"cyber.jev.ReflexDefinition"> & {
   contracts: { [key: string]: string };
 
   /**
-   * @generated from field: uint32 api_version = 8;
+   * @generated from field: cyber.jev.ReflexQualification qualification = 8;
    */
-  apiVersion: number;
+  qualification?: ReflexQualification | undefined;
 
   /**
-   * @generated from field: string qualification_json = 9;
+   * @generated from field: map<string, cyber.jev.ReflexStep> steps = 9;
    */
-  qualificationJson: string;
+  steps: { [key: string]: ReflexStep };
 
   /**
-   * @generated from field: string manifest_json = 10;
+   * @generated from field: google.protobuf.Value parameters_schema = 10;
    */
-  manifestJson: string;
+  parametersSchema?: Value | undefined;
 
   /**
-   * @generated from field: string blocker = 11;
+   * @generated from field: bool archived = 11;
    */
-  blocker: string;
+  archived: boolean;
+
+  /**
+   * @generated from field: string archive_reason = 12;
+   */
+  archiveReason: string;
 };
 
 /**
@@ -120,7 +196,7 @@ export type ReflexDefinition = Message<"cyber.jev.ReflexDefinition"> & {
  * Use `create(ReflexDefinitionSchema)` to create a new message.
  */
 export const ReflexDefinitionSchema: GenMessage<ReflexDefinition> = /*@__PURE__*/
-  messageDesc(file_types_jev, 1);
+  messageDesc(file_types_jev, 3);
 
 /**
  * @generated from message cyber.jev.Boundary
@@ -137,7 +213,7 @@ export type Boundary = Message<"cyber.jev.Boundary"> & {
  * Use `create(BoundarySchema)` to create a new message.
  */
 export const BoundarySchema: GenMessage<Boundary> = /*@__PURE__*/
-  messageDesc(file_types_jev, 2);
+  messageDesc(file_types_jev, 4);
 
 /**
  * @generated from message cyber.jev.Observation
@@ -159,7 +235,7 @@ export type Observation = Message<"cyber.jev.Observation"> & {
  * Use `create(ObservationSchema)` to create a new message.
  */
 export const ObservationSchema: GenMessage<Observation> = /*@__PURE__*/
-  messageDesc(file_types_jev, 3);
+  messageDesc(file_types_jev, 5);
 
 /**
  * @generated from message cyber.jev.DecisionRequest
@@ -186,7 +262,7 @@ export type DecisionRequest = Message<"cyber.jev.DecisionRequest"> & {
  * Use `create(DecisionRequestSchema)` to create a new message.
  */
 export const DecisionRequestSchema: GenMessage<DecisionRequest> = /*@__PURE__*/
-  messageDesc(file_types_jev, 4);
+  messageDesc(file_types_jev, 6);
 
 /**
  * @generated from message cyber.jev.DecisionResult
@@ -228,7 +304,7 @@ export type DecisionResult = Message<"cyber.jev.DecisionResult"> & {
  * Use `create(DecisionResultSchema)` to create a new message.
  */
 export const DecisionResultSchema: GenMessage<DecisionResult> = /*@__PURE__*/
-  messageDesc(file_types_jev, 5);
+  messageDesc(file_types_jev, 7);
 
 /**
  * @generated from message cyber.jev.Takeover
@@ -245,7 +321,7 @@ export type Takeover = Message<"cyber.jev.Takeover"> & {
  * Use `create(TakeoverSchema)` to create a new message.
  */
 export const TakeoverSchema: GenMessage<Takeover> = /*@__PURE__*/
-  messageDesc(file_types_jev, 6);
+  messageDesc(file_types_jev, 8);
 
 /**
  * @generated from message cyber.jev.Dispatch
@@ -287,7 +363,7 @@ export type Dispatch = Message<"cyber.jev.Dispatch"> & {
  * Use `create(DispatchSchema)` to create a new message.
  */
 export const DispatchSchema: GenMessage<Dispatch> = /*@__PURE__*/
-  messageDesc(file_types_jev, 7);
+  messageDesc(file_types_jev, 9);
 
 /**
  * @generated from message cyber.jev.Result
@@ -309,7 +385,7 @@ export type Result = Message<"cyber.jev.Result"> & {
  * Use `create(ResultSchema)` to create a new message.
  */
 export const ResultSchema: GenMessage<Result> = /*@__PURE__*/
-  messageDesc(file_types_jev, 8);
+  messageDesc(file_types_jev, 10);
 
 /**
  * @generated from message cyber.jev.Handoff
@@ -346,7 +422,7 @@ export type Handoff = Message<"cyber.jev.Handoff"> & {
  * Use `create(HandoffSchema)` to create a new message.
  */
 export const HandoffSchema: GenMessage<Handoff> = /*@__PURE__*/
-  messageDesc(file_types_jev, 9);
+  messageDesc(file_types_jev, 11);
 
 /**
  * @generated from message cyber.jev.Generation
@@ -418,7 +494,7 @@ export type Generation = Message<"cyber.jev.Generation"> & {
  * Use `create(GenerationSchema)` to create a new message.
  */
 export const GenerationSchema: GenMessage<Generation> = /*@__PURE__*/
-  messageDesc(file_types_jev, 10);
+  messageDesc(file_types_jev, 12);
 
 /**
  * @generated from message cyber.jev.LibraryChange
@@ -460,7 +536,7 @@ export type LibraryChange = Message<"cyber.jev.LibraryChange"> & {
  * Use `create(LibraryChangeSchema)` to create a new message.
  */
 export const LibraryChangeSchema: GenMessage<LibraryChange> = /*@__PURE__*/
-  messageDesc(file_types_jev, 11);
+  messageDesc(file_types_jev, 13);
 
 /**
  * Runtime and asynchronous compilation share source correlation. Background
@@ -585,7 +661,7 @@ export type RuntimeEvent = Message<"cyber.jev.RuntimeEvent"> & {
  * Use `create(RuntimeEventSchema)` to create a new message.
  */
 export const RuntimeEventSchema: GenMessage<RuntimeEvent> = /*@__PURE__*/
-  messageDesc(file_types_jev, 12);
+  messageDesc(file_types_jev, 14);
 
 /**
  * @generated from message cyber.jev.GetLibraryRequest
@@ -602,7 +678,7 @@ export type GetLibraryRequest = Message<"cyber.jev.GetLibraryRequest"> & {
  * Use `create(GetLibraryRequestSchema)` to create a new message.
  */
 export const GetLibraryRequestSchema: GenMessage<GetLibraryRequest> = /*@__PURE__*/
-  messageDesc(file_types_jev, 13);
+  messageDesc(file_types_jev, 15);
 
 /**
  * @generated from message cyber.jev.WaitIdleRequest
@@ -624,7 +700,7 @@ export type WaitIdleRequest = Message<"cyber.jev.WaitIdleRequest"> & {
  * Use `create(WaitIdleRequestSchema)` to create a new message.
  */
 export const WaitIdleRequestSchema: GenMessage<WaitIdleRequest> = /*@__PURE__*/
-  messageDesc(file_types_jev, 14);
+  messageDesc(file_types_jev, 16);
 
 /**
  * @generated from message cyber.jev.WaitIdleResponse
@@ -646,7 +722,7 @@ export type WaitIdleResponse = Message<"cyber.jev.WaitIdleResponse"> & {
  * Use `create(WaitIdleResponseSchema)` to create a new message.
  */
 export const WaitIdleResponseSchema: GenMessage<WaitIdleResponse> = /*@__PURE__*/
-  messageDesc(file_types_jev, 15);
+  messageDesc(file_types_jev, 17);
 
 /**
  * @generated from message cyber.jev.GetLibraryResponse
@@ -678,11 +754,6 @@ export type GetLibraryResponse = Message<"cyber.jev.GetLibraryResponse"> & {
   reflexes: ReflexDefinition[];
 
   /**
-   * @generated from field: repeated cyber.jev.ReflexDefinition candidates = 7;
-   */
-  candidates: ReflexDefinition[];
-
-  /**
    * @generated from field: string learning = 8;
    */
   learning: string;
@@ -693,7 +764,7 @@ export type GetLibraryResponse = Message<"cyber.jev.GetLibraryResponse"> & {
  * Use `create(GetLibraryResponseSchema)` to create a new message.
  */
 export const GetLibraryResponseSchema: GenMessage<GetLibraryResponse> = /*@__PURE__*/
-  messageDesc(file_types_jev, 16);
+  messageDesc(file_types_jev, 18);
 
 /**
  * @generated from message cyber.jev.ProtocolMessage
@@ -734,4 +805,4 @@ export type ProtocolMessage = Message<"cyber.jev.ProtocolMessage"> & {
  * Use `create(ProtocolMessageSchema)` to create a new message.
  */
 export const ProtocolMessageSchema: GenMessage<ProtocolMessage> = /*@__PURE__*/
-  messageDesc(file_types_jev, 17);
+  messageDesc(file_types_jev, 19);

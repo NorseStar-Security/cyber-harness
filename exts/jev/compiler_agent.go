@@ -21,11 +21,9 @@ type compilerAgent struct {
 	plan        *compilation
 	worker      *agent.Agent
 	submissions int
-	accepted    *Reflex
+	accepted    *Program
 	requestID   string
 	rounds      uint32
-	candidate   *Reflex
-	blocker     error
 	waiting     *CompilerDiagnostic
 	fatal       error
 	maxTokens   int
@@ -134,7 +132,7 @@ func (c *compilerAgent) ExecuteTool(ctx context.Context, name, arguments string)
 	validation := aop.EnvelopeID()
 	started := time.Now()
 	c.extension.emit(ctx, &Generation{Kind: "reflex_validation", State: "started", RequestId: validation, ParentRequestId: c.requestID, Attempt: uint32(c.submissions), Phase: "mechanism"})
-	var r *Reflex
+	var r *Program
 	var err error
 	updated := c.refreshEvidence()
 	if len(arguments) > 32<<10 {
@@ -146,7 +144,6 @@ func (c *compilerAgent) ExecuteTool(ctx context.Context, name, arguments string)
 		err = errors.New("submit an executable artifact")
 	}
 	if err == nil {
-		c.extension.fillScope(r, c.plan)
 		err = r.validate()
 	}
 	if err == nil {
@@ -184,9 +181,6 @@ func (c *compilerAgent) ExecuteTool(ctx context.Context, name, arguments string)
 	}
 	if err != nil {
 		c.accepted = nil
-		if r != nil && r.program != nil {
-			c.candidate, c.blocker = r, err
-		}
 		diagnostic := compilerDiagnostic(err)
 		if ctx.Err() != nil {
 			c.fatal = ctx.Err()
@@ -201,7 +195,9 @@ func (c *compilerAgent) ExecuteTool(ctx context.Context, name, arguments string)
 			c.waiting = &diagnostic
 		}
 		c.extension.emit(ctx, &LibraryChange{State: "draft_rejected", Reason: err.Error(), ErrorStage: "qualification"})
-		c.extension.emit(ctx, &Generation{Kind: "reflex_validation", State: "finished", RequestId: validation, ParentRequestId: c.requestID, Attempt: uint32(c.submissions), Phase: diagnostic.Stage, Output: jsonText(map[string]any{"artifact": request.Artifact, "diagnostic": diagnostic}), Error: err.Error(), ElapsedMs: time.Since(started).Milliseconds()})
+		record := &Generation{Kind: "reflex_validation", State: "finished", RequestId: validation, ParentRequestId: c.requestID, Attempt: uint32(c.submissions), Phase: diagnostic.Stage, Output: jsonText(map[string]any{"artifact": request.Artifact, "diagnostic": diagnostic}), Error: err.Error(), ElapsedMs: time.Since(started).Milliseconds()}
+		_ = c.extension.audit("reflex_validation", record)
+		c.extension.emit(ctx, record)
 		feedback := map[string]any{"accepted": false, "diagnostic": diagnostic}
 		if updated {
 			feedback["current_evidence"], _ = compilerInput(c.plan.state, c.plan.capabilities)
@@ -230,7 +226,7 @@ func (c *compilerAgent) refreshEvidence() bool {
 	}
 	return false
 }
-func (c *compilerAgent) generate(ctx context.Context, input map[string]any, output **Reflex) error {
+func (c *compilerAgent) generate(ctx context.Context, input map[string]any, output **Program) error {
 	request := aop.EnvelopeID()
 	c.requestID = request
 	started := time.Now()
@@ -273,43 +269,4 @@ func (c *compilerAgent) generate(ctx context.Context, input map[string]any, outp
 		}
 	}
 	return nil
-}
-func (e *Extension) fillScope(r *Reflex, p *compilation) {
-	if r.When != "" && r.Decide != "" {
-		return
-	}
-	var descriptions []string
-	for _, id := range p.ids {
-		if c, ok := p.claims[id]; ok {
-			descriptions = append(descriptions, c.Context)
-		}
-	}
-	r.When = "The current user requests a capability described by these related natural-language Claims: " + jsonText(descriptions)
-	r.Decide = "Implement the related Claims using current arguments and actual evidence. Defer for missing input, unsupported operations or unknown outcomes."
-}
-
-func (e *Extension) storeCandidate(plan *compilation, r *Reflex, reason error) error {
-	r.Proof = nil
-	id := "r" + digest(r)[:16]
-	members := []string{}
-	for _, member := range plan.ids {
-		if _, ok := plan.claims[member]; ok {
-			members = append(members, member)
-		}
-	}
-	record := reflexRecord{Reflex: *r, Claims: members, Contracts: nativeContracts(plan.capabilities), Blocker: errorText(reason)}
-	_, err := e.updateLibrary(func(lib *library) (bool, error) {
-		if lib.Candidates == nil {
-			lib.Candidates = map[string]reflexRecord{}
-		}
-		if _, ok := lib.Candidates[id]; !ok && len(lib.Candidates) >= maxReflexes {
-			return false, errors.New("candidate library capacity reached")
-		}
-		lib.Candidates[id] = record
-		return true, nil
-	})
-	if err == nil {
-		e.emit(traceContext(context.Background(), plan.job.trace()), &LibraryChange{State: "reflex_candidate", Reflex: reflexDefinition(id, record), Reason: errorText(reason)})
-	}
-	return err
 }

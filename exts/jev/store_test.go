@@ -32,7 +32,7 @@ func TestLibraryPublicationFailurePreservesMemory(t *testing.T) {
 			}
 			changed, err := e.updateLibrary(func(lib *library) (bool, error) {
 				c := lib.Claims["current"]
-				c.Options[0] = "Changed"
+				c.Claim.Options[0] = "Changed"
 				lib.Claims["current"] = c
 				if !saveFailure {
 					return false, errors.New("reject candidate library")
@@ -53,12 +53,12 @@ func TestLibraryDerivesCoverageWithoutPersistedCompilationIndex(t *testing.T) {
 	e := New(Config{Directory: t.TempDir()})
 	claim := choiceClaim("Current workflow"+". "+"Can it progress?", map[string]string{"go": "Progress", Defer: "Missing facts"})
 	cid := "c" + digest(claim)[:16]
-	r := observationReflex(t, `js:({state:{},candidates:{}})`)
+	r := observationReflex(t, `js:function(){return {report:{}};}`)
 	rid := "r" + digest(r)[:16]
 	group := digest(map[string]Claim{cid: claim})
 	if _, err := e.updateLibrary(func(lib *library) (bool, error) {
 		lib.Claims[cid] = claimRecord{Claim: claim}
-		lib.Reflexes[rid] = reflexRecord{Reflex: r, Claims: []string{cid}}
+		lib.Reflexes[rid] = Reflex{Program: r, Claims: []string{cid}}
 		return true, nil
 	}); err != nil {
 		t.Fatal(err)

@@ -168,7 +168,7 @@ func TestExistingSceneSkipsPageActionDeclarations(t *testing.T) {
 	if err := qualifyIndependent(e, t.Context(), &r, observationCapabilities("bash")); err != nil {
 		t.Fatal(err)
 	}
-	e.library.Reflexes["r"+digest(r)[:16]] = reflexRecord{Reflex: r}
+	e.library.Reflexes["r"+digest(r)[:16]] = Reflex{Program: r}
 	cfg.Provider = testProvider(func(context.Context, *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 		t.Error("existing scene caused another model generation")
 		return reply(provider.TextMessage("assistant", "[]")), nil

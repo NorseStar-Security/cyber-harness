@@ -142,7 +142,7 @@ func TestProjectionKeepsNativeJSONWithoutEncodingInflation(t *testing.T) {
 			t.Fatal("structured projection changed exact native values or JS text ABI")
 		}
 	}
-	replay, err := newObservationReplay(&Reflex{}, projection, observationCapabilities("bash"))
+	replay, err := newObservationReplay(&Program{}, projection, observationCapabilities("bash"))
 	if err != nil {
 		t.Fatal(err)
 	}

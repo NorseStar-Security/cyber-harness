@@ -149,24 +149,15 @@ func installReflex(e *Extension, sources ...string) {
 	installObserve(e, code)
 }
 
-func installObserve(e *Extension, code string) Reflex {
-	r := Reflex{When: "The task can progress through the supplied native tools.", Decide: "Select the bound operation matching the current user goal. Report observed completion; defer for missing input or strategy.", Observe: normalizeFixture(code)}
+func installObserve(e *Extension, code string) Program {
+	r := Program{When: "The task can progress through the supplied native tools.", Decide: "Select the bound operation matching the current user goal. Report observed completion; defer for missing input or strategy.", Observe: code}
 	if err := r.validate(); err != nil {
 		panic(err)
 	}
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	e.library.Reflexes["r"+digest(r)[:16]] = reflexRecord{Reflex: r}
+	e.library.Reflexes["r"+digest(r)[:16]] = Reflex{Program: r}
 	return r
-}
-
-// Test fixtures generate ordinary executable JS; no compatibility evaluator
-// is installed in production. The scene exercises the same native bridges.
-func normalizeFixture(code string) string {
-	if strings.HasPrefix(strings.TrimSpace(strings.TrimPrefix(code, "js:")), "function") {
-		return code
-	}
-	return executableFixture(code)
 }
 
 func constantObserve(state string, calls map[string]string) string {
@@ -309,9 +300,9 @@ func settle(t *testing.T, e *Extension) {
 	}
 }
 
-func observationReflex(t *testing.T, code string) Reflex {
+func observationReflex(t *testing.T, code string) Program {
 	t.Helper()
-	r := Reflex{When: "Current task", Decide: "Choose actual native bindings", Observe: normalizeFixture(code)}
+	r := Program{When: "Current task", Decide: "Choose actual native bindings", Observe: code}
 	if err := r.validate(); err != nil {
 		t.Fatal(err)
 	}

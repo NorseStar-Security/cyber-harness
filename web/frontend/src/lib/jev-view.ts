@@ -69,7 +69,7 @@ export function projectJEV(source: readonly AOPEvent[]): JEVProjection {
       if (value.payload.case === 'libraryChange') {
         const state = value.payload.value.state
         if (state !== 'settled') compilation.state = state
-        else if (!['reflex_published', 'reflex_candidate', 'claim_published', 'failed', 'deferred', 'retired'].includes(compilation.state)) compilation.state = 'deferred'
+        else if (!['reflex_published', 'claim_published', 'failed', 'deferred', 'retired'].includes(compilation.state)) compilation.state = 'deferred'
       }
       if (value.payload.case === 'generation') compilation.state = value.payload.value.error ? 'failed'
         : value.payload.value.state === 'started' ? 'generating' : 'reviewing'

@@ -87,7 +87,7 @@ func (e *Extension) prepareCompilation(ctx context.Context, job declaration, see
 		return nil, err
 	}
 	contracts := nativeContracts(capabilities)
-	for id, r := range lib.Reflexes {
+	for id, r := range lib.published() {
 		if id != job.repair && slices.Contains(r.Claims, seed) {
 			if compatibleReflex(r, contracts) {
 				return nil, nil
@@ -97,14 +97,8 @@ func (e *Extension) prepareCompilation(ctx context.Context, job declaration, see
 	}
 	previous, hasPrevious := lib.Reflexes[job.repair]
 	if !hasPrevious {
-		if archivedID, archived, found := e.archivedReflex(job.repair, seed); found {
+		if archivedID, archived, found := lib.archivedReflex(job.repair, seed); found {
 			job.repair, previous, hasPrevious = archivedID, archived, true
-		}
-	}
-	for _, candidate := range lib.Candidates {
-		if slices.Contains(candidate.Claims, seed) && !e.contractsAvailable(candidate.Reflex) {
-			e.emit(ctx, &LibraryChange{State: "deferred", Reason: "matching candidate is waiting for its native contracts and recorded evidence"})
-			return nil, nil
 		}
 	}
 	claims := map[string]Claim{}
@@ -186,7 +180,7 @@ func (e *Extension) prepareCompilation(ctx context.Context, job declaration, see
 	}
 	// JEV owns both the compilation trigger and natural-language grouping.
 	if len(questions) > 0 {
-		out, err := e.exchange(ctx, "jev_reflex", json.RawMessage(jsonText(map[string]any{"seed": seed, "claims": claims, "reflexes": reflexCatalog(lib.Reflexes), "native_contracts": capabilities["native_contracts"], "context": programInput, "focus": job.focus, "repair": job.repair, "handoff": handoff, "previous": previous.Reflex})), questions)
+		out, err := e.exchange(ctx, "jev_reflex", json.RawMessage(jsonText(map[string]any{"seed": seed, "claims": claims, "reflexes": reflexCatalog(lib.published()), "native_contracts": capabilities["native_contracts"], "context": programInput, "focus": job.focus, "repair": job.repair, "handoff": handoff, "previous": previous.Program})), questions)
 		if err != nil {
 			return nil, err
 		}
@@ -230,27 +224,15 @@ func (e *Extension) prepareCompilation(ctx context.Context, job declaration, see
 			scope = append(scope, map[string]string{"claim": c.Description()})
 		}
 	}
-	existing := map[string]Reflex{}
-	for id, r := range lib.Reflexes {
-		existing[id] = r.Reflex
+	existing := map[string]Program{}
+	for id, r := range lib.published() {
+		existing[id] = r.Program
 	}
 	// The code generator sees executable source and scope, not Claim.Options
 	// or duplicated policy strings that can be mistaken for native bindings.
 	input := map[string]any{"scope": scope, "existing": existing, "input": programInput}
-	candidates := map[string]Reflex{}
-	for id, candidate := range lib.Candidates {
-		for _, claim := range candidate.Claims {
-			if _, included := selected[claim]; included {
-				candidates[id] = candidate.Reflex
-				break
-			}
-		}
-	}
-	if len(candidates) > 0 {
-		input["candidates"] = candidates
-	}
 	if hasPrevious {
-		input["previous"] = previous.Reflex
+		input["previous"] = previous.Program
 		input["handoff"] = handoff
 		input["diagnostic"] = "Compare the recorded handoff BEFORE ordinary model supplementation with the actual later calls and results. Repair required executable bindings missing at that handoff using the subsequent evidence. A broad applicability sentence is not proof of binding coverage. Do not return null merely because the scene exists. Return null when existing code already covered the work and the later calls were only redundant verification; missing user input alone needs no code change."
 		if contractChanged {
@@ -294,15 +276,8 @@ func compilationHandoff(data json.RawMessage) (json.RawMessage, error) {
 	return json.Marshal(boundary)
 }
 
-func (e *Extension) generateReflex(ctx context.Context, plan *compilation) (reflex *Reflex, resultErr error) {
+func (e *Extension) generateReflex(ctx context.Context, plan *compilation) (reflex *Program, resultErr error) {
 	compiler := e.newCompilerAgent(plan)
-	defer func() {
-		if reflex == nil && compiler.candidate != nil {
-			if err := e.storeCandidate(plan, compiler.candidate, compiler.blocker); err != nil {
-				resultErr = errors.Join(resultErr, err)
-			}
-		}
-	}()
 	input := plan.input
 	if input == nil {
 		input = map[string]any{}
@@ -314,7 +289,7 @@ func (e *Extension) generateReflex(ctx context.Context, plan *compilation) (refl
 		if trace := traceFrom(ctx); trace != nil {
 			trace.attempt = attempt
 		}
-		var draft *Reflex
+		var draft *Program
 		err := compiler.generate(ctx, input, &draft)
 		if err != nil {
 			var invalid compilationOutputError
@@ -333,7 +308,7 @@ func (e *Extension) generateReflex(ctx context.Context, plan *compilation) (refl
 		}
 		// Final-text artifacts take exactly the same validation path as tool
 		// submissions. Every repairable error goes back to this same Agent.
-		artifact := map[string]any{"api_version": draft.APIVersion, "when": draft.When, "decide": draft.Decide, "steps": draft.Steps, "observe": draft.Observe, "readers": draft.Readers, "arguments": draft.arguments}
+		artifact := map[string]any{"when": draft.When, "decide": draft.Decide, "steps": draft.Steps, "observe": draft.Observe, "readers": draft.Readers, "arguments": draft.arguments}
 		if len(draft.Parameters) != 0 {
 			artifact["parameters_schema"] = draft.Parameters
 		}
@@ -355,7 +330,7 @@ func (e *Extension) generateReflex(ctx context.Context, plan *compilation) (refl
 	}
 }
 
-func (e *Extension) reviewReflex(ctx context.Context, reflex *Reflex, plan *compilation, witnesses []map[string]any) error {
+func (e *Extension) reviewReflex(ctx context.Context, reflex *Program, plan *compilation, witnesses []map[string]any) error {
 	capabilities := plan.capabilities
 	proof, bindings := compactWitnesses(witnesses)
 	defects := map[string]string{
@@ -460,15 +435,17 @@ func (e *Extension) reviewReflex(ctx context.Context, reflex *Reflex, plan *comp
 		return checkErr
 	}
 	if defect == Defer {
-		return compilationOutputError{compilerValidationError{CompilerDiagnostic{Code: "recorded_evidence_unavailable", Stage: "semantic", Status: "waiting", Message: "Independent review cannot establish a useful reusable capability from the available evidence.", Action: "Retain this candidate until the missing actual results or supported native capability is available. inspect_evidence exposes the current evidence; source changes cannot invent missing results.", Expected: defects[Defer], Actual: defect}}}
+		return compilationOutputError{compilerValidationError{CompilerDiagnostic{Code: "recorded_evidence_unavailable", Stage: "semantic", Status: "waiting", Message: "Independent review cannot establish a useful reusable capability from the available evidence.", Action: "Wait for the missing actual results or supported native capability before recompiling. inspect_evidence exposes the current evidence; source changes cannot invent missing results.", Expected: defects[Defer], Actual: defect}}}
 	}
 	return compilationOutputError{compilerValidationError{CompilerDiagnostic{Code: "semantic_validation_failed", Stage: "semantic", Status: "repair", Message: fmt.Sprintf("scene review rejected (%s): %s", defect, defects[defect]), Action: "Inspect the supplied boundary evaluations and exact native bindings. Correct the selected defect using current documented capabilities and actual results, then resubmit. Serialized readers are independent functions: they receive bind/choices/quote and cannot capture Observe locals or call program.", Expected: map[string]any{"defect": defect, "criterion": defects[defect]}, Actual: map[string]any{"evaluations": proof, "bindings": bindings}}}}
 }
 
-func (e *Extension) publishReflex(plan *compilation, reflex *Reflex) error {
-	if !e.qualified(reflexRecord{Reflex: *reflex}) {
+func (e *Extension) publishReflex(plan *compilation, reflex *Program) error {
+	if !e.qualified(*reflex) {
 		return errors.New("cannot publish an independently unqualified Reflex")
 	}
+	program := *reflex
+	program.arguments = nil
 	members := make([]string, 0, len(plan.claims))
 	for id := range plan.claims {
 		members = append(members, id)
@@ -477,8 +454,9 @@ func (e *Extension) publishReflex(plan *compilation, reflex *Reflex) error {
 	id := "r" + digest(reflex)[:16]
 	_, err := e.updateLibrary(func(lib *library) (bool, error) {
 		previous, exists := lib.Reflexes[id]
-		_, replacing := lib.Reflexes[plan.job.repair]
-		if !exists && !replacing && len(lib.Reflexes) >= maxReflexes {
+		replacement, replacing := lib.Reflexes[plan.job.repair]
+		replacing = replacing && !replacement.Archived
+		if (!exists || previous.Archived) && !replacing && len(lib.published()) >= maxReflexes {
 			return false, errors.New("Reflex library capacity reached")
 		}
 		for _, member := range previous.Claims {
@@ -487,26 +465,17 @@ func (e *Extension) publishReflex(plan *compilation, reflex *Reflex) error {
 			}
 		}
 		sort.Strings(members)
-		for candidateID, candidate := range lib.Candidates {
-			superseded := len(candidate.Claims) > 0
-			for _, claim := range candidate.Claims {
-				if !slices.Contains(members, claim) {
-					superseded = false
-					break
-				}
-			}
-			if superseded || reflexSourceHash(candidate.Reflex) == reflexSourceHash(*reflex) {
-				delete(lib.Candidates, candidateID)
-			}
-		}
-		lib.Reflexes[id] = reflexRecord{Reflex: *reflex, Claims: members, Contracts: plan.contracts}
+		lib.Reflexes[id] = Reflex{Program: program, Claims: members, Contracts: plan.contracts}
 		if plan.job.repair != id {
-			delete(lib.Reflexes, plan.job.repair)
+			if previous, ok := lib.Reflexes[plan.job.repair]; ok && !previous.Archived {
+				previous.Archived, previous.ArchiveReason = true, "Replaced by "+id
+				lib.Reflexes[plan.job.repair] = previous
+			}
 		}
 		return true, nil
 	})
 	if err == nil {
-		e.emit(traceContext(context.Background(), plan.job.trace()), &LibraryChange{State: "reflex_published", Reflex: reflexDefinition(id, reflexRecord{Reflex: *reflex, Claims: members, Contracts: plan.contracts}), ReplacedReflexId: plan.job.repair})
+		e.emit(traceContext(context.Background(), plan.job.trace()), &LibraryChange{State: "reflex_published", Reflex: reflexDefinition(id, Reflex{Program: program, Claims: members, Contracts: plan.contracts}), ReplacedReflexId: plan.job.repair})
 	}
 	return err
 }

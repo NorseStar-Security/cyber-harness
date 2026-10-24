@@ -83,6 +83,7 @@ func (e *Extension) beforeModel(ctx context.Context, ev hooks.ContextEvent) ([]*
 		return nil, nil
 	}
 	lib := e.snapshot()
+	lib.Reflexes = lib.published()
 	boundary := digest([]any{raw, reflexCatalog(lib.Reflexes), nativeContracts(caps)})
 	if record.Blocked == boundary {
 		return nil, nil
@@ -117,7 +118,7 @@ func (e *Extension) beforeModel(ctx context.Context, ev hooks.ContextEvent) ([]*
 		if record.ParameterAttempted && record.ArgumentsReflex == id && record.Arguments == nil {
 			continue // Retry only after new user input or a different generated function.
 		}
-		if e.qualified(r) && compatibleReflex(r, nativeContracts(caps)) {
+		if e.qualified(r.Program) && compatibleReflex(r, nativeContracts(caps)) {
 			options[id] = r.When
 		}
 	}
@@ -216,11 +217,11 @@ func (e *Extension) beforeModel(ctx context.Context, ev hooks.ContextEvent) ([]*
 			return nil, handoffError{"native call budget reached"}
 		}
 		call := candidate.call()
-		if err := validateParameters(&scene.Reflex, record.Arguments); err != nil {
+		if err := validateParameters(&scene.Program, record.Arguments); err != nil {
 			return nil, argumentError(err)
 		}
 
-		if err := native.validateCall(&scene.Reflex, candidate, record.Arguments); err != nil {
+		if err := native.validateCall(&scene.Program, candidate, record.Arguments); err != nil {
 			return nil, handoffError{"unsupported native operation: " + err.Error()}
 		}
 		if err := e.judgeRuntime(ctx, "binding", raw, map[string]any{"arguments": record.Arguments, "parameters_schema": scene.Parameters, "call": candidate, "capabilities": bindingCapabilities(candidate, caps), "effects": record.Ledger.summary()}); err != nil {
@@ -317,7 +318,7 @@ func (e *Extension) beforeModel(ctx context.Context, ev hooks.ContextEvent) ([]*
 	}
 	runProgram := func() (map[string]any, error) {
 		if record.Arguments != nil {
-			if err := validateParameters(&scene.Reflex, record.Arguments); err != nil {
+			if err := validateParameters(&scene.Program, record.Arguments); err != nil {
 				e.updateTask(run, task, func(r *taskRecord) { r.Arguments = nil })
 				return nil, argumentError(err)
 			}
@@ -326,12 +327,12 @@ func (e *Extension) beforeModel(ctx context.Context, ev hooks.ContextEvent) ([]*
 				return nil, err
 			}
 		}
-		return runReflexJS(ctx, &scene.Reflex, input, record.Arguments, judge, execute)
+		return runReflexJS(ctx, &scene.Program, input, record.Arguments, judge, execute)
 	}
 	output, err := runProgram()
 	if err == nil && output["parameters"] != nil && output[Defer] != nil && !record.ParameterAttempted {
 		e.updateTask(run, task, func(r *taskRecord) { r.ParameterAttempted = true; r.ArgumentsReflex = id })
-		arguments, argErr := e.supplyArguments(ctx, cfg, raw, scene.Reflex, output["parameters"])
+		arguments, argErr := e.supplyArguments(ctx, cfg, raw, scene.Program, output["parameters"])
 		if argErr == nil {
 			record.Arguments = arguments
 			e.updateTask(run, task, func(r *taskRecord) { r.Arguments = arguments; r.ArgumentsReflex = id })
@@ -414,7 +415,7 @@ func runtimeResult(call *aop.ToolCall, result *aop.ToolResult) map[string]any {
 	return map[string]any{"call_id": result.CallId, "name": call.Name, "arguments": json.RawMessage(call.GetArguments().GetData()), "text": text, "data": data, "is_error": result.IsError, "terminate": result.Terminate}
 }
 
-func (e *Extension) supplyArguments(ctx context.Context, cfg agent.Config, state json.RawMessage, reflex Reflex, missing any) (map[string]any, error) {
+func (e *Extension) supplyArguments(ctx context.Context, cfg agent.Config, state json.RawMessage, reflex Program, missing any) (map[string]any, error) {
 	var current map[string]any
 	decoder := json.NewDecoder(strings.NewReader(string(state)))
 	decoder.UseNumber()

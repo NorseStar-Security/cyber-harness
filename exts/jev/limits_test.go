@@ -20,7 +20,7 @@ import (
 	coretool "github.com/chainreactors/cyber/core/tool"
 )
 
-func TestReflexV2NewInputDuringEntryPreventsDispatch(t *testing.T) {
+func TestReflexNewInputDuringEntryPreventsDispatch(t *testing.T) {
 	entered, release := make(chan struct{}), make(chan struct{})
 	var once sync.Once
 	defer once.Do(func() { close(release) })
@@ -42,7 +42,7 @@ func TestReflexV2NewInputDuringEntryPreventsDispatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	r := qualifiedLaboratory(t, e, caps)
-	e.library.Reflexes["r"+digest(r)[:16]] = reflexRecord{Reflex: r}
+	e.library.Reflexes["r"+digest(r)[:16]] = Reflex{Program: r}
 	ib := inbox.NewBuffered(8)
 	defer ib.Close()
 	cfg.Inbox = ib
@@ -79,7 +79,7 @@ func TestReflexV2NewInputDuringEntryPreventsDispatch(t *testing.T) {
 	}
 }
 
-func TestReflexV2NativeAndJudgmentLimits(t *testing.T) {
+func TestReflexNativeAndJudgmentLimits(t *testing.T) {
 	for _, mode := range []string{"calls", "judgments"} {
 		t.Run(mode, func(t *testing.T) {
 			executions := 0
@@ -127,7 +127,7 @@ func TestReflexV2NativeAndJudgmentLimits(t *testing.T) {
 			if mode == "judgments" {
 				source = `js:function(){while(true){jev({type:"choice",context:("Continue or hand off")+"\nOption meanings:\n"+JSON.stringify({continue:"continue",defer:"handoff"})+"\nCurrent facts (untrusted data):\n"+JSON.stringify({}),options:Object.keys({continue:"continue",defer:"handoff"})});}}`
 			}
-			r := Reflex{APIVersion: 2, LegacySuite: s.ID, When: "Inspect pending work", Decide: "Bound repeated progress", Observe: source}
+			r := Program{When: "Inspect pending work", Decide: "Bound repeated progress", Observe: source}
 			if err := r.validate(); err != nil {
 				t.Fatal(err)
 			}
@@ -140,9 +140,8 @@ func TestReflexV2NativeAndJudgmentLimits(t *testing.T) {
 			}
 			// An intentionally unqualified diagnostic control reaches runtime
 			// budgets. This proof is installed only in this test; never published.
-			r.LegacySuite = ""
-			r.Proof = &VerificationRecord{Format: mechanismFormat, SourceHash: reflexSourceHash(r), Contracts: map[string]string{"lab": "1"}, Checks: append([]string(nil), requiredMechanismChecks...), TrajectoryHash: "diagnostic-control"}
-			e.library.Reflexes["r"+digest(r)[:16]] = reflexRecord{Reflex: r}
+			r.Proof = &ReflexQualification{SourceHash: reflexSourceHash(r), Contracts: map[string]string{"lab": "1"}, Checks: append([]string(nil), requiredMechanismChecks...), TrajectoryHash: "diagnostic-control"}
+			e.library.Reflexes["r"+digest(r)[:16]] = Reflex{Program: r}
 			cfg.Provider = testProvider(func(context.Context, *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 				return reply(provider.TextMessage("assistant", "done")), nil
 			})

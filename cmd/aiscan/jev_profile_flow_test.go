@@ -154,7 +154,7 @@ func TestJEVProfileStreamingCompilationRuntimeAndProtocolEvents(t *testing.T) {
 	}
 	defer p.Close(context.Background())
 	source := `js:function(context,args){const seen=context.history.filter(function(r){return r.name==="bash"&&r.arguments&&r.arguments.command==="playwright sessions"&&!r.is_error;});const r=seen.length?seen[seen.length-1]:execute({name:"bash",arguments:{command:command("playwright",["sessions"])},read:true});if(r.is_error)return{defer:"native read failed"};return{report:{evidence:r.call_id,path:["text"]}};}`
-	artifact, _ := json.Marshal(map[string]any{"api_version": 2, "steps": map[string]any{}, "observe": source, "arguments": map[string]any{}})
+	artifact, _ := json.Marshal(map[string]any{"when": "Inspect currently open browser sessions", "decide": "Report current native session evidence", "steps": map[string]any{}, "observe": source, "arguments": map[string]any{}})
 	model := &profileFlowProvider{ordinary: map[string]int{}, artifact: string(artifact)}
 	p.providers.Set(model, provider.ProviderConfig{Model: "fixture", MaxTokens: 1024})
 	mux := aop.NewNamespaceMux(t.Context())

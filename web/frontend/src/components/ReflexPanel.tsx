@@ -87,7 +87,7 @@ export default function ReflexPanel({ open, onClose, sessionID, events }: {
     const [key] = String(edge.label).split(' · ')
     return { ...edge, label: `${t(`edges.${key}`)} · ${edge.data?.count}` }
   })
-  const definitions = [...(library?.reflexes || []), ...(library?.candidates || []), ...(library?.claims || [])]
+  const definitions = [...(library?.reflexes || []), ...(library?.claims || [])]
   const filtered = definitions.filter(value => `${value.id} ${'context' in value ? value.context : value.when + ' ' + value.decide}`.toLowerCase().includes(query.toLowerCase()))
   const definition = filtered.find(value => value.id === selected) || filtered[0]
   const currentSegments = graph.segments || []
@@ -129,14 +129,14 @@ export default function ReflexPanel({ open, onClose, sessionID, events }: {
         <div className="tool-panel-list max-h-64 border-b border-border/60">
           <div className="sticky top-0 border-b border-border/60 bg-background p-3"><label className="flex items-center gap-2 rounded-md border border-border px-2.5 py-2">
             <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /><input value={query} onChange={e => setQuery(e.target.value)} placeholder={t('search')} aria-label={t('search')} className="min-w-0 flex-1 bg-transparent text-xs outline-none" /></label>
-            <div className="mt-2 flex gap-3 text-xs text-muted-foreground"><span>Reflex {library?.reflexes.length ?? 0}</span><span>Claim {library?.claims.length ?? 0}</span><span>{t('candidate')} {library?.candidates?.length ?? 0}</span></div>
+            <div className="mt-2 flex gap-3 text-xs text-muted-foreground"><span>Reflex {library?.reflexes.filter(r => !r.archived).length ?? 0}</span><span>Claim {library?.claims.length ?? 0}</span><span>{t('archived')} {library?.reflexes.filter(r => r.archived).length ?? 0}</span></div>
           </div>
           {!connected && <p className="p-4 text-xs text-muted-foreground">{t('disconnected')}</p>}
           {error && <p role="alert" className="break-words p-4 text-xs text-destructive">{t('unavailable')} · {error}</p>}
           {loading && !library && <p className="p-4 text-xs text-muted-foreground">{t('loading')}</p>}
           {!loading && !error && connected && !filtered.length && <p className="p-4 text-xs text-muted-foreground">{t(!sessionID ? 'noSession' : query ? 'noMatches' : 'emptyLibrary')}</p>}
           {filtered.map(value => <button key={value.id} className={cn('block w-full border-b border-border/40 px-4 py-3 text-left hover:bg-accent/40', definition?.id === value.id && 'bg-accent/60')} onClick={() => setSelected(value.id)}>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">{'observe' in value ? <Repeat2 className="h-3 w-3" /> : <Layers className="h-3 w-3" />}<span>{'observe' in value ? library?.candidates?.some(candidate => candidate.id === value.id) ? t('candidate') : 'Reflex' : 'Claim'}</span><code className="truncate">{value.id}</code></div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">{'observe' in value ? <Repeat2 className="h-3 w-3" /> : <Layers className="h-3 w-3" />}<span>{'observe' in value ? value.archived ? t('archived') : 'Reflex' : 'Claim'}</span><code className="truncate">{value.id}</code></div>
             <p className="mt-1.5 line-clamp-2 break-words text-xs leading-relaxed">{'context' in value ? value.context : value.when}</p>
           </button>)}
         </div>

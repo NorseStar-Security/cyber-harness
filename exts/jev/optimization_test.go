@@ -77,14 +77,14 @@ func TestCompilationCooldownCoversOtherClaimAndSession(t *testing.T) {
 }
 
 func TestReflexEnvelopeRejectsMissingOrAmbiguousObserve(t *testing.T) {
-	for _, source := range []string{`{}`, `{"readers":{"inspect":"\"observe\""}}`, `{"observe":2}`, `{"observe":"null"}`, `{"observe":null,"readers":{"inspect":"function(){}"}}`, `{"observe":"js:({})","extra":true}`, `{"observe":null} {}`} {
-		var r *Reflex
+	for _, source := range []string{`js:function(){return {report:1};}`, "```javascript\nfunction(){}\n```", `{}`, `{"readers":{"inspect":"\"observe\""}}`, `{"observe":2}`, `{"observe":"null"}`, `{"observe":null}`, `{"observe":null,"readers":{"inspect":"function(){}"}}`, `{"observe":"js:({})","extra":true}`, `{"observe":null} {}`} {
+		var r *Program
 		if decodeReflex(source, &r) == nil {
 			t.Fatalf("accepted malformed artifact %s", source)
 		}
 	}
-	for _, source := range []string{`null`, `{"observe":null}`} {
-		var r *Reflex
+	for _, source := range []string{`null`} {
+		var r *Program
 		if err := decodeReflex(source, &r); err != nil || r != nil {
 			t.Fatalf("null=%s err=%v", source, err)
 		}

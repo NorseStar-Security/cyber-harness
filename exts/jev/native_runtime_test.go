@@ -18,7 +18,7 @@ import (
 	toolhooks "github.com/chainreactors/cyber/core/tool/hooks"
 )
 
-func TestReflexV2ParameterFailureReleasesOrdinaryExecution(t *testing.T) {
+func TestReflexParameterFailureReleasesOrdinaryExecution(t *testing.T) {
 	for _, output := range []string{"null", `{"actor":null,"count":2,"query":true}`} {
 		t.Run(output, func(t *testing.T) {
 			entries := 0
@@ -44,7 +44,7 @@ func TestReflexV2ParameterFailureReleasesOrdinaryExecution(t *testing.T) {
 			if err := qualifyIndependent(e, t.Context(), &r, caps); err != nil {
 				t.Fatal(err)
 			}
-			e.library.Reflexes["r-test"] = reflexRecord{Reflex: r}
+			e.library.Reflexes["r-test"] = Reflex{Program: r}
 			parameters, ordinary := 0, 0
 			cfg.Provider = testProvider(func(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 				if req.Purpose == "parameters" {
@@ -69,7 +69,7 @@ func TestReflexV2ParameterFailureReleasesOrdinaryExecution(t *testing.T) {
 	}
 }
 
-func TestReflexV2ParameterExtractionPreservesVerbatimConstraints(t *testing.T) {
+func TestReflexParameterExtractionPreservesVerbatimConstraints(t *testing.T) {
 	e, cfg, _ := testInstallation(t, Config{Mode: "off"}, nil)
 	actor := "当前 'quoted' \\ path"
 	r := laboratoryReflex()
@@ -105,7 +105,7 @@ func TestReflexV2ParameterExtractionPreservesVerbatimConstraints(t *testing.T) {
 	}
 }
 
-func TestReflexV2ParameterExtractionRetriesTruncationAndAccountsUsage(t *testing.T) {
+func TestReflexParameterExtractionRetriesTruncationAndAccountsUsage(t *testing.T) {
 	e, cfg, _ := testInstallation(t, Config{Mode: "off"}, nil)
 	trace := &runtimeTrace{session: "parameter-retry", turn: "t", task: "task"}
 	run := digest([]string{trace.session, trace.turn})
@@ -132,7 +132,7 @@ func TestReflexV2ParameterExtractionRetriesTruncationAndAccountsUsage(t *testing
 	}
 }
 
-func TestReflexV2AgentExecutorAndHandoff(t *testing.T) {
+func TestReflexAgentExecutorAndHandoff(t *testing.T) {
 	for seed := 0; seed < 20; seed++ {
 		for _, condition := range []string{"normal", "503", "tool_error", "no_query", "guardrail", "missing_input"} {
 			t.Run(fmt.Sprintf("%s/%d", condition, seed), func(t *testing.T) {
@@ -186,12 +186,12 @@ func TestReflexV2AgentExecutorAndHandoff(t *testing.T) {
 					t.Fatal(err)
 				}
 				rid := "r" + digest(r)[:16]
-				e.library.Reflexes[rid] = reflexRecord{Reflex: r, Contracts: map[string]string{}}
+				e.library.Reflexes[rid] = Reflex{Program: r, Contracts: map[string]string{}}
 				var events []*aop.Event
 				sub := e.stream.Observe(func(ev *aop.Event) { events = append(events, ev) })
 				defer sub.Close(t.Context())
 				if condition == "guardrail" {
-					toolhooks.Before.On(registry, "deny-v2", func(context.Context, toolhooks.CallEvent) (toolhooks.Admission, error) {
+					toolhooks.Before.On(registry, "deny-effect", func(context.Context, toolhooks.CallEvent) (toolhooks.Admission, error) {
 						return toolhooks.Admission{Deny: errors.New("blocked")}, nil
 					})
 				}
@@ -218,7 +218,7 @@ func TestReflexV2AgentExecutorAndHandoff(t *testing.T) {
 					}
 					return reply(provider.TextMessage("assistant", "finished")), nil
 				})
-				cfg.SessionID = fmt.Sprintf("v2-%s-%d", condition, seed)
+				cfg.SessionID = fmt.Sprintf("runtime-%s-%d", condition, seed)
 				result, err := agent.NewAgent(cfg).Run(t.Context(), agent.TextInput("Add exactly two current items and report the actual receipt."))
 				if err != nil || result.Output != "finished" || finals != 1 {
 					t.Fatalf("run result=%v error=%v finals=%d", result, err, finals)
@@ -253,7 +253,7 @@ func TestReflexV2AgentExecutorAndHandoff(t *testing.T) {
 	}
 }
 
-func TestReflexV2RuntimeJudgmentsReceiveEachCurrentResult(t *testing.T) {
+func TestReflexRuntimeJudgmentsReceiveEachCurrentResult(t *testing.T) {
 	bindings, completions := 0, 0
 	client := fakeJEV(t, func(req inferenceRequest) map[string]inferenceAnswer {
 		if runtimeRequest(req) {
@@ -301,11 +301,11 @@ func TestReflexV2RuntimeJudgmentsReceiveEachCurrentResult(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := Reflex{APIVersion: 2, When: "Create and inspect a resource", Decide: "Use its current handle", Steps: map[string]StepDefinition{"create": {Contract: "resource", Count: 1}}, Observe: `js:function(){const created=execute({name:"bash",arguments:{command:command("resource",["create"])},read:false,step:"create",occurrence:0});const read=execute({name:"bash",arguments:{command:command("resource",["inspect",created.data.handle])},read:true});return{report:{evidence:read.call_id,path:["data","receipt"]}};}`}
+	r := Program{When: "Create and inspect a resource", Decide: "Use its current handle", Steps: map[string]StepDefinition{"create": {Contract: "resource", Count: 1}}, Observe: `js:function(){const created=execute({name:"bash",arguments:{command:command("resource",["create"])},read:false,step:"create",occurrence:0});const read=execute({name:"bash",arguments:{command:command("resource",["inspect",created.data.handle])},read:true});return{report:{evidence:read.call_id,path:["data","receipt"]}};}`}
 	if err := e.qualify(t.Context(), &r, caps, state); err != nil {
 		t.Fatal(err)
 	}
-	e.library.Reflexes["resource"] = reflexRecord{Reflex: r}
+	e.library.Reflexes["resource"] = Reflex{Program: r}
 	cfg.Provider = testProvider(func(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 		if req.Purpose != "composition" || len(req.Tools) != 0 {
 			t.Fatalf("runtime unexpectedly used execution reasoning: %s", provider.MessageText(req.Messages[len(req.Messages)-1]))
@@ -318,14 +318,14 @@ func TestReflexV2RuntimeJudgmentsReceiveEachCurrentResult(t *testing.T) {
 	}
 }
 
-func TestReflexV2CompilerAgentToolFeedback(t *testing.T) {
+func TestReflexCompilerAgentToolFeedback(t *testing.T) {
 	e := testLaboratory(t)
 	e.client = fakeJEV(t, func(req inferenceRequest) map[string]inferenceAnswer { return declarationAnswers(req, true) })
 	claims := map[string]Claim{"a": {Type: jevapi.ClaimNoul, Context: "Add requested items exactly once per occurrence."}, "b": {Type: jevapi.ClaimNoul, Context: "After an uncertain submission, query current completion or defer."}}
 	r := laboratoryReflex()
 	r.arguments = laboratorySuite().Cases(nil)[0].Arguments
 	artifact := func(source string) string {
-		return jsonText(map[string]any{"api_version": 2, "steps": r.Steps, "parameters_schema": r.Parameters, "observe": source, "arguments": r.arguments})
+		return jsonText(map[string]any{"when": "Inspect the current requested native capability", "decide": "Report actual results or hand off missing input", "steps": r.Steps, "parameters_schema": r.Parameters, "observe": source, "arguments": r.arguments})
 	}
 	bad := artifact(strings.ReplaceAll(r.Observe, "occurrence:i", "occurrence:0"))
 	good := artifact(r.Observe)
@@ -357,11 +357,11 @@ func TestReflexV2CompilerAgentToolFeedback(t *testing.T) {
 	trajectory, _ := testTrajectories.Load(e)
 	plan := &compilation{state: json.RawMessage(trajectory.([]byte)), job: declaration{cfg: cfg}, claims: claims, ids: []string{"a", "b"}, capabilities: observationCapabilities("bash"), input: map[string]any{}}
 	compiler := e.newCompilerAgent(plan)
-	var generated *Reflex
+	var generated *Program
 	if err := compiler.generate(t.Context(), plan.input, &generated); err != nil {
 		t.Fatal(err)
 	}
-	if requests != 2 || compiler.submissions != 2 || generated == nil || !e.qualified(reflexRecord{Reflex: *generated}) {
+	if requests != 2 || compiler.submissions != 2 || generated == nil || !e.qualified(*generated) {
 		t.Fatal("compiler Agent did not revise, validate and retain code")
 	}
 	if _, err := compiler.ExecuteTool(t.Context(), "bash", `{"command":"anything"}`); err != nil {
@@ -369,7 +369,7 @@ func TestReflexV2CompilerAgentToolFeedback(t *testing.T) {
 	}
 }
 
-func TestReflexV2GroupingFailureAndBackgroundIsolation(t *testing.T) {
+func TestReflexGroupingFailureAndBackgroundIsolation(t *testing.T) {
 	compiling, release := make(chan struct{}), make(chan struct{})
 	var once sync.Once
 	defer once.Do(func() { close(release) })

@@ -358,7 +358,7 @@ func TestLiveReflexExecutionReplacement(t *testing.T) {
 				t.Fatal("warm verification requires an existing qualified Reflex")
 			}
 			for _, r := range lib.Reflexes {
-				if !e.qualified(r) {
+				if !e.qualified(r.Program) {
 					t.Fatal("warm library qualification is outdated; run a new cold experiment instead of retraining or editing its proof")
 				}
 			}

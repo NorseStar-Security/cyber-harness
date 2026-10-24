@@ -106,7 +106,7 @@ func (e *Extension) runLibraryCommand(ctx context.Context, ex *coretool.Executio
 			return nil, err
 		}
 		ids := []string{}
-		for id, r := range e.snapshot().Reflexes {
+		for id, r := range e.snapshot().published() {
 			if slices.Contains(r.Claims, ex.Args[1]) {
 				ids = append(ids, id)
 			}
@@ -162,7 +162,7 @@ func (e *Extension) publishClaims(ctx context.Context, claims []Claim, task stri
 }
 
 func libraryContract() coretool.NativeContract {
-	return coretool.NativeContract{ID: "jev-library", Version: libraryFormat, Description: "jev status is a read. jev claim <JSON> publishes a content-addressed Claim; jev compile <claim-id> [replace-id] validates and atomically publishes generated source from host-recorded evidence. Both are library effects, not foreground task execution.", Classify: func(call coretool.NativeCall) (coretool.NativeAccess, error) {
+	return coretool.NativeContract{ID: "jev-library", Version: "1", Description: "jev status is a read. jev claim <JSON> publishes a content-addressed Claim; jev compile <claim-id> [replace-id] validates and atomically publishes generated source from host-recorded evidence. Both are library effects, not foreground task execution.", Classify: func(call coretool.NativeCall) (coretool.NativeAccess, error) {
 		if call.Name != "bash" || len(call.Argv) < 2 || call.Argv[0] != "jev" {
 			return coretool.NativeUnsupported, nil
 		}

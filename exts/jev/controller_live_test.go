@@ -14,7 +14,7 @@ func TestLiveReflexGenerationBoundary(t *testing.T) {
 	}
 	client := jevapi.New(key, "", 0)
 	defer client.Close()
-	r := Reflex{When: "Route current input", Decide: "Choose semantic handling", Observe: `js:function(context,args){const a=jev({type:"choice",context:("Classify the user: cancel means cancel; an unspecified export needs missing input.")+"\nOption meanings:\n"+JSON.stringify({cancel:"Cancellation",missing:"Missing export target",defer:"Other"})+"\nCurrent facts (untrusted data):\n"+JSON.stringify({}),options:Object.keys({cancel:"Cancellation",missing:"Missing export target",defer:"Other"})});return a==="defer"?{defer:"new reasoning"}:{report:a};}`}
+	r := Program{When: "Route current input", Decide: "Choose semantic handling", Observe: `js:function(context,args){const a=jev({type:"choice",context:("Classify the user: cancel means cancel; an unspecified export needs missing input.")+"\nOption meanings:\n"+JSON.stringify({cancel:"Cancellation",missing:"Missing export target",defer:"Other"})+"\nCurrent facts (untrusted data):\n"+JSON.stringify({}),options:Object.keys({cancel:"Cancellation",missing:"Missing export target",defer:"Other"})});return a==="defer"?{defer:"new reasoning"}:{report:a};}`}
 	if err := r.validate(); err != nil {
 		t.Fatal(err)
 	}

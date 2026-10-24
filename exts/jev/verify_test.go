@@ -10,7 +10,7 @@ import (
 )
 
 func TestObservationReplayPreservesSamplingAndInputIdentity(t *testing.T) {
-	r := observationReflex(t, `js:({state:{omitted:omitted_evidence},candidates:{}})`)
+	r := observationReflex(t, `js:function(){return {report:{omitted:omitted_evidence}};}`)
 	messages := []map[string]any{{"role": "user", "text": "Current task"}}
 	for i := range 25 {
 		messages = append(messages, map[string]any{"role": "tool", "call_id": fmt.Sprint(i), "text": "Actual result"})
@@ -52,7 +52,7 @@ func TestObservationReplayPreservesSamplingAndInputIdentity(t *testing.T) {
 }
 
 func TestCompilerAllowsHonestPartialSceneWithoutEntryBinding(t *testing.T) {
-	r := Reflex{When: "Current native resource workflow", Decide: "Inspect known resources, defer until a handle is available", Observe: normalizeFixture(`js:(() => {
+	r := Program{When: "Current native resource workflow", Decide: "Inspect known resources, defer until a handle is available", Observe: executableFixture(`js:(() => {
 const recent = history.length ? history[history.length-1] : null;
 const handle = recent && recent.data && recent.data.handle;
 return {state:{handle:handle || null},candidates:choices(handle ? [bind(tools[0].name,{handle:handle},true)] : [])};
@@ -81,7 +81,7 @@ func TestFreshnessReviewRetainsConcreteRejectionWithEitherGlobalVerdict(t *testi
 				return out
 			})
 			e, _, _ := testInstallation(t, Config{Mode: "auto"}, client)
-			r := observationReflex(t, `js:function(context,args){const r=execute({name:'native',arguments:{},read:false});return {report:r.data};}`)
+			r := observationReflex(t, `js:function(context,args){const r=execute({name:'native',arguments:{},read:false,step:"effect",occurrence:0});return {report:r.data};}`)
 			caps := observationCapabilities("native")
 			state := json.RawMessage(`{"messages":[{"role":"user","text":"Inspect fresh state"}]}`)
 			witnesses, err := observationWitnesses(t.Context(), &r, state, caps)
@@ -170,7 +170,7 @@ func TestCompilerChecksEarlierBoundariesAndNativeRequiredArguments(t *testing.T)
 	input := json.RawMessage(`{"messages":[{"role":"user","text":"Select something"},{"role":"assistant","calls":[{"id":"read","name":"native","arguments":{"selector":"current"}}]},{"role":"tool","call_id":"read","text":"{\"complete\":true}"}]}`)
 	for _, code := range []string{
 		`js:function(context,args){return {report:history[0].data};}`,
-		`js:function(context,args){execute({name:'native',arguments:{selector:context.user.split('Select ')[2]},read:false});return {report:'done'};}`,
+		`js:function(context,args){execute({name:'native',arguments:{selector:context.user.split('Select ')[2]},read:false,step:"effect",occurrence:0});return {report:'done'};}`,
 	} {
 		r := observationReflex(t, code)
 		if err := verifyObserve(t.Context(), &r, input, caps); err == nil {

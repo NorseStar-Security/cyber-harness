@@ -239,7 +239,7 @@ func literalCommand(text string) []string {
 	return argv
 }
 
-func validateParameters(r *Reflex, args map[string]any) error {
+func validateParameters(r *Program, args map[string]any) error {
 	if len(r.Parameters) == 0 {
 		return nil
 	}

@@ -1640,9 +1640,26 @@
               "helpers": "98aa22757269c3f695b8e3254b3cba7af0f196d29e5e05db58821ec7e43533db",
               "tool:bash": "e7d02305dd76236efcf891511cbf7be63b6ecfaacc0a9421a045d009a93a271a"
             },
-            "apiVersion": 2,
-            "qualificationJson": "{\"format\":\"native-mechanism/1\",\"source_hash\":\"27f1db9ca6bb17274cd3c96ac01155110badea677d37c1c18747a6f3a2cf5218\",\"contracts\":{\"playwright\":\"1\"},\"checks\":[\"syntax\",\"parameters\",\"manifest\",\"native_contracts\",\"finite_branches\",\"recorded_replay\",\"entry_report\"],\"trajectory_hash\":\"e3d4637c3bfd2b7450ded5d7a04482212fffaf3c8c18e527563b220e30137e38\",\"replayed\":1,\"coverage_gaps\":[\"Synthetic replay coverage gap.\"]}",
-            "manifestJson": "{\"parameters_schema\":null,\"steps\":{}}"
+            "qualification": {
+              "sourceHash": "27f1db9ca6bb17274cd3c96ac01155110badea677d37c1c18747a6f3a2cf5218",
+              "contracts": {
+                "playwright": "1"
+              },
+              "checks": [
+                "syntax",
+                "parameters",
+                "manifest",
+                "native_contracts",
+                "finite_branches",
+                "recorded_replay",
+                "entry_report"
+              ],
+              "trajectoryHash": "e3d4637c3bfd2b7450ded5d7a04482212fffaf3c8c18e527563b220e30137e38",
+              "replayed": "1",
+              "coverageGaps": [
+                "Synthetic replay coverage gap."
+              ]
+            }
           }
         }
       }
@@ -1936,9 +1953,26 @@
               "helpers": "98aa22757269c3f695b8e3254b3cba7af0f196d29e5e05db58821ec7e43533db",
               "tool:bash": "e7d02305dd76236efcf891511cbf7be63b6ecfaacc0a9421a045d009a93a271a"
             },
-            "apiVersion": 2,
-            "qualificationJson": "{\"format\":\"native-mechanism/1\",\"source_hash\":\"27f1db9ca6bb17274cd3c96ac01155110badea677d37c1c18747a6f3a2cf5218\",\"contracts\":{\"playwright\":\"1\"},\"checks\":[\"syntax\",\"parameters\",\"manifest\",\"native_contracts\",\"finite_branches\",\"recorded_replay\",\"entry_report\"],\"trajectory_hash\":\"e3d4637c3bfd2b7450ded5d7a04482212fffaf3c8c18e527563b220e30137e38\",\"replayed\":1,\"coverage_gaps\":[\"Synthetic replay coverage gap.\"]}",
-            "manifestJson": "{\"parameters_schema\":null,\"steps\":{}}"
+            "qualification": {
+              "sourceHash": "27f1db9ca6bb17274cd3c96ac01155110badea677d37c1c18747a6f3a2cf5218",
+              "contracts": {
+                "playwright": "1"
+              },
+              "checks": [
+                "syntax",
+                "parameters",
+                "manifest",
+                "native_contracts",
+                "finite_branches",
+                "recorded_replay",
+                "entry_report"
+              ],
+              "trajectoryHash": "e3d4637c3bfd2b7450ded5d7a04482212fffaf3c8c18e527563b220e30137e38",
+              "replayed": "1",
+              "coverageGaps": [
+                "Synthetic replay coverage gap."
+              ]
+            }
           }
         }
       }

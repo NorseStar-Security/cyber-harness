@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 )
 
-func (e *Extension) contractsAvailable(r Reflex) bool {
+func (e *Extension) contractsAvailable(r Program) bool {
 	contracts := e.contracts.Snapshot()
 	for _, step := range r.Steps {
 		if _, ok := contracts[step.Contract]; !ok {
@@ -32,7 +32,7 @@ func nativeContracts(capabilities map[string]any) map[string]string {
 	return contracts
 }
 
-func compatibleReflex(record reflexRecord, contracts map[string]string) bool {
+func compatibleReflex(record Reflex, contracts map[string]string) bool {
 	for key, expected := range record.Contracts {
 		if contracts[key] != expected {
 			return false
@@ -75,7 +75,7 @@ func reflexContracts(capabilities map[string]any, witnesses []map[string]any) ma
 }
 
 // Send applicability and policy once; source is needed only by compilation.
-func reflexCatalog(records map[string]reflexRecord) map[string]any {
+func reflexCatalog(records map[string]Reflex) map[string]any {
 	catalog := map[string]any{}
 	for id, record := range records {
 		catalog[id] = map[string]any{"when": record.When, "decide": record.Decide, "claims": record.Claims}

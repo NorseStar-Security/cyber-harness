@@ -55,10 +55,10 @@ func TestJEVDefersRepairBeforeAnyLLMGeneration(t *testing.T) {
 	e, cfg, _ := testInstallation(t, Config{Mode: "auto"}, client)
 	c := choiceClaim("Current native workflow"+". "+"Which operation advances it?", map[string]string{"operate": "Use current bindings", Defer: "Missing facts"})
 	cid := "c" + digest(c)[:16]
-	r := Reflex{When: c.Context, Decide: "Report actual evidence", Observe: normalizeFixture(`js:({state:{},candidates:{}})`)}
+	r := Program{When: c.Context, Decide: "Report actual evidence", Observe: `js:function(){return {report:{}};}`}
 	rid := "r" + digest(r)[:16]
 	e.library.Claims[cid] = claimRecord{Claim: c}
-	e.library.Reflexes[rid] = reflexRecord{Reflex: r, Claims: []string{cid}}
+	e.library.Reflexes[rid] = Reflex{Program: r, Claims: []string{cid}}
 	before := digest(e.snapshot())
 	cfg.Provider = testProvider(func(context.Context, *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 		generated++

@@ -18,16 +18,16 @@ import (
 	coretool "github.com/chainreactors/cyber/core/tool"
 )
 
-func TestClaimLibraryRejectsUnknownAndInvalidFormatsWithoutRewriting(t *testing.T) {
+func TestClaimLibraryRejectsUnknownAndInvalidFieldsWithoutRewriting(t *testing.T) {
 	for _, data := range []string{
-		`{"format":"claim/99","claims":{},"reflexes":{}}`,
+		`{"format":"unsupported","claims":{},"reflexes":{}}`,
 		`{"claims":null,"reflexes":{}}`,
 		`{"unrelated":"file"}`,
-		`{"format":"claim/2"`,
-		`{"format":"claim/2","claims":{},"reflexes":{},"compiled":{}}`,
-		`{"format":"claim/2","claims":{},"reflexes":{},"unknown":true}`,
-		`{"format":"claim/2","claims":{"c":{"text":"old","task":"x"}},"reflexes":{}}`,
-		`{"format":"claim/2","claims":{"c":{"type":"noul","context":"valid","when":"legacy"}},"reflexes":{}}`,
+		`{"claims":{}`,
+		`{"claims":{},"reflexes":{},"compiled":{}}`,
+		`{"claims":{},"reflexes":{},"unknown":true}`,
+		`{"claims":{"c":{"text":"old","task":"x"}},"reflexes":{}}`,
+		`{"claims":{"c":{"type":"noul","context":"valid","when":"unexpected"}},"reflexes":{}}`,
 	} {
 		e := New(Config{Directory: t.TempDir()})
 		path := filepath.Join(e.config.Directory, "library.json")
@@ -35,59 +35,11 @@ func TestClaimLibraryRejectsUnknownAndInvalidFormatsWithoutRewriting(t *testing.
 			t.Fatal(err)
 		}
 		if err := e.loadLibrary(); err == nil {
-			t.Fatal("old or ambiguous format accepted")
+			t.Fatal("invalid library accepted")
 		}
 		got, _ := os.ReadFile(path)
 		if string(got) != data || len(e.snapshot().Claims) != 0 {
 			t.Fatal("rejected library mutated")
-		}
-	}
-}
-
-func TestClaimLibraryUpgradeArchivesOnceAndRemainsUsable(t *testing.T) {
-	for _, format := range []string{"", "claim/1"} {
-		for _, mode := range []string{"off", "auto"} {
-			t.Run(format+"/"+mode, func(t *testing.T) {
-				directory := t.TempDir()
-				original := `{"claims":{"old":{"text":"Historical judgment","task":"previous","consumed":true}},"reflexes":{"old":{"observe":"old executable source"}},"compiled":{"old":true}}`
-				if format != "" {
-					original = `{"format":"` + format + `",` + original[1:]
-				}
-				path := filepath.Join(directory, "library.json")
-				if err := os.WriteFile(path, []byte(original), 0600); err != nil {
-					t.Fatal(err)
-				}
-				client := fakeJEV(t, func(inferenceRequest) map[string]inferenceAnswer { return map[string]inferenceAnswer{} })
-				e, _, _ := testInstallation(t, Config{Directory: directory, Mode: mode}, client)
-				current := e.snapshot()
-				if current.Format != libraryFormat || len(current.Claims) != 0 || len(current.Reflexes) != 0 || len(current.Candidates) != 0 {
-					t.Fatal("historical definitions became active without current validation")
-				}
-				archives, err := filepath.Glob(filepath.Join(directory, "library-backup-*.json"))
-				if err != nil || len(archives) != 1 {
-					t.Fatalf("archives=%v error=%v", archives, err)
-				}
-				got, err := os.ReadFile(archives[0])
-				if err != nil || string(got) != original {
-					t.Fatal("historical library bytes were not preserved", err)
-				}
-				claim := Claim{Type: jevapi.ClaimNoul, Context: "Current observed page is ready."}
-				id := "c" + digest(claim)[:16]
-				if _, err := e.updateLibrary(func(lib *library) (bool, error) { lib.Claims[id] = claimRecord{Claim: claim}; return true, nil }); err != nil {
-					t.Fatal(err)
-				}
-				reloaded := New(Config{Directory: directory})
-				if err := reloaded.loadLibrary(); err != nil {
-					t.Fatal(err)
-				}
-				if reloaded.snapshot().Claims[id].Context != claim.Context {
-					t.Fatal("current Claim was not persisted")
-				}
-				archives, err = filepath.Glob(filepath.Join(directory, "library-backup-*.json"))
-				if err != nil || len(archives) != 1 {
-					t.Fatal("a normal reload archived the library again", err)
-				}
-			})
 		}
 	}
 }
@@ -116,7 +68,7 @@ func TestOrdinaryReflexPublishesAndCompilesItsOwnReplacement(t *testing.T) {
 	}
 	parentSource := `js:function(context,args){if(!args)return {defer:"missing arguments",parameters:"claim,previous"};const published=execute({name:"bash",arguments:{command:command("jev",["claim",JSON.stringify(args.claim)])},read:false,step:"publish",occurrence:0});const compiled=execute({name:"bash",arguments:{command:command("jev",["compile",published.data.claim_id,args.previous])},read:false,step:"compile",occurrence:0});return {report:compiled.data};}`
 	childSource := `js:function(context,args){if(!args)return {defer:"missing arguments",parameters:"claim"};const published=execute({name:"bash",arguments:{command:command("jev",["claim",JSON.stringify(args.claim)])},read:false,step:"publish",occurrence:0});return {report:published.data};}`
-	parent := Reflex{APIVersion: 2, When: "Publish a requested judgment and compile its replacement", Decide: "Publish current arguments, compile with host evidence, and report the returned IDs.", Observe: parentSource, Steps: map[string]StepDefinition{
+	parent := Program{When: "Publish a requested judgment and compile its replacement", Decide: "Publish current arguments, compile with host evidence, and report the returned IDs.", Observe: parentSource, Steps: map[string]StepDefinition{
 		"publish": {Contract: "jev-library", Count: 1}, "compile": {Contract: "jev-library", Count: 1},
 	}, Parameters: json.RawMessage(`{"type":"object","required":["claim","previous"],"properties":{"claim":{"type":"object"},"previous":{"type":"string"}},"additionalProperties":false}`), arguments: map[string]any{"claim": c, "previous": "recorded-parent"}}
 	// Recorded native results are replayed during qualification. Compilation
@@ -150,7 +102,7 @@ func TestOrdinaryReflexPublishesAndCompilesItsOwnReplacement(t *testing.T) {
 			if rounds > 1 {
 				return nil, errors.New("replacement failed ordinary validation")
 			}
-			return reply(provider.TextMessage("assistant", jsonText(map[string]any{"api_version": 2, "steps": map[string]StepDefinition{"publish": {Contract: "jev-library", Count: 1}}, "parameters_schema": json.RawMessage(`{"type":"object","required":["claim"],"properties":{"claim":{"type":"object"}},"additionalProperties":false}`), "observe": childSource, "arguments": map[string]any{"claim": c}}))), nil
+			return reply(provider.TextMessage("assistant", jsonText(map[string]any{"when": "Inspect the current requested native capability", "decide": "Report actual results or hand off missing input", "steps": map[string]StepDefinition{"publish": {Contract: "jev-library", Count: 1}}, "parameters_schema": json.RawMessage(`{"type":"object","required":["claim"],"properties":{"claim":{"type":"object"}},"additionalProperties":false}`), "observe": childSource, "arguments": map[string]any{"claim": c}}))), nil
 		default:
 			return nil, errors.New("unexpected model invocation")
 		}
@@ -163,14 +115,14 @@ func TestOrdinaryReflexPublishesAndCompilesItsOwnReplacement(t *testing.T) {
 		t.Fatalf("ordinary self-compilation failed: %v %s", err, jsonText(receipt))
 	}
 	lib := e.snapshot()
-	if rounds != 1 || len(lib.Reflexes) != 1 || len(lib.Claims) != 1 {
+	if rounds != 1 || len(lib.published()) != 1 || len(lib.Claims) != 1 {
 		t.Fatalf("unexpected self-compilation: rounds=%d library=%+v", rounds, lib)
 	}
-	if _, exists := lib.Reflexes[parentID]; exists {
+	if !lib.Reflexes[parentID].Archived {
 		t.Fatal("ordinary Reflex did not replace itself")
 	}
-	for _, r := range lib.Reflexes {
-		if r.Observe != childSource || !e.qualified(r) || r.Proof.Replayed != 1 {
+	for _, r := range lib.published() {
+		if r.Observe != childSource || !e.qualified(r.Program) || r.Proof.Replayed != 1 {
 			t.Fatal("replacement bypassed ordinary recorded replay and qualification")
 		}
 	}
@@ -206,8 +158,8 @@ func TestClaimCommandIsOrdinaryDeduplicatedPublication(t *testing.T) {
 	}
 	view := loaded.snapshot()
 	record := view.Claims[first.ID]
-	record.Options[0] = "mutated"
-	if loaded.snapshot().Claims[first.ID].Options[0] != "inspect" {
+	record.Claim.Options[0] = "mutated"
+	if loaded.snapshot().Claims[first.ID].Claim.Options[0] != "inspect" {
 		t.Fatal("mutable snapshot")
 	}
 	contract := libraryContract()
@@ -239,7 +191,7 @@ func TestEmptyLibraryCompilesAtFirstReadyBoundary(t *testing.T) {
 		if provider.MessageText(req.Messages[0]) == claimPrompt {
 			return reply(provider.TextMessage("assistant", `{"claims":[{"type":"noul","context":"Report the current user's literal text when requested."}]}`)), nil
 		}
-		return reply(provider.TextMessage("assistant", `{"api_version":2,"steps":{},"observe":"js:function(context){return {report:context.user};}"}`)), nil
+		return reply(provider.TextMessage("assistant", `{"when":"Inspect the current requested native capability","decide":"Report actual results or hand off missing input","steps":{},"observe":"js:function(context){return {report:context.user};}"}`)), nil
 	})
 	job := declaration{cfg: cfg, task: "first", state: json.RawMessage(`{"messages":[{"role":"user","text":"Report my literal text"}]}`), focus: []string{"Report current literal text"}}
 	if err := e.declare(t.Context(), job); err != nil {
@@ -289,11 +241,11 @@ func TestOrdinaryReflexReplacementPreservesClaimAndRollsBack(t *testing.T) {
 	if err = e.publishReflex(plan, &draft); err != nil {
 		t.Fatal(err)
 	}
-	if _, exists := e.snapshot().Reflexes[oldID]; exists {
+	if !e.snapshot().Reflexes[oldID].Archived {
 		t.Fatal("previous source was not replaced")
 	}
 	newID := "r" + digest(draft)[:16]
-	if !e.retireReflex(t.Context(), newID, errors.New("retire ordinary source")) || e.snapshot().Claims[cid].Context != c.Context {
+	if !e.retireReflex(t.Context(), newID, errors.New("retire ordinary source")) || e.snapshot().Claims[cid].Claim.Context != c.Context {
 		t.Fatal("Reflex lifecycle consumed its Claim")
 	}
 	// No compilation command may accept caller-authored native evidence.
