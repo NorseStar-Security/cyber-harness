@@ -29,7 +29,7 @@ func TestClaimOnlyFeedsCompilationAndNeverRunsWithoutReflex(t *testing.T) {
 	var calls atomic.Int64
 	cfg.Provider = testProvider(func(ctx context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 		if provider.MessageText(req.Messages[0]) == claimPrompt {
-			return reply(provider.TextMessage("assistant", fixtureClaim)), nil
+			return reply(provider.TextMessage("assistant", `{"claims":`+fixtureClaim+`}`)), nil
 		}
 		n := calls.Add(1)
 		if n == 1 {

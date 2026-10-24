@@ -111,7 +111,7 @@ func (h testRegistryHandle) Register(s VerificationSuite) error {
 	r, _ := testRegistries.LoadOrStore(h.e, &VerificationRegistry{suites: map[string]*VerificationSuite{}})
 	r.(*VerificationRegistry).suites[s.ID] = &s
 	h.e.contracts = coretool.NewNativeContractRegistry()
-	for _, c := range s.native().Contracts {
+	for _, c := range s.native() {
 		if err := h.e.contracts.Register(c); err != nil {
 			return err
 		}
@@ -132,10 +132,10 @@ func (h testRegistryHandle) suite(id string) *VerificationSuite {
 	}
 	return nil
 }
-func (s *VerificationSuite) native() nativeSnapshot {
-	n := nativeSnapshot{Contracts: map[string]coretool.NativeContract{}}
+func (s *VerificationSuite) native() coretool.NativeContracts {
+	n := coretool.NativeContracts{}
 	for id, c := range s.Contracts {
-		n.Contracts[id] = coretool.NativeContract{ID: c.ID, Version: c.Version, Description: c.Description, Classify: func(call coretool.NativeCall) (coretool.NativeAccess, error) { return c.Classify(NativeCall(call)) }, Outcome: func(call coretool.NativeCall, r map[string]any) string {
+		n[id] = coretool.NativeContract{ID: c.ID, Version: c.Version, Description: c.Description, Classify: func(call coretool.NativeCall) (coretool.NativeAccess, error) { return c.Classify(NativeCall(call)) }, Outcome: func(call coretool.NativeCall, r map[string]any) string {
 			if c.Outcome == nil {
 				return "unknown"
 			}
@@ -173,9 +173,6 @@ func (s *VerificationSuite) access(c NativeCall) (Access, error) {
 		return result, errors.New("unsupported native operation")
 	}
 	return result, nil
-}
-func (s *VerificationSuite) validateCall(r *Program, c NativeCall, args map[string]any) error {
-	return s.native().validateCall(r, c, args)
 }
 func qualifyIndependent(e *Extension, ctx context.Context, r *Program, caps map[string]any, suiteIDs ...string) error {
 	if err := r.validate(); err != nil {
@@ -229,7 +226,7 @@ func qualifyIndependent(e *Extension, ctx context.Context, r *Program, caps map[
 			if len(run.Calls) >= maxCandidates {
 				return nil, handoffError{"native call budget reached"}
 			}
-			if err := s.validateCall(r, call, c.Arguments); err != nil {
+			if err := r.validateCall(s.native(), call, c.Arguments); err != nil {
 				return nil, err
 			}
 			if err := s.CheckCall(VerificationCall{Input: input, Arguments: c.Arguments, Call: call, Effects: ledger.summary(), Evidence: cloneEvidence(run.Evidence)}); err != nil {

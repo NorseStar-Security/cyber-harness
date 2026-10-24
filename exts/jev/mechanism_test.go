@@ -250,7 +250,7 @@ func TestReflexInputRevisionAndCancellation(t *testing.T) {
 		t.Fatal("new task reused identity")
 	}
 }
-func TestReflexClaimTriggerAndCandidate(t *testing.T) {
+func TestReflexClaimCompilationGate(t *testing.T) {
 	var claimID string
 	compileDecision := false
 	generations := 0
@@ -277,7 +277,7 @@ func TestReflexClaimTriggerAndCandidate(t *testing.T) {
 		}
 		generations++
 		if generations > 1 {
-			t.Fatalf("unexpected candidate retry: %s", provider.MessageText(req.Messages[len(req.Messages)-1]))
+			t.Fatalf("unexpected compilation retry: %s", provider.MessageText(req.Messages[len(req.Messages)-1]))
 		}
 		return reply(provider.TextMessage("assistant", `{"when":"Inspect the current requested native capability","decide":"Report actual results or hand off missing input","steps":{"pending":{"contract":"unconfigured","count":1}},"observe":"js:function(){return {defer:'missing supported contract'};}"}`)), nil
 	})
@@ -303,7 +303,7 @@ func TestReflexClaimTriggerAndCandidate(t *testing.T) {
 		t.Fatal(err)
 	}
 	if generations != 1 || len(e.snapshot().Reflexes) != 0 || len(e.snapshot().Claims) != 1 {
-		t.Fatal("candidate was published or Claim consumed")
+		t.Fatal("unqualified draft was published or Claim consumed")
 	}
 }
 

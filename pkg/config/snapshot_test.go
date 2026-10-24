@@ -228,7 +228,7 @@ func TestStagedLayerRetainsOtherLayers(t *testing.T) {
 	}
 }
 
-func TestDataDirectoryCompatibility(t *testing.T) {
+func TestDataDirectoryPrecedence(t *testing.T) {
 	c := isolatedContext(t)
 	if got := resolveDataDir("", c); got != filepath.Join(c.Home, ".cyber") {
 		t.Fatalf("default: %s", got)

@@ -522,7 +522,7 @@
         "generation": {
           "kind": "claim_llm",
           "state": "finished",
-          "output": "[]",
+          "output": "{\"claims\":[]}",
           "elapsedMs": "50",
           "usage": {
             "inputTokens": "1000",
@@ -1413,7 +1413,7 @@
         "generation": {
           "kind": "compiler_round",
           "state": "finished",
-          "output": "[]",
+          "output": "{\"claims\":[]}",
           "usage": {
             "inputTokens": "1000",
             "outputTokens": "200",
@@ -1444,7 +1444,7 @@
         "generation": {
           "kind": "reflex_llm",
           "state": "finished",
-          "output": "[]",
+          "output": "{\"claims\":[]}",
           "elapsedMs": "50",
           "usage": {
             "inputTokens": "1000",
@@ -1602,7 +1602,7 @@
         "generation": {
           "kind": "reflex_validation",
           "state": "finished",
-          "output": "[]",
+          "output": "{\"claims\":[]}",
           "elapsedMs": "50",
           "requestId": "synthetic-identity-0683",
           "attempt": 1,

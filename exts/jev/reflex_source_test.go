@@ -13,11 +13,11 @@ func TestNamedReaderSerializesCurrentArguments(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, resource := range []string{"a 'quoted' resource\nnext", "新会话资源；\"值\""} {
-		_, calls, err := probeReflexArguments(t.Context(), &r, observationCapabilities("reader"), map[string]any{"resource": resource}, nil, false)
+		result, err := probeReflexArguments(t.Context(), &r, observationCapabilities("reader"), map[string]any{"resource": resource}, nil, false)
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, call := range calls {
+		for _, call := range result.candidates {
 			var args struct{ Source string }
 			_ = json.Unmarshal(call.Arguments, &args)
 			value, err := goja.New().RunString(args.Source)

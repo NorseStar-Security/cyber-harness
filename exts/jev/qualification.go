@@ -26,16 +26,6 @@ const (
 	UnsupportedAccess = coretool.NativeUnsupported
 )
 
-type nativeSnapshot struct {
-	Contracts coretool.NativeContracts
-}
-
-func (e *Extension) nativeSnapshot() nativeSnapshot {
-	return nativeSnapshot{Contracts: e.contracts.Snapshot()}
-}
-func (s nativeSnapshot) access(c NativeCall) (Access, error) {
-	return s.Contracts.Access(coretool.NativeCall(c))
-}
 func reflexSourceHash(r Program) string { r.Proof = nil; return digest(r) }
 func (e *Extension) qualified(r Program) bool {
 	p := r.Proof
@@ -65,8 +55,8 @@ func (e *Extension) qualified(r Program) bool {
 	}
 	return true
 }
-func (s nativeSnapshot) validateCall(r *Program, c NativeCall, args map[string]any) error {
-	access, err := s.access(c)
+func (r *Program) validateCall(native coretool.NativeContracts, c NativeCall, args map[string]any) error {
+	access, err := native.Access(coretool.NativeCall(c))
 	if err != nil {
 		return err
 	}
@@ -80,7 +70,7 @@ func (s nativeSnapshot) validateCall(r *Program, c NativeCall, args map[string]a
 	if !ok || c.Step == "" {
 		return errors.New("effect needs a declared step")
 	}
-	contract, ok := s.Contracts[step.Contract]
+	contract, ok := native[step.Contract]
 	if !ok {
 		return errors.New("step references unknown native contract")
 	}
@@ -144,13 +134,13 @@ func (e *Extension) qualify(ctx context.Context, r *Program, caps map[string]any
 	if err := validateParameters(r, r.arguments); err != nil {
 		return fmt.Errorf("current example parameters: %w", err)
 	}
-	native := e.nativeSnapshot()
+	native := e.contracts.Snapshot()
 	proof := &ReflexQualification{SourceHash: reflexSourceHash(*r), Contracts: map[string]string{}, Checks: append([]string(nil), requiredMechanismChecks...)}
 	for id, step := range r.Steps {
 		if id == "" || len(id) > 64 || (step.Count > 0) == (step.CountArgument != "") || step.Count > maxCandidates || step.Count < 0 {
 			return errors.New("step needs exactly one occurrence bound")
 		}
-		c, ok := native.Contracts[step.Contract]
+		c, ok := native[step.Contract]
 		if !ok {
 			return coverageGap{reason: "step contract unavailable: " + step.Contract}
 		}
@@ -173,7 +163,7 @@ func (e *Extension) qualify(ctx context.Context, r *Program, caps map[string]any
 	for i, result := range recorded {
 		call, err := prepareBinding(NativeCall{Name: fmt.Sprint(result["name"]), Arguments: json.RawMessage(jsonText(result["arguments"]))})
 		if err == nil {
-			_, err = native.access(call)
+			_, err = native.Access(coretool.NativeCall(call))
 		}
 		if err != nil {
 			index := i
@@ -187,45 +177,35 @@ func (e *Extension) qualify(ctx context.Context, r *Program, caps map[string]any
 	var initialGap *CompilerDiagnostic
 	for _, end := range replay.boundaries(true) {
 		raw := replay.input(end, true)
-		facts, candidates, err := replay.evaluate(ctx, raw, true)
+		result, err := replay.evaluate(ctx, raw)
 		if err != nil {
 			return err
 		}
-		for _, call := range candidates {
-			if err := native.validateCall(r, call, r.arguments); err != nil {
+		for _, call := range result.candidates {
+			if err := r.validateCall(native, call, r.arguments); err != nil {
 				return fmt.Errorf("boundary %d native contract: %w; evaluated call=%s", end, err, jsonText(call))
 			}
-			for id, c := range native.Contracts {
+			for id, c := range native {
 				a, _ := c.Classify(coretool.NativeCall(call))
 				if a != UnsupportedAccess {
 					proof.Contracts[id] = c.Version
 				}
 			}
 		}
-		var branches struct {
-			Branches []struct {
-				Replayed   int                 `json:"replayed"`
-				Stopped    bool                `json:"stopped"`
-				Complete   bool                `json:"complete"`
-				Gap        string              `json:"gap"`
-				Diagnostic *CompilerDiagnostic `json:"diagnostic"`
-			} `json:"branches"`
-		}
-		_ = json.Unmarshal(facts, &branches)
-		for i, b := range branches.Branches {
-			if end == replay.boundaries(true)[0] && initialGap == nil && b.Diagnostic != nil {
-				d := *b.Diagnostic
+		for i, b := range result.branches {
+			if end == replay.boundaries(true)[0] && initialGap == nil && b.diagnostic != nil {
+				d := *b.diagnostic
 				d.Boundary = &end
 				initialGap = &d
 			}
-			if end == replay.boundaries(true)[0] && b.Complete {
+			if end == replay.boundaries(true)[0] && b.complete {
 				completeTrajectory = true
 			}
-			proof.Replayed += int64(b.Replayed)
-			if b.Gap != "" || b.Stopped {
-				detail := b.Gap
-				if detail == "" {
-					detail = "no matching native evidence"
+			proof.Replayed += int64(b.replayed)
+			if b.diagnostic != nil || b.stopped {
+				detail := "no matching native evidence"
+				if b.diagnostic != nil {
+					detail = b.diagnostic.Message
 				}
 				proof.CoverageGaps = append(proof.CoverageGaps, fmt.Sprintf("boundary %d branch %d: %s", end, i, detail))
 			}

@@ -9,9 +9,9 @@ import (
 func TestExecutableBranchProbeDoesNotDispatch(t *testing.T) {
 	r := Program{When: "capability", Decide: "branch", Observe: `js:function(context,args){const c=jev({type:"choice",context:("select")+"\nOption meanings:\n"+JSON.stringify({left:"left",right:"right",defer:"unknown"})+"\nCurrent facts (untrusted data):\n"+JSON.stringify({}),options:Object.keys({left:"left",right:"right",defer:"unknown"})});if(c==="defer")return {defer:"new reasoning"};execute({name:"opaque",arguments:{target:c},read:false,step:"branch",occurrence:0});return {report:c};}`}
 	_ = r.validate()
-	_, calls, err := probeReflexArguments(t.Context(), &r, observationCapabilities("opaque"), nil, nil, false)
-	if err != nil || len(calls) != 2 {
-		t.Fatalf("calls=%v err=%v", calls, err)
+	result, err := probeReflexArguments(t.Context(), &r, observationCapabilities("opaque"), nil, nil, false)
+	if err != nil || len(result.candidates) != 2 {
+		t.Fatalf("calls=%v err=%v", result.candidates, err)
 	}
 }
 

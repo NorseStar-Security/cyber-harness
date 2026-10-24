@@ -59,14 +59,14 @@ func TestRecordedCompilerEvidence(t *testing.T) {
 			env["history"] = history[:boundary]
 			probe := map[string]any{"completed_results": boundary}
 			probes = append(probes, probe)
-			facts, candidates, err := probeReflexArguments(t.Context(), &r, env, nil, nil, false)
+			result, err := probeReflexArguments(t.Context(), &r, env, nil, nil, false)
 			if err != nil {
 				probe["observation_error"] = err.Error()
 				continue
 			}
-			probe["state"], probe["candidates"] = facts, candidates
+			probe["state"], probe["candidates"] = result.facts, result.candidates
 			readers := []map[string]any{}
-			for id, candidate := range candidates {
+			for id, candidate := range result.candidates {
 				var args struct{ Command string }
 				if candidate.Name != "bash" || json.Unmarshal(candidate.Arguments, &args) != nil {
 					continue

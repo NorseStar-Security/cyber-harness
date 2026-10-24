@@ -78,7 +78,7 @@ func (l *effectLedger) complete(task string, c NativeCall, result map[string]any
 		record.State = "returned"
 	}
 }
-func (l *effectLedger) classifyOutcome(task string, c NativeCall, s nativeSnapshot, result map[string]any, contractID string) {
+func (l *effectLedger) classifyOutcome(task string, c NativeCall, native coretool.NativeContracts, result map[string]any, contractID string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	r := l.records[effectID(task, c)]
@@ -87,7 +87,7 @@ func (l *effectLedger) classifyOutcome(task string, c NativeCall, s nativeSnapsh
 	}
 	r.Contract = contractID
 	known := false
-	if contract, ok := s.Contracts[contractID]; ok && result != nil {
+	if contract, ok := native[contractID]; ok && result != nil {
 		a, err := contract.Classify(coretool.NativeCall(c))
 		if err == nil && a == EffectAccess && contract.Outcome != nil {
 			outcome := contract.Outcome(coretool.NativeCall(c), cloneJSONMap(result))
@@ -103,7 +103,7 @@ func (l *effectLedger) classifyOutcome(task string, c NativeCall, s nativeSnapsh
 	}
 }
 
-func (l *effectLedger) reconcile(s nativeSnapshot, read NativeCall, result map[string]any) {
+func (l *effectLedger) reconcile(native coretool.NativeContracts, read NativeCall, result map[string]any) {
 	if result == nil || result["is_error"] == true {
 		return
 	}
@@ -113,7 +113,7 @@ func (l *effectLedger) reconcile(s nativeSnapshot, read NativeCall, result map[s
 		if record.State != "unknown" {
 			continue
 		}
-		for id, c := range s.Contracts {
+		for id, c := range native {
 			if record.Contract != "" && record.Contract != id {
 				continue
 			}

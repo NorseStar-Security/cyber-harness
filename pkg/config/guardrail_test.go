@@ -11,7 +11,7 @@ func TestGuardrailModeChangeIsNarrow(t *testing.T) {
 	section, _ := structpb.NewStruct(map[string]any{"mode": "safe", "review_timeout": "5m"})
 	policy, _ := structpb.NewStruct(map[string]any{"enabled": true, "model": "jev"})
 	current := &types.DistributeConfig{Extensions: map[string]*structpb.Struct{"guardrail": section, "jev": policy}}
-	for _, mode := range []string{"safe", "auto", "off"} {
+	for _, mode := range []string{"safe", "auto"} {
 		next := proto.CloneOf(current)
 		next.Extensions["guardrail"].Fields["mode"] = structpb.NewStringValue(mode)
 		if got, ok := GuardrailModeChange(current, next); !ok || got != mode {
@@ -19,6 +19,9 @@ func TestGuardrailModeChangeIsNarrow(t *testing.T) {
 		}
 	}
 	for _, edit := range []func(*types.DistributeConfig){
+		func(c *types.DistributeConfig) {
+			c.Extensions["guardrail"].Fields["mode"] = structpb.NewStringValue("off")
+		},
 		func(c *types.DistributeConfig) { c.Extensions["jev"].Fields["enabled"] = structpb.NewBoolValue(false) },
 		func(c *types.DistributeConfig) {
 			c.Extensions["guardrail"].Fields["review_timeout"] = structpb.NewStringValue("1m")

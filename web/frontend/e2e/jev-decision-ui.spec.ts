@@ -64,7 +64,7 @@ test('compilation keeps generation, review, publication and a failed retry in ch
   await page.addInitScript(() => localStorage.setItem('cyber-locale', 'zh'))
   await page.goto('/e2e/fixtures/jev.html')
   const records = [runtime(1, { case: 'generation', value: { kind: 'claim_llm', state: 'started' } }, true),
-    runtime(2, { case: 'generation', value: { kind: 'claim_llm', state: 'finished', output: '[{"type":"choice","context":"Evidence is needed. read: Read evidence; stop: Done.","options":["read","stop"]}]' } }, true),
+    runtime(2, { case: 'generation', value: { kind: 'claim_llm', state: 'finished', output: '{"claims":[{"type":"choice","context":"Evidence is needed. read: Read evidence; stop: Done.","options":["read","stop"]}]}' } }, true),
     runtime(3, { case: 'libraryChange', value: { state: 'claim_published', claim: { id: 'evidence-claim', type: ClaimType.choice, context: 'Evidence is needed. read: Read evidence; stop: Done.', options: ['read', 'stop'] } } }, true),
     runtime(4, { case: 'decisionRequest', value: { requestId: 'compile', claims: { compile: { type: ClaimType.choice, context: "Choose the current operation." + "\ncompile: Build scene\ndefer: Wait", options: ["compile","defer"] } } } }, true),
     runtime(5, { case: 'decisionResult', value: { requestId: 'compile', evaluations: { compile: { value: { case: 'choice', value: 'compile' }, probabilities: { compile: .8, defer: .2 } } } } }, true),

@@ -143,7 +143,7 @@ func (e *Extension) beforeModel(ctx context.Context, ev hooks.ContextEvent) ([]*
 		return nil, nil
 	}
 	scene := lib.Reflexes[id]
-	native := e.nativeSnapshot()
+	native := e.contracts.Snapshot()
 	epoch := digest(e.contracts.Catalog())
 	if record.NativeEpoch != "" && record.NativeEpoch != epoch {
 		e.emit(ctx, &Boundary{Reason: "task_contract_conflict"})
@@ -156,7 +156,7 @@ func (e *Extension) beforeModel(ctx context.Context, ev hooks.ContextEvent) ([]*
 		for _, entry := range projection["history"].([]map[string]any) {
 			args, _ := json.Marshal(entry["arguments"])
 			call, _ := prepareBinding(NativeCall{Name: fmt.Sprint(entry["name"]), Arguments: args})
-			access, err := native.access(call)
+			access, err := native.Access(coretool.NativeCall(call))
 			if err != nil || access == EffectAccess {
 				e.emit(ctx, &Boundary{Reason: "ordinary_effects_unmapped"})
 				e.enqueue(cfg, ev)
@@ -221,7 +221,7 @@ func (e *Extension) beforeModel(ctx context.Context, ev hooks.ContextEvent) ([]*
 			return nil, argumentError(err)
 		}
 
-		if err := native.validateCall(&scene.Program, candidate, record.Arguments); err != nil {
+		if err := scene.validateCall(native, candidate, record.Arguments); err != nil {
 			return nil, handoffError{"unsupported native operation: " + err.Error()}
 		}
 		if err := e.judgeRuntime(ctx, "binding", raw, map[string]any{"arguments": record.Arguments, "parameters_schema": scene.Parameters, "call": candidate, "capabilities": bindingCapabilities(candidate, caps), "effects": record.Ledger.summary()}); err != nil {

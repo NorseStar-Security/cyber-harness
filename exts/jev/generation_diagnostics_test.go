@@ -2,7 +2,6 @@ package jev
 
 import (
 	"context"
-	"encoding/json"
 	"strings"
 	"testing"
 
@@ -10,9 +9,9 @@ import (
 	aop "github.com/chainreactors/cyber/aop"
 )
 
-func TestStructuredGenerationUnwrapsArtifactsBeforeValidationAndObservation(t *testing.T) {
+func TestClaimGenerationPreservesTheDeclaredArtifact(t *testing.T) {
 	e, cfg, _ := testInstallation(t, Config{Mode: "off"}, nil)
-	source := `[{"type":"noul","context":"The requested current native result is available."}]`
+	source := `{"claims":[{"type":"noul","context":"The requested current native result is available."}]}`
 	var observed *Generation
 	sub := e.stream.Observe(func(event *aop.Event) {
 		value := new(RuntimeEvent)
@@ -25,8 +24,7 @@ func TestStructuredGenerationUnwrapsArtifactsBeforeValidationAndObservation(t *t
 		if !req.JSONOutput {
 			t.Fatal("Claim generation omitted structured output control")
 		}
-		data, _ := json.Marshal(map[string]json.RawMessage{"claims": json.RawMessage(source)})
-		return reply(provider.TextMessage("assistant", string(data))), nil
+		return reply(provider.TextMessage("assistant", source)), nil
 	})
 	var artifact []Claim
 	ctx := traceContext(t.Context(), declaration{session: "s", turn: "t", task: "task"}.trace())
@@ -34,16 +32,22 @@ func TestStructuredGenerationUnwrapsArtifactsBeforeValidationAndObservation(t *t
 		t.Fatal(err)
 	}
 	if len(artifact) != 1 || artifact[0].Context != "The requested current native result is available." || observed == nil || observed.Output != source || observed.Error != "" {
-		t.Fatal("transport JSON leaked into executable artifact or timeline")
+		t.Fatal("declared artifact or generation evidence changed")
 	}
-	for _, invalid := range []string{`{"claims": [], "analysis": "extra"}`, `{"observe":"js:({})"}`, `{"code":"js:({})"}`} {
-		if _, err := declarationArtifact(invalid); err == nil {
-			t.Fatalf("accepted invalid envelope: %s", invalid)
-		}
-	}
-	claims, err := declarationArtifact(`{"claims": []}`)
-	if err != nil || claims != "[]" {
-		t.Fatalf("claim array changed: %s %v", claims, err)
+}
+
+func TestClaimGenerationRequiresOneCompleteArtifact(t *testing.T) {
+	for _, invalid := range []string{`[]`, `null`, `{}`, `{"claims":null}`, `{"claims": [], "analysis": "extra"}`, `{"observe":"js:({})"}`, `{"claims":[]} {}`, "```json\n{\"claims\":[]}\n```"} {
+		t.Run(invalid, func(t *testing.T) {
+			e, cfg, _ := testInstallation(t, Config{Mode: "off"}, nil)
+			cfg.Provider = testProvider(func(context.Context, *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
+				return reply(provider.TextMessage("assistant", invalid)), nil
+			})
+			var claims []Claim
+			if err := e.generateClaims(t.Context(), cfg, nil, &claims); err == nil || claims != nil {
+				t.Fatalf("accepted invalid artifact %s: %v", invalid, err)
+			}
+		})
 	}
 }
 

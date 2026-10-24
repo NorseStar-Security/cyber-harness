@@ -70,6 +70,18 @@ go test ./exts/guardrail -run TestLiveJEV -v -count=1
 
 The direct test sends synthetic operation descriptions and does not execute the described tools. Guardrail configuration and approval commands are documented in the [tool guide](../../../docs/user/tools.md#工具准入与审批).
 
+## Real Reflex execution evidence
+
+First run the [real browser acceptance](../../../docs/jev.md) with actual LLM/JEV credentials. It runs the production Agent, compiler, native contracts and browser commands against isolated business applications. The private business oracle checks current random inputs, receipts and effect counts. No source or model answers are seeded.
+
+Set `JEV_ACCEPTANCE_REPORT_DIR` to that report directory and `JEV_ACCEPTANCE_CASES` to the completed cases (`shadow,repeat,expense`), then run from `web/frontend/`:
+
+```sh
+npm run test:jev -- --grep 'real.*Reflex'
+```
+
+`jev-live-acceptance.spec.ts` requires correct business rows, a warm task with full Reflex takeover, zero main model tool calls and unchanged source. It replays the original AOP events and generated library with production components, checks dispatch/effect counts and qualification, and captures desktop/mobile screenshots. This verifies the UI against real execution evidence; it does not submit a task through the production Web frontend. Without a report directory, these opt-in tests skip. Reports and screenshots contain no credentials and stay outside the source commit.
+
 ## Related Go checks
 
 Run from the repository root:

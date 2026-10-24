@@ -25,7 +25,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-// These tests start with no Claim, candidate or Reflex. Only inference is
+// These tests start with no Claim or Reflex. Only inference is
 // scripted in the local variant; the Agent, command executor, native contracts,
 // compiler Agent, replay, semantic review, publication and reload are real.
 func TestClaimToReflexPipeline(t *testing.T) {
@@ -56,16 +56,26 @@ func TestClaimPipelineLiteralEncoding(t *testing.T) {
 	}
 }
 
-func TestClaimPipelineReviewReceivesResolvedReport(t *testing.T) {
+func TestClaimPipelineReviewReceivesSharedReportEvidence(t *testing.T) {
 	var reviewed atomic.Bool
 	e, plan, actor := compilerReadPlan(t, func(req inferenceRequest) map[string]inferenceAnswer {
 		if strings.Contains(string(req.State), `"reflex":`) {
 			reviewed.Store(true)
-			if !strings.Contains(string(req.State), `\"report\":\"current-native-receipt\"`) && !strings.Contains(string(req.State), `"report":"current-native-receipt"`) {
-				t.Error("semantic review did not receive the actual resolved native receipt")
+			var evidence struct {
+				Trajectory struct {
+					History []struct {
+						CallID string `json:"call_id"`
+						Data   struct {
+							Receipt string `json:"receipt"`
+						} `json:"data"`
+					} `json:"history"`
+				} `json:"trajectory"`
 			}
-			if strings.Contains(string(req.State), `"report":{"evidence":`) {
-				t.Error("semantic review retained an unresolved report pointer")
+			if err := json.Unmarshal(req.State, &evidence); err != nil || len(evidence.Trajectory.History) != 1 || evidence.Trajectory.History[0].CallID != "actual-read" || evidence.Trajectory.History[0].Data.Receipt != "current-native-receipt" {
+				t.Error("semantic review lost the shared actual native receipt")
+			}
+			if !strings.Contains(string(req.State), `"report":{"evidence":"actual-read","path":["data","receipt"]}`) || strings.Count(string(req.State), "current-native-receipt") != 1 {
+				t.Error("semantic review duplicated or lost the report evidence reference")
 			}
 		}
 		return declarationAnswers(req, true)
@@ -77,7 +87,7 @@ func TestClaimPipelineReviewReceivesResolvedReport(t *testing.T) {
 	})
 	r, err := e.generateReflex(t.Context(), plan)
 	if err != nil || r == nil || !reviewed.Load() {
-		t.Fatalf("resolved evidence review failed: artifact=%v reviewed=%v err=%v", r != nil, reviewed.Load(), err)
+		t.Fatalf("shared evidence review failed: artifact=%v reviewed=%v err=%v", r != nil, reviewed.Load(), err)
 	}
 }
 

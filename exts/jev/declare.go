@@ -1,7 +1,6 @@
 package jev
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -310,47 +309,30 @@ func (e *Extension) generateClaims(ctx context.Context, cfg agent.Config, input 
 	if text == "" {
 		return fmt.Errorf("declaration returned no artifact (finish_reason=%q)", resp.Choices[0].FinishReason)
 	}
-	// Accept a single JSON fence, never prose, executable content or extra fields.
-	if strings.HasPrefix(text, "```json\n") && strings.HasSuffix(text, "```") {
-		text = strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(text, "```json\n"), "```"))
-	}
 	if len(text) > 32<<10 {
 		return errors.New("declaration output exceeds budget")
 	}
-	if strings.HasPrefix(text, "{") {
-		artifact, err := declarationArtifact(text)
-		if err != nil {
-			return err
-		}
-		text, generated = artifact, artifact
+	var artifact struct {
+		Claims []Claim `json:"claims"`
 	}
-	decoder := json.NewDecoder(bytes.NewBufferString(text))
+	decoder := json.NewDecoder(strings.NewReader(text))
 	decoder.DisallowUnknownFields()
-	if err = decoder.Decode(output); err != nil {
+	if err = decoder.Decode(&artifact); err != nil {
 		return err
 	}
-	var extra any
-	if decoder.Decode(&extra) != io.EOF {
+	if decoder.Decode(new(any)) != io.EOF {
 		return errors.New("extra declaration output")
 	}
+	if artifact.Claims == nil {
+		return errors.New("declaration requires a claims array")
+	}
+	*output = artifact.Claims
 	return nil
 }
 
 type compilationOutputError struct{ error }
 
 func (e compilationOutputError) Unwrap() error { return e.error }
-
-func declarationArtifact(text string) (string, error) {
-	var envelope map[string]json.RawMessage
-	if err := json.Unmarshal([]byte(text), &envelope); err != nil {
-		return "", err
-	}
-	value, ok := envelope["claims"]
-	if !ok || len(envelope) != 1 {
-		return "", errors.New("declaration JSON requires exactly the claims field")
-	}
-	return string(value), nil
-}
 
 // Compilation owns executable source, applicability and its runtime contract.
 // Example arguments are used for replay and are never persisted.
@@ -386,6 +368,33 @@ func decodeReflex(text string, output **Program) error {
 
 func compilerInput(state json.RawMessage, capabilities map[string]any) (map[string]any, error) {
 	input, err := observeInput(state, capabilities)
+	if err != nil {
+		return nil, err
+	}
+	// Native history belongs to the current task; constraints also include
+	// earlier user requirements and system instructions, each retained once.
+	var constraints struct {
+		Messages []struct {
+			Role string  `json:"role"`
+			Name *string `json:"name"`
+			Text string  `json:"text"`
+		} `json:"messages"`
+	}
+	if err := json.Unmarshal(state, &constraints); err != nil {
+		return nil, err
+	}
+	var system, users []string
+	for _, message := range constraints.Messages {
+		if message.Role == "system" {
+			system = append(system, message.Text)
+		} else if message.Role == "user" && message.Name == nil {
+			users = append(users, message.Text)
+		}
+	}
+	input["system"] = system
+	if len(users) > 1 {
+		input["prior_users"] = users[:len(users)-1]
+	}
 	// Runtime still retains original messages. The compiler needs one joined,
 	// normalized evidence representation, not a second copy of raw envelopes.
 	delete(input, "messages")
@@ -396,7 +405,7 @@ func compilerInput(state json.RawMessage, capabilities map[string]any) (map[stri
 			}
 		}
 	}
-	return input, err
+	return input, nil
 }
 
 func (e *Extension) declare(ctx context.Context, job declaration) error {

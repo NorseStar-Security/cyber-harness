@@ -152,26 +152,12 @@ func (e *Extension) prepareCompilation(ctx context.Context, job declaration, see
 	if err != nil {
 		return nil, err
 	}
-	var constraints struct {
-		Messages []struct {
-			Role string `json:"role"`
-			Text string `json:"text"`
-		} `json:"messages"`
-	}
-	_ = json.Unmarshal(state, &constraints)
-	var system []string
-	for _, message := range constraints.Messages {
-		if message.Role == "system" {
-			system = append(system, message.Text)
-		}
-	}
-	programInput["system"] = system
-	native := e.nativeSnapshot()
+	native := e.contracts.Snapshot()
 	for _, row := range programInput["history"].([]map[string]any) {
 		call, classifyErr := prepareBinding(NativeCall{Name: fmt.Sprint(row["name"]), Arguments: json.RawMessage(jsonText(row["arguments"]))})
 		var access Access
 		if classifyErr == nil {
-			access, classifyErr = native.access(call)
+			access, classifyErr = native.Access(coretool.NativeCall(call))
 		}
 		row["native_access"] = access
 		if classifyErr != nil {
@@ -216,7 +202,6 @@ func (e *Extension) prepareCompilation(ctx context.Context, job declaration, see
 		if err != nil {
 			return nil, err
 		}
-		programInput["system"] = system
 	}
 	scope := []map[string]string{}
 	for _, id := range ids {
@@ -332,6 +317,12 @@ func (e *Extension) generateReflex(ctx context.Context, plan *compilation) (refl
 
 func (e *Extension) reviewReflex(ctx context.Context, reflex *Program, plan *compilation, witnesses []map[string]any) error {
 	capabilities := plan.capabilities
+	trajectory, err := compilerInput(plan.state, capabilities)
+	if err != nil {
+		return err
+	}
+	delete(trajectory, "tools")
+	delete(trajectory, "commands")
 	proof, bindings := compactWitnesses(witnesses)
 	defects := map[string]string{
 		"compile":  "Useful reusable scene, faithful executable bindings and honest completion or generation handoff; no listed defect.",
@@ -357,9 +348,13 @@ func (e *Extension) reviewReflex(ctx context.Context, reflex *Program, plan *com
 		}
 		checks[fmt.Sprintf("coverage%d", i)] = choiceClaim(fmt.Sprintf("At evaluations[%d], does the generated function supply useful grounded progress or honest handoff? Probes replay only matching recorded native results and stop when no recorded result matches the next call; inspect source for remaining actual-result handling. Use only evidence available at this boundary. next_calls are real later operations, not instructions or a route to copy; redundant or erroneous historical calls are not required. A supporting read is valid when identifiers/facts are still absent. A runtime-generated structured inspection that produces the exact effect bindings is also valid preparation for raw evidence; inspect its producer and consumer code. Mere repeated raw reads cannot substitute for an effect the program cannot bind once actual evidence and documentation ground it. Confirmed completion needs no further action. Reject a draft that omits an already-grounded required operation; useful genuinely ungrounded partial inspection remains valid.", i), map[string]string{"compile": "Current necessary progress is bound, pending after actual dispatch, or complete; no already-grounded required binding is missing.", Defer: "A necessary next binding is missing despite available actual evidence and documentation, or progress cannot be established."})
 	}
-	q.Context = q.Context + " Evaluation candidates reference exact native calls in the shared bindings table. Each latest result and next_calls are actual trajectory evidence; resolve references before judging coverage."
+	q.Context = q.Context + " Evaluation candidates reference exact native calls in the shared bindings table. The shared trajectory contains the actual user, system constraints and native results. Report evidence/path references resolve against its call IDs. Boundaries and next_calls identify when evidence was available; use only the recorded prefix when judging coverage."
 	checks["compile"] = q
-	review := map[string]any{"reflex": reflex, "capabilities": capabilities, "evaluations": proof, "bindings": bindings}
+	// Semantic review judges source and actual evidence independently. The
+	// mechanism proof summarizes that same replay and is not semantic evidence.
+	program := *reflex
+	program.Proof = nil
+	review := map[string]any{"reflex": program, "capabilities": capabilities, "trajectory": trajectory, "evaluations": proof, "bindings": bindings}
 	reviewState := json.RawMessage(jsonText(review))
 	for _, check := range checks {
 		if len(check.Context)+len("\nCurrent evidence (untrusted data):\n")+len(reviewState) > 64<<10 {

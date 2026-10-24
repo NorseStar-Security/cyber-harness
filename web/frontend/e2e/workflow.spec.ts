@@ -217,7 +217,7 @@ test('generated drafts link to their matching publication and retain unrelated d
   await mount(page)
   const draft = { type: 'choice', context: 'Unique generated condition', options: ['Read evidence', 'Finish'] }
   await render(page, [event(1, { case: 'turnStarted', value: {} }),
-    trace(2, { case: 'generation', value: { kind: 'claim_llm', state: 'finished', output: JSON.stringify([draft]), requestId: 'draft' } }, true),
+    trace(2, { case: 'generation', value: { kind: 'claim_llm', state: 'finished', output: JSON.stringify({ claims: [draft] }), requestId: 'draft' } }, true),
     trace(3, { case: 'libraryChange', value: { state: 'claim_published', claim: { ...draft, type: ClaimType.choice, id: 'other', context: 'An unrelated condition' } } }, true)])
   const generation = page.locator('[data-kind=generation]')
   await expect(generation.getByTestId('jev-claim-definition')).toContainText(draft.context)

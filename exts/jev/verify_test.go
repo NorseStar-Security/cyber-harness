@@ -45,7 +45,7 @@ func TestObservationReplayPreservesSamplingAndInputIdentity(t *testing.T) {
 		}
 		ctx, cancel := context.WithCancel(t.Context())
 		cancel()
-		if _, _, err := replay.evaluate(ctx, replay.input(1, true), true); err == nil {
+		if _, err := replay.evaluate(ctx, replay.input(1, true)); err == nil {
 			t.Fatal("cached observation bypassed cancellation")
 		}
 	}
@@ -88,7 +88,7 @@ func TestFreshnessReviewRetainsConcreteRejectionWithEitherGlobalVerdict(t *testi
 			if err != nil {
 				t.Fatal(err)
 			}
-			err = e.reviewReflex(t.Context(), &r, &compilation{capabilities: caps}, witnesses)
+			err = e.reviewReflex(t.Context(), &r, &compilation{capabilities: caps, state: state}, witnesses)
 			if !checked || requests != 1 || err == nil {
 				t.Fatalf("concrete rejection lost or redundant diagnosis requested: checked=%t requests=%d err=%v", checked, requests, err)
 			}
@@ -111,7 +111,7 @@ func TestReviewRetainsBoundaryRejectionWithGlobalDefer(t *testing.T) {
 	e, _, _ := testInstallation(t, Config{Mode: "auto"}, client)
 	r := observationReflex(t, `js:function(){return{defer:'missing next operation'};}`)
 	boundary := map[string]any{"boundary": 2, "state": map[string]any{"current": "actual"}, "candidates": map[string]binding{}, "next_calls": []any{map[string]any{"name": "native", "arguments": map[string]any{"operation": "required"}}}}
-	err := e.reviewReflex(t.Context(), &r, &compilation{}, []map[string]any{boundary})
+	err := e.reviewReflex(t.Context(), &r, &compilation{state: json.RawMessage(`{"messages":[]}`)}, []map[string]any{boundary})
 	if err == nil {
 		t.Fatal("rejected boundary accepted")
 	}
@@ -133,7 +133,7 @@ func TestResultReviewDistinguishesCompletionFromReadClassification(t *testing.T)
 	e, _, _ := testInstallation(t, Config{Mode: "auto"}, client)
 	r := observationReflex(t, `js:function(){const r=execute({name:'native',arguments:{},read:true});return{report:'done'};}`)
 	witness := map[string]any{"boundary": 1, "report": "done", "candidates": map[string]binding{"read": {Name: "native", Arguments: json.RawMessage(`{}`), Read: true}}}
-	err := e.reviewReflex(t.Context(), &r, &compilation{capabilities: observationCapabilities("native")}, []map[string]any{witness})
+	err := e.reviewReflex(t.Context(), &r, &compilation{capabilities: observationCapabilities("native"), state: json.RawMessage(`{"messages":[]}`)}, []map[string]any{witness})
 	diagnostic := compilerDiagnostic(err)
 	if requests != 1 || diagnostic.Code != "semantic_validation_failed" || diagnostic.Stage != "completion" || !strings.Contains(jsonText(diagnostic.Actual), "done") {
 		t.Fatalf("completion defect was misclassified or its output evidence lost: requests=%d diagnostic=%+v", requests, diagnostic)
@@ -161,6 +161,55 @@ func TestReviewSharesBindingsWithoutLosingActualBoundaryEvidence(t *testing.T) {
 		if _, ok := witnesses[i]["candidates"].(map[string]binding); !ok {
 			t.Fatal("compaction mutated original evidence")
 		}
+	}
+}
+
+func TestReviewSharesActualResultsAcrossReportBoundaries(t *testing.T) {
+	const payload = "native-result-" + "complete-data:"
+	data := strings.Repeat(payload, 350)
+	requests := 0
+	client := fakeJEV(t, func(req inferenceRequest) map[string]inferenceAnswer {
+		requests++
+		if len(req.State) >= 64<<10 || strings.Count(string(req.State), data) != 4 || !strings.Contains(string(req.State), "Current task constraints") || !strings.Contains(string(req.State), "Earlier user requirement") || strings.Contains(string(req.State), "Control receipt") {
+			t.Errorf("review evidence: bytes=%d result copies=%d constraints=%t", len(req.State), strings.Count(string(req.State), data), strings.Contains(string(req.State), "Current task constraints"))
+		}
+		return declarationAnswers(req, true)
+	})
+	e, _, _ := testInstallation(t, Config{Mode: "auto"}, client)
+	caps := observationCapabilities("native")
+	r := observationReflex(t, `js:function(){let result;for(let i=0;i<4;i++)result=execute({name:'native',arguments:{index:i},read:true});return{report:{evidence:result.call_id,path:['data']}};}`)
+	messages := []any{
+		map[string]any{"role": "system", "text": "Current task constraints"},
+		map[string]any{"role": "user", "text": "Earlier user requirement"},
+		map[string]any{"role": "user", "name": "control", "text": "Control receipt"},
+		map[string]any{"role": "user", "text": "Inspect the current results and report actual data."},
+	}
+	for i := range 4 {
+		id := fmt.Sprint(i)
+		messages = append(messages, map[string]any{"role": "assistant", "calls": []any{map[string]any{"id": id, "name": "native", "arguments": map[string]any{"index": i}}}}, map[string]any{"role": "tool", "call_id": id, "data": map[string]any{"payload": data}})
+	}
+	state := json.RawMessage(jsonText(map[string]any{"messages": messages}))
+	if err := verifyObserve(t.Context(), &r, state, caps); err != nil {
+		t.Fatal(err)
+	}
+	witnesses, err := observationWitnesses(t.Context(), &r, state, caps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, witness := range witnesses {
+		if strings.Contains(string(witness["state"].(json.RawMessage)), `"diagnostic"`) {
+			t.Fatal("semantic evidence duplicated mechanism repair diagnostics")
+		}
+	}
+	if err := e.reviewReflex(t.Context(), &r, &compilation{state: state, capabilities: caps}, witnesses); err != nil || requests != 1 {
+		t.Fatalf("complete evidence could not reach semantic review: requests=%d err=%v", requests, err)
+	}
+	r.Observe = `js:function(){return{report:{evidence:'missing',path:['data']}};}`
+	if err := r.validate(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := observationWitnesses(t.Context(), &r, state, caps); err == nil {
+		t.Fatal("retaining references bypassed report provenance validation")
 	}
 }
 
