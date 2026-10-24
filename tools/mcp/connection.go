@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -66,7 +67,7 @@ func (c *Connection) Start(init, lifetime context.Context) error {
 	c.cancel = cancel
 	if c.config.Command != "" {
 		stdio := transport.NewStdioWithOptions(c.config.Command, nil, c.config.Args,
-			transport.WithCommandLogger(quietLogger{}),
+			transport.WithCommandLogger(slog.New(slog.DiscardHandler)),
 			transport.WithCommandFunc(func(ctx context.Context, command string, _ []string, args []string) (*exec.Cmd, error) {
 				cmd := exec.CommandContext(ctx, command, args...)
 				cmd.Dir = c.config.Cwd
@@ -89,7 +90,7 @@ func (c *Connection) Start(init, lifetime context.Context) error {
 				cmd.WaitDelay = 2 * time.Second
 				return cmd, nil
 			}))
-		c.client = client.NewClient(stdio)
+		c.client = client.NewClient(stdio, client.WithProtocolVersion(mcpsdk.LATEST_LEGACY_PROTOCOL_VERSION))
 	} else {
 		// Own a transport rather than assuming an embedding application's
 		// mutable http.DefaultTransport has the standard concrete type.
@@ -104,12 +105,12 @@ func (c *Connection) Start(init, lifetime context.Context) error {
 			Transport:     headerTransport{base: c.http, headers: c.config.Headers},
 			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 		}
-		var err error
-		c.client, err = client.NewStreamableHttpClient(c.config.URL,
-			transport.WithHTTPBasicClient(httpClient), transport.WithHTTPLogger(quietLogger{}))
+		trans, err := transport.NewStreamableHTTP(c.config.URL,
+			transport.WithHTTPBasicClient(httpClient), transport.WithHTTPLogger(slog.New(slog.DiscardHandler)))
 		if err != nil {
 			return c.diagnostic(err)
 		}
+		c.client = client.NewClient(trans, client.WithProtocolVersion(mcpsdk.LATEST_LEGACY_PROTOCOL_VERSION))
 	}
 	if err := c.client.Start(life); err != nil {
 		return c.diagnostic(err)
@@ -302,7 +303,3 @@ func (t headerTransport) RoundTrip(request *http.Request) (*http.Response, error
 	return t.base.RoundTrip(copy)
 }
 
-type quietLogger struct{}
-
-func (quietLogger) Infof(string, ...any)  {}
-func (quietLogger) Errorf(string, ...any) {}
