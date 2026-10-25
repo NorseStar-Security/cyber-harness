@@ -385,9 +385,10 @@ func recordCommandResult(sess *Session, cmd string, args []string, result string
 			return false
 		}
 		action := headless.ActionWaitURL
-		if cmd == "wait-for-request" {
+		switch cmd {
+		case "wait-for-request":
 			action = headless.ActionWaitRequest
-		} else if cmd == "wait-for-response" {
+		case "wait-for-response":
 			action = headless.ActionWaitResponse
 		}
 		ra = RecordedAction{Action: action, Args: map[string]string{"url": strings.Join(args[1:], " ")}}

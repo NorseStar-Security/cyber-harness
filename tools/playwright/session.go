@@ -769,6 +769,7 @@ type openOpts struct {
 	cdpURL          string
 }
 
+//nolint:gosec // G602: every flag value is bounds checked before advancing the argument index.
 func parseOpenOpts(args []string, usage string) (openOpts, error) {
 	o := openOpts{
 		commonOpts: commonOpts{timeout: defaultTimeout},

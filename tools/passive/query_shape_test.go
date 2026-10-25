@@ -10,14 +10,13 @@ import (
 	"github.com/chainreactors/cyber/core/telemetry"
 	coretool "github.com/chainreactors/cyber/core/tool"
 	"github.com/chainreactors/cyber/tools/passive"
-	passivecmd "github.com/chainreactors/cyber/tools/passive"
 
 	"github.com/projectdiscovery/uncover/sources"
 )
 
 func TestPassiveQueryShape(t *testing.T) {
 	engine := &functionalPassiveEngine{}
-	command := passivecmd.New(engine).WithLogger(telemetry.NopLogger())
+	command := passive.New(engine).WithLogger(telemetry.NopLogger())
 	var output bytes.Buffer
 	_, err := command.Run(t.Context(), &coretool.Execution{Args: []string{"-s", "fofa", `domain="example.test"`}, Stdout: &output, Stderr: &output})
 	if err != nil {

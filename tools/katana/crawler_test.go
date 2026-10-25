@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -128,9 +129,12 @@ func TestE2EKatanaDeepRendersAuthenticatedSPA(t *testing.T) {
 	defer srv.Close()
 
 	var emitted []string
+	var mu sync.Mutex
 	ctx, cancel := context.WithTimeout(context.Background(), 75*time.Second)
 	defer cancel()
 	crawlErr := Crawl(ctx, srv.URL, "", 2, true, "", func(ev string) {
+		mu.Lock()
+		defer mu.Unlock()
 		emitted = append(emitted, ev)
 	})
 

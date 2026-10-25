@@ -142,6 +142,7 @@ func (c *Command) runQuery(ctx context.Context, src string, args []string) (stri
 
 // --------------- arg parsing -------------------------------------------------
 
+//nolint:gosec // G602: the source value is bounds checked before advancing the argument index.
 func splitSource(args []string) (source string, rest []string, help bool, err error) {
 	for i := 0; i < len(args); i++ {
 		switch args[i] {

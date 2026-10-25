@@ -2,8 +2,7 @@ package main
 
 import (
 	"context"
-
-	passiveconfig "github.com/chainreactors/cyber/exts/passive/config"
+	"sync"
 
 	"github.com/chainreactors/cyber/core/resource"
 	guardrailext "github.com/chainreactors/cyber/exts/guardrail"
@@ -13,8 +12,7 @@ import (
 	hostcli "github.com/chainreactors/cyber/pkg/cli"
 	cfg "github.com/chainreactors/cyber/pkg/config"
 
-	"sync"
-
+	passiveconfig "github.com/chainreactors/cyber/exts/passive/config"
 	recordext "github.com/chainreactors/cyber/exts/record"
 	scannerext "github.com/chainreactors/cyber/exts/scanner"
 	searchext "github.com/chainreactors/cyber/exts/search"

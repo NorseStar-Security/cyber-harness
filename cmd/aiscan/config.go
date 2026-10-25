@@ -80,13 +80,6 @@ func tavilyKeys(primary string, fallbacks ...string) string {
 	return strings.Join(keys, ",")
 }
 
-func intValue(value *int) int {
-	if value != nil {
-		return *value
-	}
-	return 0
-}
-
 func cloneBool(source *bool) *bool {
 	if source == nil {
 		return nil

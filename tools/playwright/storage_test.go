@@ -259,7 +259,7 @@ console.warn('a warning');
 
 	// console --clear
 	out = execString(t, cmd, context.Background(), []string{"console", "con", "--clear"})
-	if !strings.Contains(out, "cleared") || !strings.Contains(out, "cleared") {
+	if !strings.Contains(out, "cleared") {
 		t.Fatalf("expected clear confirmation, got: %s", out)
 	}
 
@@ -267,6 +267,14 @@ console.warn('a warning');
 	out = execString(t, cmd, context.Background(), []string{"console", "con"})
 	if !strings.Contains(out, "No console messages") {
 		t.Fatalf("expected no console messages after clear, got: %s", out)
+	}
+
+	// A page can overwrite the capture buffer; malformed data must stay visible
+	// as an execution failure rather than looking like an empty console.
+	execString(t, cmd, context.Background(), []string{"evaluate", "con", "window.__consoleBuffer = {broken: true}"})
+	out, err := execStringErr(cmd, context.Background(), []string{"console", "con"})
+	if err == nil || !strings.Contains(err.Error(), "parse messages") || strings.Contains(out, "No console messages") {
+		t.Fatalf("malformed console buffer: output=%q err=%v", out, err)
 	}
 
 	execString(t, cmd, context.Background(), []string{"close", "con"})

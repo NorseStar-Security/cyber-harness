@@ -746,13 +746,11 @@ func parseAnthropicWebSearchResponse(data []byte) (*WebSearchResponse, error) {
 				return nil, fmt.Errorf("parse web search results: %w", err)
 			}
 			searched = true
-			{
-				for _, r := range results {
-					if r.URL == "" {
-						continue
-					}
-					out.Results = append(out.Results, WebSearchResult{Title: r.Title, URL: r.URL})
+			for _, r := range results {
+				if r.URL == "" {
+					continue
 				}
+				out.Results = append(out.Results, WebSearchResult{Title: r.Title, URL: r.URL})
 			}
 		case "text":
 			if t := strings.TrimSpace(block.Text); t != "" {

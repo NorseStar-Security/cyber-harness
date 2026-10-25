@@ -6,7 +6,6 @@ import (
 	"io"
 	"log/slog"
 	"math"
-
 	"sync/atomic"
 
 	browserutil "github.com/chainreactors/cyber/tools/headless"
@@ -50,8 +49,8 @@ func Crawl(ctx context.Context, seedURL, hostHeader string, depth int, jsMode bo
 	if hostHeader != "" {
 		options.CustomHeaders = []string{"Host: " + hostHeader}
 	}
-	if proxy := proxyURL; proxy != "" {
-		options.Proxy = proxy
+	if proxyURL != "" {
+		options.Proxy = proxyURL
 	}
 	if jsMode {
 		binary, err := browserutil.Discover()

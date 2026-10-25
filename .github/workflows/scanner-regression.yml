@@ -34,7 +34,7 @@ jobs:
       - name: Run scanner functional regressions
         run: |
           go test -tags "$FULL_CAPS_TAGS" -count=1 -timeout 8m -v \
-            -run 'Test(ScannerFunctionalRegression|FullScannerFunctionalRegression)$' \
+            -run 'Test(ScannerFunctionalRegression|ComposedScannerFunctionalRegression)$' \
             ./exts/scanner
 
   race-stress:

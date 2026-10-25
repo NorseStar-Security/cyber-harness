@@ -30,10 +30,8 @@ func (c *Command) execSetExtraHeaders(ctx context.Context, args []string) (strin
 	if err := json.Unmarshal([]byte(raw), &headers); err != nil {
 		return "", fmt.Errorf("playwright set-extra-headers: invalid JSON: %w", err)
 	}
-	flat := make([]string, 0, len(headers)*2)
 	names := make([]string, 0, len(headers))
-	for k, v := range headers {
-		flat = append(flat, k, v)
+	for k := range headers {
 		names = append(names, k)
 	}
 
@@ -547,9 +545,7 @@ func formatAXTree(nodes []*proto.AccessibilityAXNode) string {
 		if n.ParentID == "" {
 			rootID = n.NodeID
 		}
-		for _, childID := range n.ChildIDs {
-			children[n.NodeID] = append(children[n.NodeID], childID)
-		}
+		children[n.NodeID] = append(children[n.NodeID], n.ChildIDs...)
 	}
 
 	var sb strings.Builder

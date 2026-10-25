@@ -21,7 +21,7 @@ func newHTTPClient(proxy string, timeout time.Duration) *http.Client {
 
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: true, //nolint:gosec // Browser replay must tolerate target certificates, including self-signed certificates.
 			MinVersion:         tls.VersionTLS10,
 		},
 		DialContext:         (&net.Dialer{Timeout: timeout}).DialContext,
