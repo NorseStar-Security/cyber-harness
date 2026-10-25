@@ -71,15 +71,7 @@ func Execute(ctx context.Context, registry *corehooks.Registry, name, arguments 
 		if cause := context.Cause(ctx); cause != nil && !errors.Is(err, cause) {
 			err = errors.Join(err, cause)
 		}
-		if result == nil {
-			result = &aop.ToolResult{}
-		}
-		if err != nil {
-			result.IsError = true
-			if len(result.Output) == 0 {
-				result.Output = []*aop.Content{aop.Text(err.Error())}
-			}
-		}
+		result = Feedback(result, err)
 		endedAt := time.Now()
 		result.CallId = invocation.CallID
 		result.Name = name

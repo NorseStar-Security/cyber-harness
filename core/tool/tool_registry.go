@@ -106,6 +106,7 @@ func (r *ToolRegistry) ToolDefinitions() []*Definition {
 }
 
 func (r *ToolRegistry) ExecuteTool(ctx context.Context, name, arguments string) (result *Result, err error) {
+	defer func() { result = toolhooks.Feedback(result, err) }()
 	if r == nil || r.store == nil {
 		return nil, ErrUnavailable
 	}

@@ -17,6 +17,7 @@ import (
 	"github.com/chainreactors/cyber/core/operation"
 	"github.com/chainreactors/cyber/core/telemetry"
 	coretool "github.com/chainreactors/cyber/core/tool"
+	toolhooks "github.com/chainreactors/cyber/core/tool/hooks"
 	"github.com/chainreactors/cyber/core/truncate"
 	types "github.com/chainreactors/cyber/core/types"
 	"google.golang.org/protobuf/proto"
@@ -591,14 +592,8 @@ func runToolCallSafely(ctx context.Context, cfg Config, tc *aop.ToolCall, turn i
 	toolCtx = inbox.ContextWithInbox(toolCtx, cfg.Inbox)
 	arguments := string(tc.GetArguments().GetData())
 	result, err := cfg.Tools.ExecuteTool(toolCtx, tc.Name, arguments)
-	if result == nil {
-		result = &aop.ToolResult{}
-	}
+	result = toolhooks.Feedback(result, err)
 	if err != nil {
-		result.IsError = true
-		if len(result.Output) == 0 {
-			result.Output = []*aop.Content{aop.Text(err.Error())}
-		}
 		cfg.Logger.Warnf("[turn %d] tool_error name=%s error=%q", turn, tc.Name, err.Error())
 	}
 	return result
@@ -607,7 +602,14 @@ func runToolCallSafely(ctx context.Context, cfg Config, tc *aop.ToolCall, turn i
 // The event keeps the canonical result. Only the model-facing projection is
 // bounded, and its media and terminal flags remain intact.
 func modelToolResultMessage(result *aop.ToolResult, maxBytes int) *aop.Message {
-	if tr := truncate.Head(coretool.ResultText(result), truncate.Options{MaxBytes: maxBytes}); tr.Truncated {
+	text := coretool.ResultText(result)
+	tr := truncate.Head(text, truncate.Options{MaxBytes: maxBytes})
+	// Failure causes are appended after partial output. Keep the tail of failed
+	// results so the model can correct the operation even when output is large.
+	if result.IsError && tr.Truncated {
+		tr = truncate.Tail(text, truncate.Options{MaxBytes: maxBytes})
+	}
+	if tr.Truncated {
 		result = proto.CloneOf(result)
 		preview := tr.Content + fmt.Sprintf(
 			"\n\n[truncated: showing %d/%d lines (%s of %s). Refine your query or use filter/parse tools to access specific parts.]",

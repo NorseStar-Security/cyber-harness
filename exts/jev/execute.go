@@ -17,6 +17,7 @@ import (
 	aop "github.com/chainreactors/cyber/aop"
 	"github.com/chainreactors/cyber/core/operation"
 	coretool "github.com/chainreactors/cyber/core/tool"
+	toolhooks "github.com/chainreactors/cyber/core/tool/hooks"
 	"github.com/dop251/goja"
 	"google.golang.org/protobuf/proto"
 )
@@ -252,14 +253,12 @@ func (e *Extension) beforeModel(ctx context.Context, ev hooks.ContextEvent) ([]*
 		invocation.CallID, invocation.SessionID, invocation.TurnID, invocation.Emitter = call.Id, ev.SessionID, ev.TurnID, "jev"
 		started := time.Now()
 		result, execErr := cfg.Tools.ExecuteTool(operation.ContextWithInvocation(ctx, invocation), call.Name, string(candidate.Arguments))
-		if result == nil {
+		if result == nil && execErr == nil {
 			result = coretool.ErrorResult("missing native result; outcome unknown")
 		}
+		result = toolhooks.Feedback(result, execErr)
 		result = proto.CloneOf(result)
 		result.CallId, result.Name = call.Id, call.Name
-		if execErr != nil {
-			result.IsError = true
-		}
 		value := runtimeResult(call, result)
 		e.updateTask(run, task, func(r *taskRecord) { r.NativeEvidence[result.CallId] = cloneJSONMap(value) })
 		if !candidate.Read {

@@ -4,11 +4,12 @@ import (
 	"context"
 
 	"errors"
-	coretool "github.com/chainreactors/cyber/core/tool"
 	"strings"
 	"testing"
 	"time"
 	"unicode/utf8"
+
+	coretool "github.com/chainreactors/cyber/core/tool"
 
 	aop "github.com/chainreactors/cyber/aop"
 	toolpb "github.com/chainreactors/cyber/aop/tool"
@@ -69,7 +70,7 @@ func TestExecuteToolRequestPreservesPartialOutputOnExecutionError(t *testing.T) 
 		t.Fatal(err)
 	}
 	result := event.GetToolResult()
-	if !result.IsError || len(result.Output) != 2 || result.Output[0].GetText().GetText() != "partial" || result.Output[1].GetMedia() == nil {
+	if !result.IsError || len(result.Output) != 3 || !strings.Contains(coretool.ResultText(result), "failed") || result.Output[0].GetText().GetText() != "partial" || result.Output[1].GetMedia() == nil {
 		t.Fatalf("result = %+v", result)
 	}
 }
