@@ -360,7 +360,7 @@ func (w *workspace) launch(t *testing.T, includeLLM bool) *testProcess {
 	return p
 }
 
-var listening = regexp.MustCompile(`aiscan server listening on http://(127\.0\.0\.1:\d+)`)
+var listening = regexp.MustCompile(`cyber-web listening on http://(127\.0\.0\.1:\d+)`)
 
 func (w *workspace) start(t *testing.T) *testProcess {
 	t.Helper()
