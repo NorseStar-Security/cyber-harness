@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	jevapi "github.com/chainreactors/cyber/agent/provider/jev"
 	"github.com/chainreactors/cyber/core/decision"
@@ -82,6 +83,10 @@ var errProbeStop = errors.New("pure probe reached native dispatch")
 // pairs. No provider or native tool is invoked during publication checks.
 // The exact same program and bridges are used in foreground execution.
 func probeReflexArguments(ctx context.Context, reflex *Program, input, args map[string]any, results []map[string]any, allowMissing bool) (replayResult, error) {
+	// This probe only supplies recorded results and finite JEV alternatives.
+	// A pure JS loop must return a repair diagnostic without blocking the job.
+	probeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 	candidates := map[string]NativeCall{}
 	states := []any{}
 	branches := []replayBranch{}
@@ -205,14 +210,17 @@ func probeReflexArguments(ctx context.Context, reflex *Program, input, args map[
 			}
 			return nil, errProbeStop
 		}
-		output, err := runReflexJS(ctx, reflex, input, args, judge, execute)
+		output, err := runReflexJS(probeCtx, reflex, input, args, judge, execute)
+		if err != nil && ctx.Err() == nil && errors.Is(probeCtx.Err(), context.DeadlineExceeded) {
+			return replayResult{}, compilerValidationError{CompilerDiagnostic{Code: "replay_execution_limit", Stage: "replay", Status: "repair", Message: "Pure recorded replay exceeded its five-second execution budget.", Action: "Repair nonterminating loops or excessive computation. The probe invokes no real tools or model requests; every loop must advance or terminate from current evidence. Resubmit the repaired artifact; the overall compilation job remains active."}}
+		}
 		if err != nil && !errors.Is(interruptedCause(err), errProbeStop) {
 			return replayResult{}, err
 		}
 		if gap == "" && cursor < len(results) {
 			gap = fmt.Sprintf("function returned after %d/%d recorded native results", cursor, len(results))
 			index := cursor
-			diagnostic = &CompilerDiagnostic{Code: "trajectory_incomplete", Stage: "replay", Status: "repair", Message: gap, Call: &index, Replayed: cursor, Recorded: len(results), Expected: results[cursor], Actual: output, Action: "Continue the capability's required work within the synchronous function. A pending result is not completion: poll the same operation with fresh reads and inspect the required final count/receipt. Returning defer hands control to the main model; it does not schedule another invocation."}
+			diagnostic = &CompilerDiagnostic{Code: "trajectory_incomplete", Stage: "replay", Status: "repair", Message: gap, Call: &index, Replayed: cursor, Recorded: len(results), Expected: results[cursor], Actual: output, Action: "Consume the remaining recorded calls in order, including failed reads and final confirmation snapshots; inspect remaining_recorded_calls and the exact expected operation. Do not return at the first visible receipt while recorded reads remain. A pending result is not completion. Returning defer hands control to the main model; it does not schedule another invocation."}
 		}
 		if gap == "" && err == nil && output != nil && output[Defer] != nil && output["parameters"] == nil {
 			gap = "function consumed recorded results but handed off without a completed report"

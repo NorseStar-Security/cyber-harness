@@ -145,6 +145,31 @@ func TestReflexCompilerSemanticRejectionReturnsToAgent(t *testing.T) {
 	}
 }
 
+func TestReflexCompilerRepairsNonterminatingReplay(t *testing.T) {
+	e, plan, actor := compilerReadPlan(t, nil)
+	requests := 0
+	plan.job.cfg.Provider = testProvider(func(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
+		requests++
+		if requests == 2 {
+			last := provider.MessageToolResult(req.Messages[len(req.Messages)-1])
+			if last == nil || !strings.Contains(coretool.ResultText(last), "replay_execution_limit") {
+				t.Fatal("nonterminating replay did not return a repair diagnostic")
+			}
+		}
+		artifact := compilerReadArtifact(actor)
+		if requests == 1 {
+			artifact["observe"] = strings.Replace(artifact["observe"].(string), "{if", "{if(context.history.length){while(true){}}if", 1)
+		}
+		return reply(compilerTool("validate_reflex", map[string]any{"artifact": artifact})), nil
+	})
+	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
+	defer cancel()
+	r, err := e.generateReflex(ctx, plan)
+	if err != nil || r == nil || requests != 2 || !e.qualified(*r) || ctx.Err() != nil {
+		t.Fatalf("nonterminating draft blocked repair: requests=%d artifact=%v err=%v", requests, r != nil, err)
+	}
+}
+
 func TestReflexCompilerCompactsAndContinuesRepair(t *testing.T) {
 	e, plan, actor := compilerReadPlan(t, nil)
 	plan.job.cfg.ContextWindow = 24000
@@ -512,5 +537,98 @@ func TestReflexCompilerEvidenceUpdateMatchesRuntimeHistory(t *testing.T) {
 	out, err := runReflexJS(t.Context(), &r, runtimeInput, nil, nil, nil)
 	if err != nil || out[report] != actor {
 		t.Fatalf("runtime and compiler evidence ABI diverged: output=%v err=%v", out, err)
+	}
+}
+
+func TestReflexCompilerToolSchemaMatchesArtifactDecoder(t *testing.T) {
+	e, plan, actor := compilerReadPlan(t, nil)
+	definition := e.newCompilerAgent(plan).ToolDefinitions()[0]
+	schema := &Program{Parameters: definition.InputSchema.Data}
+	artifact := compilerReadArtifact(actor)
+	artifact["steps"] = map[string]any{"submit": map[string]any{"contract": "lab", "count_argument": "count"}}
+	artifact["readers"] = map[string]any{"receipt": "function(){return null;}"}
+	for _, sample := range []map[string]any{
+		artifact,
+		{"when": "Read current result", "decide": "Report actual evidence", "observe": "js:function(){return{defer:'missing evidence'};}"},
+	} {
+		if err := validateParameters(schema, map[string]any{"artifact": sample}); err != nil {
+			t.Fatalf("compiler schema hides a supported artifact: %v", err)
+		}
+		var decoded *Program
+		if err := decodeReflex(jsonText(sample), &decoded); err != nil || decoded == nil {
+			t.Fatalf("advertised artifact cannot be decoded: %v", err)
+		}
+	}
+	artifact["reportExtra"] = true
+	if err := validateParameters(schema, map[string]any{"artifact": artifact}); err == nil {
+		t.Fatal("compiler schema advertises unknown artifact fields")
+	}
+	var decoded *Program
+	if err := decodeReflex(jsonText(artifact), &decoded); err == nil {
+		t.Fatal("artifact decoder accepted unknown fields")
+	}
+	delete(artifact, "reportExtra")
+	artifact["observe"] = "function(){return null;}"
+	if err := validateParameters(schema, map[string]any{"artifact": artifact}); err == nil {
+		t.Fatal("compiler schema omitted the required js: source prefix")
+	}
+	artifact["observe"] = "js:function(){return null;}"
+	artifact["parameters_schema"] = "not a JSON Schema object"
+	if err := validateParameters(schema, map[string]any{"artifact": artifact}); err == nil {
+		t.Fatal("compiler schema treats parameters_schema as encoded bytes or a string")
+	}
+}
+
+func TestReflexCompilerRepairKeepsFailedAndConfirmationReads(t *testing.T) {
+	e, plan, actor := compilerReadPlan(t, nil)
+	var state struct {
+		Messages []map[string]any `json:"messages"`
+	}
+	if err := json.Unmarshal(plan.state, &state); err != nil {
+		t.Fatal(err)
+	}
+	for _, row := range []struct {
+		id     string
+		failed bool
+		text   string
+	}{{"failed-read", true, "inspection temporarily unavailable"}, {"confirmation-read", false, `{"complete":true,"receipt":"confirmed-current-receipt"}`}} {
+		state.Messages = append(state.Messages,
+			map[string]any{"role": "assistant", "calls": []any{map[string]any{"id": row.id, "name": "bash", "arguments": map[string]any{"command": coretool.JoinCommandLine("lab", []string{"status", actor})}}}},
+			map[string]any{"role": "tool", "name": "bash", "call_id": row.id, "is_error": row.failed, "text": row.text},
+		)
+	}
+	plan.state = json.RawMessage(jsonText(state))
+	compiler := e.newCompilerAgent(plan)
+	artifact := compilerReadArtifact(actor)
+	artifact["observe"] = `js:function(context,args){if(!args||!args.actor)return{defer:"missing current arguments",parameters:"actor"};const r=context.history.filter(function(h){return !h.is_error&&h.data&&h.data.receipt;})[0]||execute({name:"bash",arguments:{command:command("lab",["status",args.actor])},read:true});return{report:{evidence:r.call_id,path:["data","receipt"]}};}`
+	result, err := compiler.ExecuteTool(t.Context(), "validate_reflex", jsonText(map[string]any{"artifact": artifact}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var feedback struct {
+		Accepted   bool               `json:"accepted"`
+		Diagnostic CompilerDiagnostic `json:"diagnostic"`
+		Remaining  []struct {
+			CallID    string   `json:"call_id"`
+			Argv      []string `json:"decoded_argv"`
+			Arguments struct {
+				Command string `json:"command"`
+			} `json:"arguments"`
+			Failed bool `json:"is_error"`
+		} `json:"remaining_recorded_calls"`
+	}
+	if err := json.Unmarshal([]byte(coretool.ResultText(result)), &feedback); err != nil {
+		t.Fatal(err)
+	}
+	if feedback.Accepted || feedback.Diagnostic.Code != "trajectory_incomplete" || len(feedback.Remaining) != 2 {
+		t.Fatalf("incomplete trajectory accepted or repair evidence lost: %s", coretool.ResultText(result))
+	}
+	if feedback.Remaining[0].CallID != "failed-read" || !feedback.Remaining[0].Failed || feedback.Remaining[1].CallID != "confirmation-read" || feedback.Remaining[1].Failed {
+		t.Fatal("repair lost the recorded read order or error flags")
+	}
+	for _, row := range feedback.Remaining {
+		if len(row.Argv) != 3 || row.Argv[2] != actor || row.Arguments.Command != coretool.JoinCommandLine("lab", []string{"status", actor}) {
+			t.Fatal("repair changed the literal native command")
+		}
 	}
 }

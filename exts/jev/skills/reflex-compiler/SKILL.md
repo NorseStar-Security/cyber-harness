@@ -28,11 +28,23 @@ new effect. A user URL is an argument; a handle created by the tool is a result,
 not a missing user parameter. Inspect the current operation and continue only the
 remaining work at each boundary. Do not reopen a submitted workflow simply because
 the function is invoked again.
+Recover a created handle from its documented result field or decoded creation
+arguments. The resource URL and the session name are different values. Check
+the exact recorded flag/positional syntax before using either in later calls.
 context.history is the snapshot at entry to this invocation. It does not grow
 when execute returns. Keep the actual execute result in a local variable and
 process that fresh result directly; never re-scan the old snapshot expecting the
 new read to appear. Consuming every recorded call and then returning defer is
 not a complete replay and cannot qualify the entry path.
+Replay must consume the recorded native calls in order, including failed reads
+and later confirmation snapshots. A receipt becoming visible before the final
+recorded read does not make that suffix disappear. The rejection includes
+remaining_recorded_calls at its failing boundary; compare the whole suffix,
+not just the next call. Preserve each operation and option while deriving its
+current values from args or actual results. Do not substitute inner-text for a
+recorded snapshot, add a session prefix to an already explicit session argument,
+or return early from a snapshot that first shows the receipt. Handle recorded
+read failures and continue the demonstrated inspection without repeating writes.
 If evidence is unavailable, explain exactly which capability or actual result is
 missing. Changing a read flag or inventing a response cannot fill that gap.
 
@@ -44,6 +56,12 @@ Use args or current native results for all task values. Guard all required
 arguments together before external work. Example values are never runtime defaults.
 JSON-encode the source and argument strings once; compare decoded strings, not
 their escaped appearance. command(program, argv) handles shell encoding.
+Each argument has one representation. For a user value supplied as a JSON string
+literal, normally bind its decoded literal value and say so in the schema; use
+it directly in the function. Do not describe one property as either serialized
+or decoded, or conditionally JSON-decode already decoded arguments. A property
+whose purpose is to carry serialized content must explicitly require that
+representation instead. Guard args itself before reading any property.
 
 Semantic decisions use jev({type:"choice",context:"meaning and current facts",
 options:["candidate","defer"]}) and return an option string directly. score uses
@@ -93,6 +111,7 @@ Read diagnostic.code, stage, status, action, expected and actual:
 | completion_missing | The calls replayed, but the function still handed off. Process fresh execute return values and return the requested grounded report; entry history is a snapshot. |
 | unrecorded_native_call | Use already available evidence if the read is redundant. A necessary alternative execution path requires its own actual trajectory; do not fabricate it. |
 | output_limit | Generate the complete artifact again with the increased output budget. Truncated reasoning, source and tool calls were discarded; no validation tool ran. |
+| replay_execution_limit | Pure recorded replay exceeded five seconds. Fix loops that do not advance or terminate; replay has no real tool or model latency. The compilation job continues. |
 | review_input_limit | Simplify redundant semantic branches/facts; deterministic matching of current user labels against native values needs no JEV choice. Preserve required alternatives and exact replay. No evidence was truncated. |
 | parameter_boundary_invalid | Acquire created handles and native-discovered addresses inside the function; require current user labels/values instead of facts unavailable at entry. |
 | parameter_schema_missing | Define the runtime argument schema and field meanings; distinguish existing handles from fresh allocation names. |

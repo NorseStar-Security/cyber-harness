@@ -336,16 +336,18 @@ func (e compilationOutputError) Unwrap() error { return e.error }
 
 // Compilation owns executable source, applicability and its runtime contract.
 // Example arguments are used for replay and are never persisted.
+type reflexArtifact struct {
+	When       string                    `json:"when" jsonschema:"description=Reusable user goal supported at task entry"`
+	Decide     string                    `json:"decide" jsonschema:"description=Work and completion or handoff owned by this function"`
+	Parameters json.RawMessage           `json:"parameters_schema,omitempty" jsonschema:"type=object,description=JSON Schema for current runtime arguments including each field's meaning and source"`
+	Steps      map[string]StepDefinition `json:"steps,omitempty" jsonschema:"description=Effect step IDs mapped to native contract IDs and count or count_argument"`
+	Observe    string                    `json:"observe" jsonschema:"pattern=^js:,description=Source beginning with js: followed by a synchronous function accepting context and args and using the documented execute and jev primitives"`
+	Readers    map[string]string         `json:"readers,omitempty" jsonschema:"description=Optional independent serialized reader function sources"`
+	Arguments  map[string]any            `json:"arguments,omitempty" jsonschema:"description=Exact current example arguments for replay only; never persisted or used as runtime defaults"`
+}
+
 func decodeReflex(text string, output **Program) error {
-	var artifact *struct {
-		When       string                    `json:"when"`
-		Decide     string                    `json:"decide"`
-		Parameters json.RawMessage           `json:"parameters_schema"`
-		Steps      map[string]StepDefinition `json:"steps"`
-		Observe    string                    `json:"observe"`
-		Readers    map[string]string         `json:"readers"`
-		Arguments  map[string]any            `json:"arguments"`
-	}
+	var artifact *reflexArtifact
 	decoder := json.NewDecoder(strings.NewReader(text))
 	decoder.DisallowUnknownFields()
 	decoder.UseNumber()
