@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	provider "github.com/chainreactors/cyber/agent/provider"
 	"github.com/chainreactors/cyber/aop"
 	coreevents "github.com/chainreactors/cyber/core/events"
 	"github.com/chainreactors/cyber/core/telemetry"
@@ -18,7 +19,7 @@ func TestRetryOnTransientError(t *testing.T) {
 	tools := newTestTools(t)
 	callCount := 0
 	llm := &callbackProvider{
-		fn: func(_ context.Context, req *ChatCompletionRequest) (*ChatCompletionResponse, error) {
+		fn: func(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 			callCount++
 			if callCount == 1 {
 				return nil, fmt.Errorf("API error (502): bad gateway")
@@ -79,7 +80,7 @@ func TestClampMaxTokens(t *testing.T) {
 func TestAgentRejectsExhaustedContextBeforeProviderCall(t *testing.T) {
 	callCount := 0
 	llm := &callbackProvider{
-		fn: func(_ context.Context, _ *ChatCompletionRequest) (*ChatCompletionResponse, error) {
+		fn: func(_ context.Context, _ *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 			callCount++
 			return chatResponse(NewTextMessage("assistant", "unexpected")), nil
 		},
@@ -107,7 +108,7 @@ func TestConfigInitUsesPiModelLimitDefaults(t *testing.T) {
 }
 
 func TestAgentRequestUsesConfiguredAndRemainingContextLimits(t *testing.T) {
-	llm := &scriptedProvider{responses: []*ChatCompletionResponse{
+	llm := &scriptedProvider{responses: []*provider.ChatCompletionResponse{
 		chatResponse(NewTextMessage("assistant", "done")),
 	}}
 	ag := NewAgent(Config{Loop: StandardLoop{},
@@ -134,7 +135,7 @@ func TestNoRetryOnAuthError(t *testing.T) {
 	tools := newTestTools(t)
 	callCount := 0
 	llm := &callbackProvider{
-		fn: func(_ context.Context, req *ChatCompletionRequest) (*ChatCompletionResponse, error) {
+		fn: func(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 			callCount++
 			return nil, fmt.Errorf("API error (401): invalid_api_key")
 		},
@@ -158,7 +159,7 @@ func TestRetryExhaustedReturnsLastError(t *testing.T) {
 	tools := newTestTools(t)
 	callCount := 0
 	llm := &callbackProvider{
-		fn: func(_ context.Context, req *ChatCompletionRequest) (*ChatCompletionResponse, error) {
+		fn: func(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 			callCount++
 			return nil, fmt.Errorf("API error (503): service unavailable")
 		},
@@ -179,13 +180,13 @@ func TestRetryExhaustedReturnsLastError(t *testing.T) {
 }
 
 func TestRetryableProviderTimeoutAndStallErrors(t *testing.T) {
-	if !isRetryableError(fmt.Errorf("wrapped: %w", ErrCallTimeout)) {
+	if !isRetryableError(fmt.Errorf("wrapped: %w", provider.ErrCallTimeout)) {
 		t.Fatal("ErrCallTimeout should be retryable")
 	}
-	if !isRetryableError(fmt.Errorf("wrapped: %w", ErrStreamStalled)) {
+	if !isRetryableError(fmt.Errorf("wrapped: %w", provider.ErrStreamStalled)) {
 		t.Fatal("ErrStreamStalled should be retryable")
 	}
-	if !isRetryableError(fmt.Errorf("wrapped: %w", ErrStreamIncomplete)) {
+	if !isRetryableError(fmt.Errorf("wrapped: %w", provider.ErrStreamIncomplete)) {
 		t.Fatal("ErrStreamIncomplete should be retryable")
 	}
 	if !isRetryableError(retryableTimeoutError{}) {
@@ -200,10 +201,10 @@ func TestRetryableProviderTimeoutAndStallErrors(t *testing.T) {
 }
 
 func TestContextOverflowBypassesTransportRetry(t *testing.T) {
-	if isRetryableError(&APIError{StatusCode: 500, Message: "maximum context length exceeded"}) {
+	if isRetryableError(&provider.APIError{StatusCode: 500, Message: "maximum context length exceeded"}) {
 		t.Fatal("context overflow should go directly to compaction")
 	}
-	if !isRetryableError(&APIError{StatusCode: 503, Message: "Service unavailable: too many tokens"}) {
+	if !isRetryableError(&provider.APIError{StatusCode: 503, Message: "Service unavailable: too many tokens"}) {
 		t.Fatal("service unavailable should remain a transport retry")
 	}
 }
@@ -214,7 +215,7 @@ func TestStreamAssistantMessageReturnsContextErrorOnClosedCanceledStream(t *test
 
 	_, _, _, err := streamAssistantMessageWithUsage(ctx,
 		&scriptedProvider{},
-		&ChatCompletionRequest{Model: "test"},
+		&provider.ChatCompletionRequest{Model: "test"},
 		newAOPEmitter(coreevents.New(), "cyber", "test-session", "", "", nil, 0),
 		telemetry.NopLogger(),
 		1,
@@ -394,12 +395,12 @@ func TestInferImageSupportModelRegistry(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.provider+"/"+tt.model, func(t *testing.T) {
-			cfg := &ProviderConfig{
+			cfg := &provider.ProviderConfig{
 				Provider: tt.provider,
 				Model:    tt.model,
 				APIKey:   "test-key",
 			}
-			resolved, err := ResolveProvider(cfg)
+			resolved, err := provider.Resolve(cfg)
 			if err != nil {
 				t.Fatalf("Resolve() error = %v", err)
 			}
@@ -481,22 +482,22 @@ func TestRetryAfterFromError(t *testing.T) {
 	}{
 		{
 			name: "seconds form",
-			err:  &APIError{StatusCode: 429, Header: http.Header{"Retry-After": []string{"30"}}},
+			err:  &provider.APIError{StatusCode: 429, Header: http.Header{"Retry-After": []string{"30"}}},
 			want: 30 * time.Second,
 		},
 		{
 			name: "header absent",
-			err:  &APIError{StatusCode: 429},
+			err:  &provider.APIError{StatusCode: 429},
 			want: 0,
 		},
 		{
 			name: "non-integer",
-			err:  &APIError{StatusCode: 429, Header: http.Header{"Retry-After": []string{"Wed, 21 Oct 2015 07:28:00 GMT"}}},
+			err:  &provider.APIError{StatusCode: 429, Header: http.Header{"Retry-After": []string{"Wed, 21 Oct 2015 07:28:00 GMT"}}},
 			want: 0,
 		},
 		{
 			name: "wrapped APIError",
-			err:  fmt.Errorf("call failed: %w", &APIError{StatusCode: 429, Header: http.Header{"Retry-After": []string{"5"}}}),
+			err:  fmt.Errorf("call failed: %w", &provider.APIError{StatusCode: 429, Header: http.Header{"Retry-After": []string{"5"}}}),
 			want: 5 * time.Second,
 		},
 		{
@@ -515,7 +516,7 @@ func TestRetryAfterFromError(t *testing.T) {
 }
 
 func TestRetryDelayForHonorsRetryAfter(t *testing.T) {
-	err := &APIError{StatusCode: 429, Header: http.Header{"Retry-After": []string{"60"}}}
+	err := &provider.APIError{StatusCode: 429, Header: http.Header{"Retry-After": []string{"60"}}}
 	// Retry-After bypasses both the formula and the 32s cap.
 	if got := retryDelayFor(0, err); got != 60*time.Second {
 		t.Errorf("retryDelayFor with Retry-After=60 = %s, want 60s", got)
@@ -523,7 +524,7 @@ func TestRetryDelayForHonorsRetryAfter(t *testing.T) {
 }
 
 func TestRetryDelayForFallsBackToBackoffWhenNoHeader(t *testing.T) {
-	err := &APIError{StatusCode: 500} // no Header
+	err := &provider.APIError{StatusCode: 500} // no Header
 	got := retryDelayFor(2, err)
 	// attempt 2 base = 2s; with jitter it must stay in [2s, 2.5s)
 	if got < 2*time.Second || got >= 2500*time.Millisecond {
@@ -533,12 +534,12 @@ func TestRetryDelayForFallsBackToBackoffWhenNoHeader(t *testing.T) {
 
 func TestIsRetryableNowIncludes408409(t *testing.T) {
 	for _, code := range []int{408, 409, 429, 500, 502, 503, 529} {
-		if !isRetryableError(&APIError{StatusCode: code}) {
+		if !isRetryableError(&provider.APIError{StatusCode: code}) {
 			t.Errorf("status %d should be retryable", code)
 		}
 	}
 	for _, code := range []int{400, 401, 403, 404} {
-		if isRetryableError(&APIError{StatusCode: code}) {
+		if isRetryableError(&provider.APIError{StatusCode: code}) {
 			t.Errorf("status %d should NOT be retryable", code)
 		}
 	}

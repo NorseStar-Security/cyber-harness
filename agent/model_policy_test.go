@@ -27,7 +27,7 @@ func TestModelRequestPolicyCannotDispatchCompositionTools(t *testing.T) {
 			})
 			echo := &recordingTool{name: "echo", output: "must not execute"}
 			toolMessage := &aop.Message{Role: "assistant", Content: []*aop.Content{{Value: &aop.Content_ToolCall{ToolCall: &aop.ToolCall{Id: "one", Name: "echo", Arguments: &aop.EncodedValue{Data: []byte(`{"value":"x"}`)}}}}}}
-			llm := &scriptedProvider{responses: []*ChatCompletionResponse{{Choices: []provider.Choice{{Message: toolMessage}}}}, streamEventBatches: [][]ChatCompletionStreamEvent{{roleDelta("assistant"), toolCallDelta(0, "one", "echo", `{"value":"x"}`), {Done: true}}}}
+			llm := &scriptedProvider{responses: []*provider.ChatCompletionResponse{{Choices: []provider.Choice{{Message: toolMessage}}}}, streamEventBatches: [][]provider.ChatCompletionStreamEvent{{roleDelta("assistant"), toolCallDelta(0, "one", "echo", `{"value":"x"}`), {Done: true}}}}
 			result, err := NewAgent(Config{Loop: StandardLoop{}, Provider: llm, Tools: newTestTools(t, echo), Hooks: registry, Stream: stream, MaxRetries: -1}).Run(t.Context(), TextInput("Compose only"))
 			if err == nil || !strings.Contains(err.Error(), "forbids tool calls") || calls != 1 || len(echo.callsSnapshot()) != 0 {
 				t.Fatalf("result=%v err=%v policy=%d effects=%d", result, err, calls, len(echo.callsSnapshot()))
@@ -42,7 +42,7 @@ func TestModelRequestPolicyDenialAndRetries(t *testing.T) {
 		policies++
 		return hooks.ModelPolicy{Purpose: "composition", DisableTools: true}, nil
 	})
-	llm := &callbackProvider{fn: func(_ context.Context, req *ChatCompletionRequest) (*ChatCompletionResponse, error) {
+	llm := &callbackProvider{fn: func(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 		requests++
 		if req.Purpose != "composition" || len(req.Tools) != 0 {
 			t.Fatal("restriction was lost")
@@ -50,7 +50,7 @@ func TestModelRequestPolicyDenialAndRetries(t *testing.T) {
 		if requests == 1 {
 			return nil, errors.New("connection reset")
 		}
-		return &ChatCompletionResponse{Choices: []provider.Choice{{Message: provider.TextMessage("assistant", "answer")}}, Usage: &aop.TokenUsage{}}, nil
+		return &provider.ChatCompletionResponse{Choices: []provider.Choice{{Message: provider.TextMessage("assistant", "answer")}}, Usage: &aop.TokenUsage{}}, nil
 	}}
 	result, err := NewAgent(Config{Loop: StandardLoop{}, Provider: llm, Hooks: registry, MaxRetries: 1}).Run(t.Context(), TextInput("Compose"))
 	if err != nil || result.Output != "answer" || policies != 2 || requests != 2 {

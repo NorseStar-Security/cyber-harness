@@ -84,7 +84,7 @@ func testModelReloadKeepsConversation(t *testing.T, inPlace bool) {
 			Session: request.Session,
 			Extensions: []extension.Extension{extension.Func{LoadFunc: func(scope *extension.Scope) error {
 				state, err := extension.Use[*provider.State](scope)
-				if err == nil && request.ProviderMode != profile.ProviderDisabled {
+				if err == nil && request.ProviderMode != provider.StartupDisabled {
 					state.Set(&recoveryProvider{onChat: onChat}, cfg.ProviderConfig(request.Option))
 				}
 				return err

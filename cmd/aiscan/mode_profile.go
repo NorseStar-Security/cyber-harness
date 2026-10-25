@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	provider "github.com/chainreactors/cyber/agent/provider"
 	agentsession "github.com/chainreactors/cyber/agent/session"
 	"github.com/chainreactors/cyber/core/telemetry"
 	cfg "github.com/chainreactors/cyber/pkg/config"
@@ -16,7 +17,7 @@ func loadAgentProfile(ctx context.Context, newProfile func(profile.Request) (pro
 	}
 	p, err := newProfile(profile.Request{
 		Option:       option,
-		ProviderMode: profile.ProviderRequired,
+		ProviderMode: provider.StartupRequired,
 		Session:      sessionConfig,
 		Logger:       logger,
 	})

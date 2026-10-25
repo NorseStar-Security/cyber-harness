@@ -24,7 +24,7 @@ func (*drainingTool) Description() string { return "wait for cleanup after cance
 func (d *drainingTool) Definition() *aop.ToolDefinition {
 	return coretool.Def(d.Name(), d.Description(), struct{}{})
 }
-func (d *drainingTool) Execute(ctx context.Context, _ string) (*coretool.Result, error) {
+func (d *drainingTool) Execute(ctx context.Context, _ string) (*aop.ToolResult, error) {
 	close(d.started)
 	<-ctx.Done()
 	close(d.canceled)

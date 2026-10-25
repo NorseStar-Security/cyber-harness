@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/chainreactors/cyber/agent"
+	agenthooks "github.com/chainreactors/cyber/agent/hooks"
 	"github.com/chainreactors/cyber/agent/provider"
 	aop "github.com/chainreactors/cyber/aop"
 )
@@ -77,7 +78,7 @@ func TestProviderFailuresAllowNextTurnInSameSession(t *testing.T) {
 			case <-time.After(3 * time.Second):
 				t.Fatal("failed provider stranded the run")
 			}
-			if result, err := failed.Wait(); err == nil || result.Stop != agent.StopReasonError {
+			if result, err := failed.Wait(); err == nil || result.Stop != agenthooks.StopReasonError {
 				t.Fatalf("failed run: %v %v", result, err)
 			}
 			terminal := <-terminals

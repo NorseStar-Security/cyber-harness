@@ -8,7 +8,6 @@ import (
 	scannerext "github.com/chainreactors/cyber/exts/scanner"
 	searchext "github.com/chainreactors/cyber/exts/search"
 	cfg "github.com/chainreactors/cyber/pkg/config"
-	profilepkg "github.com/chainreactors/cyber/pkg/profile"
 )
 
 func TestApplicationConfigFromOptionCarriesWideSettings(t *testing.T) {
@@ -27,7 +26,7 @@ func TestApplicationConfigFromOptionCarriesWideSettings(t *testing.T) {
 		PlaywrightSession: "browser-1",
 		TrafficOptions:    cfg.TrafficOptions{BodyStorage: "disk"},
 	}
-	config := appConfigFromOption(option, profilepkg.ProviderDisabled, telemetry.NopLogger())
+	config := appConfigFromOption(option, provider.StartupDisabled, telemetry.NopLogger())
 	if config.Provider.Config.Model != "gpt-4o" || config.Provider.Mode != provider.StartupDisabled {
 		t.Fatalf("provider config = %+v", config.Provider)
 	}
@@ -62,7 +61,7 @@ func TestApplicationConfigUsesCompiledDefaults(t *testing.T) {
 
 	option := &cfg.Option{}
 	cfg.ApplyDefaults(option)
-	config := appConfigFromOption(option, profilepkg.ProviderOptional, telemetry.NopLogger())
+	config := appConfigFromOption(option, provider.StartupOptional, telemetry.NopLogger())
 	if config.Scanner.Resources.CyberhubURL != scannerext.DefaultCyberhubURL || config.Scanner.Resources.APIKey != scannerext.DefaultCyberhubKey || config.Scanner.Resources.Mode != scannerext.DefaultCyberhubMode {
 		t.Fatalf("scanner cyberhub config = %#v", config.Scanner)
 	}

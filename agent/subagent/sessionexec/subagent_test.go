@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/chainreactors/cyber/agent"
+	agenthooks "github.com/chainreactors/cyber/agent/hooks"
 	"github.com/chainreactors/cyber/agent/inbox"
 	"github.com/chainreactors/cyber/agent/provider"
 	"github.com/chainreactors/cyber/agent/session"
@@ -21,7 +22,7 @@ import (
 
 func TestSubAgentSyncReturnsResult(t *testing.T) {
 	parent := agent.NewAgent(agent.Config{Loop: agent.StandardLoop{},
-		Provider:  &scriptedProvider{responses: []*agent.ChatCompletionResponse{chatResponse(newTextMessage("assistant", "child result"))}},
+		Provider:  &scriptedProvider{responses: []*provider.ChatCompletionResponse{chatResponse(newTextMessage("assistant", "child result"))}},
 		Tools:     newTestTools(t),
 		Model:     "test-model",
 		SessionID: "parent-session",
@@ -48,7 +49,7 @@ func TestSubagentMessagesBelongToChild(t *testing.T) {
 		}
 	})
 	parent := agent.NewAgent(agent.Config{Loop: agent.StandardLoop{}, Bus: bus, SessionID: "parent", AgentName: "parent",
-		Provider: &scriptedProvider{responses: []*agent.ChatCompletionResponse{chatResponse(newTextMessage("assistant", "child result"))}},
+		Provider: &scriptedProvider{responses: []*provider.ChatCompletionResponse{chatResponse(newTextMessage("assistant", "child result"))}},
 	})
 	tool := newSubagentTestTool(t, parent.Cfg)
 	ctx := operation.ContextWithInvocation(agent.ContextWithToolAgentConfig(t.Context(), parent.Cfg), operation.Invocation{CallID: "spawn"})
@@ -91,7 +92,7 @@ func TestSubAgentCreateRequiresSpawningToolCallID(t *testing.T) {
 }
 
 func TestSubAgentUsesExecutingAgentContext(t *testing.T) {
-	provider := &scriptedProvider{responses: []*agent.ChatCompletionResponse{
+	provider := &scriptedProvider{responses: []*provider.ChatCompletionResponse{
 		chatResponse(newTextMessage("assistant", "context result")),
 	}}
 
@@ -161,7 +162,7 @@ func TestSubAgentUsesExecutingAgentContext(t *testing.T) {
 // so a background subagent that inherited it died before its first model call.
 // The context is canceled up front here to keep the race out of the test.
 func TestSubAgentAsyncOutlivesInvocationContext(t *testing.T) {
-	llm := &scriptedProvider{responses: []*agent.ChatCompletionResponse{
+	llm := &scriptedProvider{responses: []*provider.ChatCompletionResponse{
 		chatResponse(newTextMessage("assistant", "background result")),
 	}}
 
@@ -200,7 +201,7 @@ func TestSubAgentAsyncOutlivesInvocationContext(t *testing.T) {
 // fork promises the parent conversation, which only survives if it is seeded
 // into the child's state before Run rebuilds the request from it.
 func TestSubAgentForkInheritsParentConversation(t *testing.T) {
-	llm := &scriptedProvider{responses: []*agent.ChatCompletionResponse{
+	llm := &scriptedProvider{responses: []*provider.ChatCompletionResponse{
 		chatResponse(newTextMessage("assistant", "fork result")),
 	}}
 
@@ -251,7 +252,7 @@ func TestSubAgentForkInheritsParentConversation(t *testing.T) {
 // conversation. A sync child never inherits the conversation, so a missing prompt
 // left it with nothing but the bare task.
 func TestSubAgentInheritsParentSystemPrompt(t *testing.T) {
-	llm := &scriptedProvider{responses: []*agent.ChatCompletionResponse{
+	llm := &scriptedProvider{responses: []*provider.ChatCompletionResponse{
 		chatResponse(newTextMessage("assistant", "child result")),
 	}}
 	parent := agent.NewAgent(agent.Config{Loop: agent.StandardLoop{},
@@ -308,7 +309,7 @@ func TestSubagentModelOverrideAndPanicUseSessionCleanup(t *testing.T) {
 			if panicLoop {
 				panic("child failed")
 			}
-			return &agent.Result{Output: "done", Stop: agent.StopReasonCompleted}, nil
+			return &agent.Result{Output: "done", Stop: agenthooks.StopReasonCompleted}, nil
 		})})
 		tool := newSubagentTestTool(t, parent.Cfg)
 		_, registerErr := tool.registry.Add(subagent.Subagent{Name: "worker", Prepare: func(_ context.Context, cfg agent.Config, _ subagent.Input) (agent.Config, string, error) {

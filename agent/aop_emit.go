@@ -6,6 +6,8 @@ import (
 	"strings"
 	"sync/atomic"
 
+	agenthooks "github.com/chainreactors/cyber/agent/hooks"
+	provider "github.com/chainreactors/cyber/agent/provider"
 	aop "github.com/chainreactors/cyber/aop"
 	types "github.com/chainreactors/cyber/core/types"
 	"google.golang.org/protobuf/proto"
@@ -111,7 +113,7 @@ func (e *aopEmitter) turnStart() {
 	e.emit(&aop.Event{Payload: &aop.Event_TurnStarted{TurnStarted: &aop.TurnStarted{}}})
 }
 
-func (e *aopEmitter) turnEnd(stop StopReason, totalUsage *aop.TokenUsage, contextTokens int, runErr error) {
+func (e *aopEmitter) turnEnd(stop agenthooks.StopReason, totalUsage *aop.TokenUsage, contextTokens int, runErr error) {
 	ended := &aop.TurnEnded{StopReason: string(stop), Usage: totalUsage, ContextTokens: uint64(max(contextTokens, 0))}
 	if runErr != nil {
 		ended.Error = &aop.ProtocolError{Message: runErr.Error()}
@@ -173,7 +175,7 @@ func (e *aopEmitter) errorEvt(err error, retryable bool) {
 	e.emit(&aop.Event{Payload: &aop.Event_Error{Error: &aop.ProtocolError{Message: err.Error(), Retryable: retryable}}})
 }
 
-func (e *aopEmitter) providerFrame(frame ProviderRawFrame) {
+func (e *aopEmitter) providerFrame(frame provider.RawFrame) {
 	direction := aop.Direction_DIRECTION_UNSPECIFIED
 	switch frame.Direction {
 	case "request":

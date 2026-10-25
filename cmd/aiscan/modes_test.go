@@ -104,7 +104,7 @@ func TestDirectScannerAIUsesProfileRuntime(t *testing.T) {
 	if !errors.Is(err, runtimeErr) {
 		t.Fatalf("RunDirectScannerMode() error = %v, want Profile.Runtime error", err)
 	}
-	if request.ProviderMode != profilepkg.ProviderRequired {
+	if request.ProviderMode != provider.StartupRequired {
 		t.Fatalf("provider mode = %v, want required", request.ProviderMode)
 	}
 	if request.Session == nil || request.Session.Loop == nil {

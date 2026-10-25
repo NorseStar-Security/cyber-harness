@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	agenthooks "github.com/chainreactors/cyber/agent/hooks"
 	"github.com/chainreactors/cyber/agent/inbox"
 	"github.com/chainreactors/cyber/agent/provider"
 	aop "github.com/chainreactors/cyber/aop"
@@ -50,7 +51,7 @@ func (StandardLoop) Run(ctx context.Context, cfg Config) (*Result, error) {
 	em := cfg.emitter
 	ib := cfg.Inbox
 	ended := false
-	end := func(result *Result, err error, stop StopReason) (*Result, error) {
+	end := func(result *Result, err error, stop agenthooks.StopReason) (*Result, error) {
 		if result == nil {
 			result = transcript.result("", transcript.completedTurns, err)
 		}
@@ -61,7 +62,7 @@ func (StandardLoop) Run(ctx context.Context, cfg Config) (*Result, error) {
 		result.MessageCounter = em.messageCounter()
 		if !ended {
 			ended = true
-			if result.Err != nil && stop == StopReasonError {
+			if result.Err != nil && stop == agenthooks.StopReasonError {
 				em.errorEvt(result.Err, isRetryableError(result.Err))
 			}
 			emitRunEnd(ctx, cfg, result)
@@ -74,7 +75,7 @@ func (StandardLoop) Run(ctx context.Context, cfg Config) (*Result, error) {
 		var err error
 		systemPrompt, err = cfg.SystemPromptFn(ctx, &cfg)
 		if err != nil {
-			return end(nil, fmt.Errorf("resolve system prompt: %w", err), StopReasonError)
+			return end(nil, fmt.Errorf("resolve system prompt: %w", err), agenthooks.StopReasonError)
 		}
 	}
 	initialPrompt, prepend := runStartHook(ctx, cfg, systemPrompt)
@@ -86,7 +87,7 @@ func (StandardLoop) Run(ctx context.Context, cfg Config) (*Result, error) {
 		if err := ctx.Err(); err != nil {
 			failure := &aop.Message{Role: "assistant"}
 			transcript.append(failure)
-			return end(nil, err, StopReasonCanceled)
+			return end(nil, err, agenthooks.StopReasonCanceled)
 		}
 		if ib != nil {
 			inboxMsgs := ib.Drain()
@@ -118,7 +119,7 @@ func (StandardLoop) Run(ctx context.Context, cfg Config) (*Result, error) {
 			decisionPrepared = true
 		}
 		if err := ctx.Err(); err != nil {
-			return end(nil, err, StopReasonCanceled)
+			return end(nil, err, agenthooks.StopReasonCanceled)
 		}
 		// A controller may have yielded to new input while executing tools.
 		if ib != nil && ib.Len() > 0 {
@@ -141,7 +142,7 @@ func (StandardLoop) Run(ctx context.Context, cfg Config) (*Result, error) {
 		transcript.recordTurnUsage(turn, usage)
 		if err != nil {
 			if ctx.Err() != nil {
-				return end(nil, ctx.Err(), StopReasonCanceled)
+				return end(nil, ctx.Err(), agenthooks.StopReasonCanceled)
 			}
 			if errors.Is(err, inbox.ErrInterrupted) {
 				transcript.completedTurns = turn
@@ -149,10 +150,10 @@ func (StandardLoop) Run(ctx context.Context, cfg Config) (*Result, error) {
 				em.usage(usage, cfg.Model)
 				em.status("interrupted", nil)
 				if cfg.TokenBudget > 0 && transcript.totalUsage.GetTotalTokens() >= uint64(cfg.TokenBudget) {
-					return end(nil, fmt.Errorf("token budget exhausted after interruption"), StopReasonBudget)
+					return end(nil, fmt.Errorf("token budget exhausted after interruption"), agenthooks.StopReasonBudget)
 				}
 				if cfg.MaxTurns > 0 && turn >= cfg.MaxTurns {
-					return end(nil, nil, StopReasonStopped)
+					return end(nil, nil, agenthooks.StopReasonStopped)
 				}
 				continue
 			}
@@ -167,7 +168,7 @@ func (StandardLoop) Run(ctx context.Context, cfg Config) (*Result, error) {
 				}
 			}
 			transcript.completedTurns = turn
-			return end(nil, err, StopReasonError)
+			return end(nil, err, agenthooks.StopReasonError)
 		}
 		assistant.normalize()
 		if isLengthContextOverflow(assistant.finishReason, usage, cfg.ContextWindow) {
@@ -188,13 +189,13 @@ func (StandardLoop) Run(ctx context.Context, cfg Config) (*Result, error) {
 			overflowErr := fmt.Errorf("LLM context overflow at turn %d (finish_reason=%s, prompt_tokens=%d)",
 				turn, assistant.finishReason, promptTokens)
 			transcript.completedTurns = turn
-			return end(nil, overflowErr, StopReasonError)
+			return end(nil, overflowErr, agenthooks.StopReasonError)
 		}
 		overflowRecoveryAttempted = false
 		if cfg.TokenBudget > 0 && transcript.totalUsage.GetTotalTokens() >= uint64(cfg.TokenBudget) && len(assistant.toolCalls) > 0 {
 			cfg.Logger.Warnf("token budget exhausted: %d/%d", transcript.totalUsage.GetTotalTokens(), cfg.TokenBudget)
 			result := transcript.result(provider.MessageText(assistant.message), turn, fmt.Errorf("token budget exhausted: %d/%d", transcript.totalUsage.GetTotalTokens(), cfg.TokenBudget))
-			return end(result, result.Err, StopReasonBudget)
+			return end(result, result.Err, agenthooks.StopReasonBudget)
 		}
 		transcript.append(assistant.message)
 		afterModelHook(ctx, cfg, transcript.messages, turn)
@@ -204,7 +205,7 @@ func (StandardLoop) Run(ctx context.Context, cfg Config) (*Result, error) {
 			if transcript.totalUsage.GetTotalTokens() >= uint64(cfg.TokenBudget) {
 				cfg.Logger.Warnf("token budget exhausted: %d/%d", transcript.totalUsage.GetTotalTokens(), cfg.TokenBudget)
 				result := transcript.result(provider.MessageText(assistant.message), turn, fmt.Errorf("token budget exhausted: %d/%d", transcript.totalUsage.GetTotalTokens(), cfg.TokenBudget))
-				return end(result, result.Err, StopReasonBudget)
+				return end(result, result.Err, agenthooks.StopReasonBudget)
 			}
 			if transcript.totalUsage.GetTotalTokens() >= uint64(cfg.TokenBudget)*DefaultTokenBudgetWarningPct/100 {
 				em.status(statusTokenBudgetWarning, &types.BudgetWarning{
@@ -220,9 +221,9 @@ func (StandardLoop) Run(ctx context.Context, cfg Config) (*Result, error) {
 			batch, err := executeToolCalls(ctx, cfg, em, assistant, turn)
 			if err != nil {
 				if ctx.Err() != nil {
-					return end(nil, ctx.Err(), StopReasonCanceled)
+					return end(nil, ctx.Err(), agenthooks.StopReasonCanceled)
 				}
-				return end(nil, err, StopReasonError)
+				return end(nil, err, agenthooks.StopReasonError)
 			}
 			toolResults = batch.messages
 			terminate = batch.terminate
@@ -235,13 +236,13 @@ func (StandardLoop) Run(ctx context.Context, cfg Config) (*Result, error) {
 		if cfg.MaxTurns > 0 && turn >= cfg.MaxTurns {
 			cfg.Logger.Debugf("agent status=stopped turns=%d/%d tokens=%d", turn, cfg.MaxTurns, transcript.totalUsage.GetTotalTokens())
 			result := transcript.result(provider.MessageText(assistant.message), turn, nil)
-			return end(result, nil, StopReasonStopped)
+			return end(result, nil, agenthooks.StopReasonStopped)
 		}
 
 		if terminate {
 			cfg.Logger.Debugf("agent status=completed turns=%d tokens=%d", turn, transcript.totalUsage.GetTotalTokens())
 			result := transcript.result(provider.MessageText(assistant.message), turn, nil)
-			return end(result, nil, StopReasonTerminated)
+			return end(result, nil, agenthooks.StopReasonTerminated)
 		}
 		if len(assistant.toolCalls) == 0 {
 			if ib != nil && ib.Len() > 0 {
@@ -260,7 +261,7 @@ func (StandardLoop) Run(ctx context.Context, cfg Config) (*Result, error) {
 
 			cfg.Logger.Debugf("agent status=completed turns=%d tokens=%d", turn, transcript.totalUsage.GetTotalTokens())
 			result := transcript.result(provider.MessageText(assistant.message), turn, nil)
-			return end(result, nil, StopReasonCompleted)
+			return end(result, nil, agenthooks.StopReasonCompleted)
 		}
 	}
 
@@ -692,7 +693,7 @@ func newMessageBuilder() *messageBuilder {
 	}
 }
 
-func (b *messageBuilder) Apply(event ChatCompletionStreamEvent) {
+func (b *messageBuilder) Apply(event provider.ChatCompletionStreamEvent) {
 	if event.Role != "" {
 		b.role = event.Role
 	}

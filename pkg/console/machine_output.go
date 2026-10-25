@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/chainreactors/cyber/agent"
+	agenthooks "github.com/chainreactors/cyber/agent/hooks"
 	aop "github.com/chainreactors/cyber/aop"
 	"github.com/chainreactors/cyber/core/events"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -173,11 +173,11 @@ func (o *machineOutput) SetError(err error) {
 		o.failure = &aop.ProtocolError{Code: "execution_error", Message: err.Error()}
 	}
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-		o.stop = string(agent.StopReasonCanceled)
+		o.stop = string(agenthooks.StopReasonCanceled)
 	} else {
 		switch o.stop {
-		case "", string(agent.StopReasonCompleted), string(agent.StopReasonStopped), string(agent.StopReasonTerminated):
-			o.stop = string(agent.StopReasonError)
+		case "", string(agenthooks.StopReasonCompleted), string(agenthooks.StopReasonStopped), string(agenthooks.StopReasonTerminated):
+			o.stop = string(agenthooks.StopReasonError)
 		}
 	}
 }
@@ -206,7 +206,7 @@ func (o *machineOutput) Close() error {
 	if o.failure != nil {
 		result.Error = &machineFailure{Code: o.failure.Code, Message: o.failure.Message, Retryable: o.failure.Retryable}
 	}
-	result.IsError = result.Error != nil || o.stop == string(agent.StopReasonError) || o.stop == string(agent.StopReasonCanceled) || o.stop == string(agent.StopReasonBudget)
+	result.IsError = result.Error != nil || o.stop == string(agenthooks.StopReasonError) || o.stop == string(agenthooks.StopReasonCanceled) || o.stop == string(agenthooks.StopReasonBudget)
 	if o.usage != nil {
 		result.Usage = &machineUsage{
 			InputTokens: o.usage.InputTokens, OutputTokens: o.usage.OutputTokens,

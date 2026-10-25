@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	provider "github.com/chainreactors/cyber/agent/provider"
 	agentsession "github.com/chainreactors/cyber/agent/session"
 	"github.com/chainreactors/cyber/agent/skills"
 	aop "github.com/chainreactors/cyber/aop"
@@ -12,13 +13,12 @@ import (
 	scannerext "github.com/chainreactors/cyber/exts/scanner"
 	taskcli "github.com/chainreactors/cyber/pkg/cli/task"
 	cfg "github.com/chainreactors/cyber/pkg/config"
-	"github.com/chainreactors/cyber/pkg/profile"
 	"github.com/chainreactors/cyber/tools/scan"
 	"github.com/chainreactors/cyber/tools/toolargs"
 )
 
 type scannerMode struct {
-	Provider profile.ProviderMode
+	Provider provider.StartupMode
 	Agent    bool
 }
 
@@ -33,7 +33,7 @@ func resolveScannerRuntimeConfig(option *cfg.Option, args []string) (string, err
 			return true, nil
 		}
 		mode, _, err := configuredScannerMode(loaded, args)
-		return mode.Provider != profile.ProviderDisabled, err
+		return mode.Provider != provider.StartupDisabled, err
 	})
 }
 
@@ -73,9 +73,9 @@ func resolveScannerMode(rest []string, defaultVerify string) (scannerMode, []str
 	if explicit && verifyMode == "" {
 		return scannerMode{}, nil, fmt.Errorf("--verify requires on or off")
 	}
-	mode := scannerMode{Provider: profile.ProviderOptional}
+	mode := scannerMode{Provider: provider.StartupOptional}
 	if verifyMode == "on" || scannerBoolFlagEnabled(rest[1:], "--sniper") {
-		mode.Provider = profile.ProviderRequired
+		mode.Provider = provider.StartupRequired
 		mode.Agent = true
 	}
 	if verifyMode != "" {

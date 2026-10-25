@@ -6,10 +6,7 @@ import (
 	aop "github.com/chainreactors/cyber/aop"
 )
 
-// Result is the value returned by Tool.Execute — the AOP tool result proto.
-type Result = aop.ToolResult
-
-func ResultText(r *Result) string {
+func ResultText(r *aop.ToolResult) string {
 	if r == nil {
 		return ""
 	}
@@ -22,15 +19,15 @@ func ResultText(r *Result) string {
 	return sb.String()
 }
 
-func ResultHasImages(r *Result) bool {
+func ResultHasImages(r *aop.ToolResult) bool {
 	return resultHasMedia(r, "image")
 }
 
-func ResultHasMedia(r *Result) bool {
+func ResultHasMedia(r *aop.ToolResult) bool {
 	return resultHasMedia(r, "")
 }
 
-func resultHasMedia(r *Result, kind string) bool {
+func resultHasMedia(r *aop.ToolResult, kind string) bool {
 	if r == nil {
 		return false
 	}
@@ -42,14 +39,14 @@ func resultHasMedia(r *Result, kind string) bool {
 	return false
 }
 
-func TextResult(s string) *Result {
-	return &Result{Output: []*aop.Content{aop.Text(s)}}
+func TextResult(s string) *aop.ToolResult {
+	return &aop.ToolResult{Output: []*aop.Content{aop.Text(s)}}
 }
 
-func ErrorResult(msg string) *Result {
-	return &Result{Output: []*aop.Content{aop.Text(msg)}, IsError: true}
+func ErrorResult(msg string) *aop.ToolResult {
+	return &aop.ToolResult{Output: []*aop.Content{aop.Text(msg)}, IsError: true}
 }
 
-func TerminateResult(s string) *Result {
-	return &Result{Output: []*aop.Content{aop.Text(s)}, Terminate: true}
+func TerminateResult(s string) *aop.ToolResult {
+	return &aop.ToolResult{Output: []*aop.Content{aop.Text(s)}, Terminate: true}
 }

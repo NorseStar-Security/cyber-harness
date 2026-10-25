@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/chainreactors/cyber/agent"
+	agenthooks "github.com/chainreactors/cyber/agent/hooks"
 	"github.com/chainreactors/cyber/agent/provider"
 	"github.com/chainreactors/cyber/agent/session"
 	aop "github.com/chainreactors/cyber/aop"
@@ -167,7 +168,7 @@ func TestLiveProviderRecoversFailedSession(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result, err := failed.Wait(); err == nil || result.Stop != agent.StopReasonError {
+	if result, err := failed.Wait(); err == nil || result.Stop != agenthooks.StopReasonError {
 		t.Fatalf("quota fixture did not fail: %v", err)
 	}
 	if err := p.ReloadProvider(ctx, next); err != nil {

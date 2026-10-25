@@ -20,9 +20,9 @@ func TestEmitRunsHandlersInRegistrationOrder(t *testing.T) {
 	r := corehooks.New()
 	var order []string
 	for _, name := range []string{"a", "b", "c"} {
-		Context.On(r, name, func(_ context.Context, _ ContextEvent) (ContextResult, error) {
+		Context.On(r, name, func(_ context.Context, _ ContextEvent) ([]*aop.Message, error) {
 			order = append(order, name)
-			return ContextResult{}, nil
+			return nil, nil
 		})
 	}
 
@@ -67,14 +67,14 @@ func TestUnsubscribeDuringDispatch(t *testing.T) {
 	var seen []string
 	var offSecond *corehooks.Subscription
 
-	Context.On(r, "first", func(_ context.Context, _ ContextEvent) (ContextResult, error) {
+	Context.On(r, "first", func(_ context.Context, _ ContextEvent) ([]*aop.Message, error) {
 		seen = append(seen, "first")
 		offSecond.Cancel()
-		return ContextResult{}, nil
+		return nil, nil
 	})
-	offSecond = Context.On(r, "second", func(_ context.Context, _ ContextEvent) (ContextResult, error) {
+	offSecond = Context.On(r, "second", func(_ context.Context, _ ContextEvent) ([]*aop.Message, error) {
 		seen = append(seen, "second")
-		return ContextResult{}, nil
+		return nil, nil
 	})
 
 	if _, err := Context.Emit(context.Background(), r, ContextEvent{}); err != nil {
@@ -153,12 +153,12 @@ func TestHandlerPanicIsAttributedAndReported(t *testing.T) {
 func TestContinueOnErrorContinuesAfterHandlerPanic(t *testing.T) {
 	r := corehooks.New()
 	var secondRan bool
-	Context.On(r, "extension", func(context.Context, ContextEvent) (ContextResult, error) {
+	Context.On(r, "extension", func(context.Context, ContextEvent) ([]*aop.Message, error) {
 		panic("boom")
 	})
-	Context.On(r, "core", func(context.Context, ContextEvent) (ContextResult, error) {
+	Context.On(r, "core", func(context.Context, ContextEvent) ([]*aop.Message, error) {
 		secondRan = true
-		return ContextResult{}, nil
+		return nil, nil
 	})
 
 	if _, err := Context.Emit(context.Background(), r, ContextEvent{}); err == nil {
@@ -235,14 +235,14 @@ func TestBeforeRunFoldsSystemPromptAndAggregatesPrepend(t *testing.T) {
 	BeforeRun.On(r, "base", func(_ context.Context, ev RunStartEvent) (RunStartResult, error) {
 		return RunStartResult{
 			SystemPrompt: ptr(ev.SystemPrompt + "\nbase"),
-			Prepend:      []*Msg{{Role: "system", Content: []*aop.Content{aop.Text("one")}}},
+			Prepend:      []*aop.Message{{Role: "system", Content: []*aop.Content{aop.Text("one")}}},
 		}, nil
 	})
 	BeforeRun.On(r, "extra", func(_ context.Context, ev RunStartEvent) (RunStartResult, error) {
 		observed = ev.SystemPrompt
 		return RunStartResult{
 			SystemPrompt: ptr(ev.SystemPrompt + "\nextra"),
-			Prepend:      []*Msg{{Role: "user", Content: []*aop.Content{aop.Text("two")}}},
+			Prepend:      []*aop.Message{{Role: "user", Content: []*aop.Content{aop.Text("two")}}},
 		}, nil
 	})
 
@@ -265,23 +265,23 @@ func TestContextReplacementFolds(t *testing.T) {
 	r := corehooks.New()
 	var observed int
 
-	Context.On(r, "drop", func(_ context.Context, ev ContextEvent) (ContextResult, error) {
-		return ContextResult{Messages: ev.Messages[1:]}, nil
+	Context.On(r, "drop", func(_ context.Context, ev ContextEvent) ([]*aop.Message, error) {
+		return ev.Messages[1:], nil
 	})
-	Context.On(r, "noop", func(_ context.Context, ev ContextEvent) (ContextResult, error) {
+	Context.On(r, "noop", func(_ context.Context, ev ContextEvent) ([]*aop.Message, error) {
 		observed = len(ev.Messages)
-		return ContextResult{}, nil
+		return nil, nil
 	})
 
-	res, err := Context.Emit(context.Background(), r, ContextEvent{Messages: make([]*Msg, 3)})
+	res, err := Context.Emit(context.Background(), r, ContextEvent{Messages: make([]*aop.Message, 3)})
 	if err != nil {
 		t.Fatalf("emit: %v", err)
 	}
 	if observed != 2 {
 		t.Fatalf("second handler saw %d messages, want 2", observed)
 	}
-	if len(res.Messages) != 2 {
-		t.Fatalf("result = %d messages, want 2", len(res.Messages))
+	if len(res) != 2 {
+		t.Fatalf("result = %d messages, want 2", len(res))
 	}
 }
 

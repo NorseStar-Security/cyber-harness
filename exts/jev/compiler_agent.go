@@ -110,7 +110,7 @@ func (c *compilerAgent) ToolDefinitions() []*aop.ToolDefinition {
 		{Name: "inspect_evidence", Description: "Read the actual compilation evidence with decoded native argv, exact argument strings, current tool schemas and native contracts. Use this to locate a replay mismatch or missing prerequisite. This tool never dispatches a user operation or invents results.", InputSchema: &aop.EncodedValue{MediaType: aop.JSONMediaType, Data: []byte(`{"type":"object","properties":{},"additionalProperties":false}`)}},
 	}
 }
-func (c *compilerAgent) ExecuteTool(ctx context.Context, name, arguments string) (*coretool.Result, error) {
+func (c *compilerAgent) ExecuteTool(ctx context.Context, name, arguments string) (*aop.ToolResult, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}

@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
+	aop "github.com/chainreactors/cyber/aop"
 	"github.com/chainreactors/cyber/core/extension"
 	"github.com/chainreactors/cyber/core/hooks"
 	coretool "github.com/chainreactors/cyber/core/tool"
@@ -43,10 +45,10 @@ type compositionFeature struct {
 
 func (e *compositionFeature) Name() string        { return "fixture" }
 func (e *compositionFeature) Description() string { return "Fixture with explicit dependencies" }
-func (e *compositionFeature) Definition() *coretool.Definition {
+func (e *compositionFeature) Definition() *aop.ToolDefinition {
 	return coretool.Def(e.Name(), e.Description(), struct{}{})
 }
-func (e *compositionFeature) Execute(ctx context.Context, _ string) (*coretool.Result, error) {
+func (e *compositionFeature) Execute(ctx context.Context, _ string) (*aop.ToolResult, error) {
 	text := fmt.Sprintf("%s:%d", e.options.Text, e.options.Count)
 	if _, err := e.file.WriteString(text); err != nil {
 		return nil, err

@@ -9,7 +9,6 @@ import (
 	scannerext "github.com/chainreactors/cyber/exts/scanner"
 	searchext "github.com/chainreactors/cyber/exts/search"
 	cfg "github.com/chainreactors/cyber/pkg/config"
-	profilepkg "github.com/chainreactors/cyber/pkg/profile"
 	"github.com/chainreactors/cyber/tools/resources"
 	"github.com/chainreactors/cyber/tools/scan/engine"
 )
@@ -31,7 +30,7 @@ type appConfig struct {
 	SkipEngines       bool
 }
 
-func appConfigFromOption(option *cfg.Option, providerMode profilepkg.ProviderMode, logger telemetry.Logger) appConfig {
+func appConfigFromOption(option *cfg.Option, providerMode provider.StartupMode, logger telemetry.Logger) appConfig {
 	dataDir := cfg.ResolveDataDir(option.DataDir)
 	// Sections were resolved and validated during startup; a read error here is
 	// structurally impossible, so a zero section is the safe fallback.

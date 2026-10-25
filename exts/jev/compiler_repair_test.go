@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/chainreactors/cyber/agent"
 	"github.com/chainreactors/cyber/agent/provider"
 	jevapi "github.com/chainreactors/cyber/agent/provider/jev"
 	"github.com/chainreactors/cyber/aop"
@@ -307,7 +306,7 @@ func TestReflexCompilerUsesProviderRetryPolicy(t *testing.T) {
 			plan.job.cfg.Provider = testProvider(func(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 				requests++
 				if requests == 1 {
-					return &provider.ChatCompletionResponse{Usage: &aop.TokenUsage{TotalTokens: 5}}, &agent.APIError{StatusCode: 500, Message: "temporary upstream failure"}
+					return &provider.ChatCompletionResponse{Usage: &aop.TokenUsage{TotalTokens: 5}}, &provider.APIError{StatusCode: 500, Message: "temporary upstream failure"}
 				}
 				if req.MaxTokens != 16384 || len(req.Messages) != 2 {
 					t.Fatal("transient retry changed compiler state or output budget")

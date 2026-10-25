@@ -2,8 +2,10 @@ package files
 
 import (
 	"context"
-	coretool "github.com/chainreactors/cyber/core/tool"
 	"strings"
+
+	aop "github.com/chainreactors/cyber/aop"
+	coretool "github.com/chainreactors/cyber/core/tool"
 )
 
 type listingTool struct {
@@ -28,10 +30,10 @@ func (t *listingTool) Description() string {
 	}
 	return "List entries in a directory inside the workspace."
 }
-func (t *listingTool) Definition() *coretool.Definition {
+func (t *listingTool) Definition() *aop.ToolDefinition {
 	return coretool.Def(t.Name(), t.Description(), listArgs{})
 }
-func (t *listingTool) Execute(ctx context.Context, arguments string) (*coretool.Result, error) {
+func (t *listingTool) Execute(ctx context.Context, arguments string) (*aop.ToolResult, error) {
 	a, err := coretool.ParseArgs[listArgs](arguments)
 	if err != nil {
 		return nil, err

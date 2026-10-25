@@ -32,13 +32,13 @@ func TestInboxInterruptSubagentReturnsOnlyAfterContinuation(t *testing.T) {
 			return struct{}{}, nil
 		}
 		ends.Add(1)
-		if ev.Output != "continued child" || ev.Stop != agent.StopReasonCompleted {
+		if ev.Output != "continued child" || ev.Stop != agenthooks.StopReasonCompleted {
 			t.Errorf("end=%+v", ev)
 		}
 		return struct{}{}, nil
 	})
 	calls := 0
-	llm := &callbackProvider{fn: func(ctx context.Context, req *agent.ChatCompletionRequest) (*agent.ChatCompletionResponse, error) {
+	llm := &callbackProvider{fn: func(ctx context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 		calls++
 		if calls == 1 {
 			m := inbox.NewUserMessage("redirect child")

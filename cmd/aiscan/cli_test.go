@@ -8,14 +8,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/chainreactors/cyber/agent"
+	provider "github.com/chainreactors/cyber/agent/provider"
 	"github.com/chainreactors/cyber/core/telemetry"
 	ioaclient "github.com/chainreactors/cyber/exts/ioa/client"
 	scannerext "github.com/chainreactors/cyber/exts/scanner"
 	searchext "github.com/chainreactors/cyber/exts/search"
 	taskcli "github.com/chainreactors/cyber/pkg/cli/task"
 	cfg "github.com/chainreactors/cyber/pkg/config"
-	"github.com/chainreactors/cyber/pkg/profile"
 	goflags "github.com/jessevdk/go-flags"
 )
 
@@ -338,7 +337,7 @@ func TestParseCLIAgentAcceptsLLMFlags(t *testing.T) {
 	if pcfg.Provider != "openai" {
 		t.Fatalf("provider = %q, want openai protocol", pcfg.Provider)
 	}
-	resolved, err := agent.ResolveProvider(&pcfg)
+	resolved, err := provider.Resolve(&pcfg)
 	if err != nil {
 		t.Fatalf("Resolve() error = %v", err)
 	}
@@ -449,7 +448,7 @@ func TestParseCLIScanExtractsLLMFlags(t *testing.T) {
 	if pcfg.Provider != "openai" {
 		t.Fatalf("provider = %q, want openai protocol", pcfg.Provider)
 	}
-	resolved, err := agent.ResolveProvider(&pcfg)
+	resolved, err := provider.Resolve(&pcfg)
 	if err != nil {
 		t.Fatalf("Resolve() error = %v", err)
 	}
@@ -750,7 +749,7 @@ func TestResolveScannerModeForVerifyModes(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ResolveScannerMode() error = %v", err)
 		}
-		if mode.Provider != profile.ProviderOptional {
+		if mode.Provider != provider.StartupOptional {
 			t.Fatalf("mode = %#v", mode)
 		}
 		if !reflect.DeepEqual(args, []string{"scan", "-i", "127.0.0.1"}) {
@@ -761,7 +760,7 @@ func TestResolveScannerModeForVerifyModes(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ResolveScannerMode() error = %v", err)
 		}
-		if mode.Provider != profile.ProviderOptional {
+		if mode.Provider != provider.StartupOptional {
 			t.Fatalf("mode = %#v", mode)
 		}
 		if !reflect.DeepEqual(args, []string{"scan", "-i", "127.0.0.1", "--verify=off"}) {
@@ -776,7 +775,7 @@ func TestResolveScannerModeForVerifyModes(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ResolveScannerMode() error = %v", err)
 		}
-		if mode.Provider != profile.ProviderRequired || !mode.Agent {
+		if mode.Provider != provider.StartupRequired || !mode.Agent {
 			t.Fatalf("mode = %#v", mode)
 		}
 		if !reflect.DeepEqual(args, []string{"scan", "-i", "127.0.0.1", "--verify=on"}) {
@@ -787,7 +786,7 @@ func TestResolveScannerModeForVerifyModes(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ResolveScannerMode() error = %v", err)
 		}
-		if mode.Provider != profile.ProviderRequired || !mode.Agent {
+		if mode.Provider != provider.StartupRequired || !mode.Agent {
 			t.Fatalf("sniper mode = %#v", mode)
 		}
 
@@ -795,7 +794,7 @@ func TestResolveScannerModeForVerifyModes(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ResolveScannerMode() error = %v", err)
 		}
-		if mode.Provider != profile.ProviderOptional || mode.Agent {
+		if mode.Provider != provider.StartupOptional || mode.Agent {
 			t.Fatalf("scan-local --ai should not enable AI features: %#v", mode)
 		}
 		if !reflect.DeepEqual(args, []string{"scan", "-i", "127.0.0.1", "--ai"}) {

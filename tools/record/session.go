@@ -155,7 +155,7 @@ func callBackendScreenshot(backend Backend, ctx context.Context, target Resolved
 	return backend.Screenshot(ctx, target)
 }
 
-func (t *Tool) stop(ctx context.Context, id string) (*coretool.Result, error) {
+func (t *Tool) stop(ctx context.Context, id string) (*aop.ToolResult, error) {
 	if id == "" {
 		return nil, fmt.Errorf("recording_id is required for action=stop")
 	}
@@ -170,7 +170,7 @@ func (t *Tool) stop(ctx context.Context, id string) (*coretool.Result, error) {
 	return t.waitResult(ctx, session)
 }
 
-func (t *Tool) waitResult(ctx context.Context, session *recordingSession) (*coretool.Result, error) {
+func (t *Tool) waitResult(ctx context.Context, session *recordingSession) (*aop.ToolResult, error) {
 	select {
 	case <-session.done:
 		info := session.snapshot()
@@ -178,7 +178,7 @@ func (t *Tool) waitResult(ctx context.Context, session *recordingSession) (*core
 			return coretool.ErrorResult(marshalJSON(info)), nil
 		}
 		text := marshalJSON(info)
-		return &coretool.Result{Output: []*aop.Content{
+		return &aop.ToolResult{Output: []*aop.Content{
 			aop.Text(text),
 			aop.MediaURI("video", "video/mp4", filepath.Base(info.Output), t.mediaURI(ctx, info.Output)),
 		}}, nil
@@ -195,7 +195,7 @@ func (t *Tool) waitResult(ctx context.Context, session *recordingSession) (*core
 	}
 }
 
-func (t *Tool) status(id string) (*coretool.Result, error) {
+func (t *Tool) status(id string) (*aop.ToolResult, error) {
 	if id != "" {
 		session, ok := t.session(id)
 		if !ok {

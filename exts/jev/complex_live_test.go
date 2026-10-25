@@ -41,7 +41,7 @@ type complexLiveOutcome struct {
 	Evidence        string
 }
 
-func jsonResult(value any) *coretool.Result {
+func jsonResult(value any) *aop.ToolResult {
 	data, _ := json.Marshal(value)
 	return coretool.TextResult(string(data))
 }
@@ -186,7 +186,7 @@ func (s *incidentScenario) Reset(index int) string {
 }
 func (s *incidentScenario) Tools() []coretool.Tool {
 	return []coretool.Tool{
-		nativeFixtureTool{definition: coretool.Def(s.names[0], "List active incidents with IDs, affected services and suspected releases. Read this once before making a decision.", struct{}{}), run: func(context.Context, string) (*coretool.Result, error) {
+		nativeFixtureTool{definition: coretool.Def(s.names[0], "List active incidents with IDs, affected services and suspected releases. Read this once before making a decision.", struct{}{}), run: func(context.Context, string) (*aop.ToolResult, error) {
 			s.mu.Lock()
 			defer s.mu.Unlock()
 			s.lists++
@@ -197,7 +197,7 @@ func (s *incidentScenario) Tools() []coretool.Tool {
 		}},
 		nativeFixtureTool{definition: coretool.Def(s.names[1], "Inspect one incident's current deployment and health. Use the actual incident ID.", struct {
 			IncidentID string `json:"incident_id"`
-		}{}), run: func(_ context.Context, arguments string) (*coretool.Result, error) {
+		}{}), run: func(_ context.Context, arguments string) (*aop.ToolResult, error) {
 			var args struct {
 				IncidentID string `json:"incident_id"`
 			}
@@ -213,7 +213,7 @@ func (s *incidentScenario) Tools() []coretool.Tool {
 			}
 			return jsonResult(map[string]any{"incident_id": s.incident, "service": s.service, "current_release": s.release, "deployment_id": s.deployment, "error_rate": 18.7, "status": "degraded"}), nil
 		}},
-		nativeFixtureTool{definition: coretool.Def(s.names[2], "Read rollback policy and the current approval token. The token must be supplied to the rollback operation.", struct{}{}), run: func(context.Context, string) (*coretool.Result, error) {
+		nativeFixtureTool{definition: coretool.Def(s.names[2], "Read rollback policy and the current approval token. The token must be supplied to the rollback operation.", struct{}{}), run: func(context.Context, string) (*aop.ToolResult, error) {
 			s.mu.Lock()
 			defer s.mu.Unlock()
 			s.policies++
@@ -227,7 +227,7 @@ func (s *incidentScenario) Tools() []coretool.Tool {
 			Service       string `json:"service"`
 			Release       string `json:"release"`
 			ApprovalToken string `json:"approval_token"`
-		}{}), run: func(_ context.Context, arguments string) (*coretool.Result, error) {
+		}{}), run: func(_ context.Context, arguments string) (*aop.ToolResult, error) {
 			var args struct {
 				IncidentID    string `json:"incident_id"`
 				Service       string `json:"service"`
@@ -248,7 +248,7 @@ func (s *incidentScenario) Tools() []coretool.Tool {
 		}},
 		nativeFixtureTool{definition: coretool.Def(s.names[4], "Poll the actual rollback rollout ID until complete. This is read-only and may remain pending.", struct {
 			RolloutID string `json:"rollout_id"`
-		}{}), run: func(_ context.Context, arguments string) (*coretool.Result, error) {
+		}{}), run: func(_ context.Context, arguments string) (*aop.ToolResult, error) {
 			var args struct {
 				RolloutID string `json:"rollout_id"`
 			}
@@ -269,7 +269,7 @@ func (s *incidentScenario) Tools() []coretool.Tool {
 		}},
 		nativeFixtureTool{definition: coretool.Def(s.names[5], "Verify the affected service SLI after the rollout is complete and return the final receipt evidence.", struct {
 			Service string `json:"service"`
-		}{}), run: func(_ context.Context, arguments string) (*coretool.Result, error) {
+		}{}), run: func(_ context.Context, arguments string) (*aop.ToolResult, error) {
 			var args struct {
 				Service string `json:"service"`
 			}
@@ -316,7 +316,7 @@ func (s *paymentScenario) Reset(index int) string {
 }
 func (s *paymentScenario) Tools() []coretool.Tool {
 	return []coretool.Tool{
-		nativeFixtureTool{definition: coretool.Def(s.names[0], "List payment exceptions for the current order, including transaction IDs, statuses, amounts and currencies.", struct{}{}), run: func(context.Context, string) (*coretool.Result, error) {
+		nativeFixtureTool{definition: coretool.Def(s.names[0], "List payment exceptions for the current order, including transaction IDs, statuses, amounts and currencies.", struct{}{}), run: func(context.Context, string) (*aop.ToolResult, error) {
 			s.mu.Lock()
 			defer s.mu.Unlock()
 			s.listed++
@@ -327,7 +327,7 @@ func (s *paymentScenario) Tools() []coretool.Tool {
 		}},
 		nativeFixtureTool{definition: coretool.Def(s.names[1], "Inspect one transaction using its actual ID and return settlement and duplicate evidence.", struct {
 			TransactionID string `json:"transaction_id"`
-		}{}), run: func(_ context.Context, arguments string) (*coretool.Result, error) {
+		}{}), run: func(_ context.Context, arguments string) (*aop.ToolResult, error) {
 			var args struct {
 				TransactionID string `json:"transaction_id"`
 			}
@@ -353,7 +353,7 @@ func (s *paymentScenario) Tools() []coretool.Tool {
 			}
 			return jsonResult(map[string]any{"order_id": s.order, "transaction_id": args.TransactionID, "status": status, "amount": s.amount, "currency": s.currency, "duplicate": duplicate}), nil
 		}},
-		nativeFixtureTool{definition: coretool.Def(s.names[2], "Read refund policy and the current approval token and idempotency requirements.", struct{}{}), run: func(context.Context, string) (*coretool.Result, error) {
+		nativeFixtureTool{definition: coretool.Def(s.names[2], "Read refund policy and the current approval token and idempotency requirements.", struct{}{}), run: func(context.Context, string) (*aop.ToolResult, error) {
 			s.mu.Lock()
 			defer s.mu.Unlock()
 			s.policies++
@@ -365,7 +365,7 @@ func (s *paymentScenario) Tools() []coretool.Tool {
 			Currency       string `json:"currency"`
 			ApprovalID     string `json:"approval_id"`
 			IdempotencyKey string `json:"idempotency_key"`
-		}{}), run: func(_ context.Context, arguments string) (*coretool.Result, error) {
+		}{}), run: func(_ context.Context, arguments string) (*aop.ToolResult, error) {
 			var args struct {
 				TransactionID  string `json:"transaction_id"`
 				Amount         string `json:"amount"`
@@ -387,7 +387,7 @@ func (s *paymentScenario) Tools() []coretool.Tool {
 		}},
 		nativeFixtureTool{definition: coretool.Def(s.names[4], "Poll the actual refund ID until complete; this operation is read-only.", struct {
 			RefundID string `json:"refund_id"`
-		}{}), run: func(_ context.Context, arguments string) (*coretool.Result, error) {
+		}{}), run: func(_ context.Context, arguments string) (*aop.ToolResult, error) {
 			var args struct {
 				RefundID string `json:"refund_id"`
 			}
@@ -409,7 +409,7 @@ func (s *paymentScenario) Tools() []coretool.Tool {
 		nativeFixtureTool{definition: coretool.Def(s.names[5], "Verify the order ledger after refund completion using the actual order and refund IDs.", struct {
 			OrderID  string `json:"order_id"`
 			RefundID string `json:"refund_id"`
-		}{}), run: func(_ context.Context, arguments string) (*coretool.Result, error) {
+		}{}), run: func(_ context.Context, arguments string) (*aop.ToolResult, error) {
 			var args struct {
 				OrderID  string `json:"order_id"`
 				RefundID string `json:"refund_id"`
@@ -508,7 +508,7 @@ func (s *accessScenario) Reset(index int) string {
 }
 func (s *accessScenario) Tools() []coretool.Tool {
 	return []coretool.Tool{
-		nativeFixtureTool{definition: coretool.Def(s.names[0], "List active identity grants and identify expired temporary grants, service-account grants and break-glass grants.", struct{}{}), run: func(context.Context, string) (*coretool.Result, error) {
+		nativeFixtureTool{definition: coretool.Def(s.names[0], "List active identity grants and identify expired temporary grants, service-account grants and break-glass grants.", struct{}{}), run: func(context.Context, string) (*aop.ToolResult, error) {
 			s.mu.Lock()
 			defer s.mu.Unlock()
 			s.listed++
@@ -519,7 +519,7 @@ func (s *accessScenario) Tools() []coretool.Tool {
 		}},
 		nativeFixtureTool{definition: coretool.Def(s.names[1], "Read current sessions for the actual user and resource before revocation.", struct {
 			UserID string `json:"user_id"`
-		}{}), run: func(_ context.Context, arguments string) (*coretool.Result, error) {
+		}{}), run: func(_ context.Context, arguments string) (*aop.ToolResult, error) {
 			var args struct {
 				UserID string `json:"user_id"`
 			}
@@ -535,7 +535,7 @@ func (s *accessScenario) Tools() []coretool.Tool {
 			}
 			return jsonResult(map[string]any{"user_id": s.user, "resource": s.resource, "active_sessions": 1, "session_id": "session-" + s.user}), nil
 		}},
-		nativeFixtureTool{definition: coretool.Def(s.names[2], "Read access policy and the current approval ID; protected service and break-glass grants must never be revoked.", struct{}{}), run: func(context.Context, string) (*coretool.Result, error) {
+		nativeFixtureTool{definition: coretool.Def(s.names[2], "Read access policy and the current approval ID; protected service and break-glass grants must never be revoked.", struct{}{}), run: func(context.Context, string) (*aop.ToolResult, error) {
 			s.mu.Lock()
 			defer s.mu.Unlock()
 			s.policies++
@@ -545,7 +545,7 @@ func (s *accessScenario) Tools() []coretool.Tool {
 			UserID     string `json:"user_id"`
 			GrantID    string `json:"grant_id"`
 			ApprovalID string `json:"approval_id"`
-		}{}), run: func(_ context.Context, arguments string) (*coretool.Result, error) {
+		}{}), run: func(_ context.Context, arguments string) (*aop.ToolResult, error) {
 			var args struct {
 				UserID     string `json:"user_id"`
 				GrantID    string `json:"grant_id"`
@@ -565,7 +565,7 @@ func (s *accessScenario) Tools() []coretool.Tool {
 		}},
 		nativeFixtureTool{definition: coretool.Def(s.names[4], "Poll the actual revocation operation ID until complete; this operation is read-only.", struct {
 			OperationID string `json:"operation_id"`
-		}{}), run: func(_ context.Context, arguments string) (*coretool.Result, error) {
+		}{}), run: func(_ context.Context, arguments string) (*aop.ToolResult, error) {
 			var args struct {
 				OperationID string `json:"operation_id"`
 			}
@@ -587,7 +587,7 @@ func (s *accessScenario) Tools() []coretool.Tool {
 		nativeFixtureTool{definition: coretool.Def(s.names[5], "Verify effective access for the actual user and resource after revocation is complete.", struct {
 			UserID   string `json:"user_id"`
 			Resource string `json:"resource"`
-		}{}), run: func(_ context.Context, arguments string) (*coretool.Result, error) {
+		}{}), run: func(_ context.Context, arguments string) (*aop.ToolResult, error) {
 			var args struct {
 				UserID   string `json:"user_id"`
 				Resource string `json:"resource"`
@@ -608,7 +608,7 @@ func (s *accessScenario) Tools() []coretool.Tool {
 			GrantID     string `json:"grant_id"`
 			OperationID string `json:"operation_id"`
 			UserID      string `json:"user_id"`
-		}{}), run: func(_ context.Context, arguments string) (*coretool.Result, error) {
+		}{}), run: func(_ context.Context, arguments string) (*aop.ToolResult, error) {
 			var args struct {
 				GrantID     string `json:"grant_id"`
 				OperationID string `json:"operation_id"`

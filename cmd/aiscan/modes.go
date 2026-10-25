@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/chainreactors/cyber/agent"
+	agenthooks "github.com/chainreactors/cyber/agent/hooks"
+	provider "github.com/chainreactors/cyber/agent/provider"
 	agentsession "github.com/chainreactors/cyber/agent/session"
 	"github.com/chainreactors/cyber/agent/skills"
 	aop "github.com/chainreactors/cyber/aop"
@@ -124,7 +126,7 @@ func runDirectScannerMode(ctx context.Context, newProfile func(profile.Request) 
 		return err
 	}
 	if option.AI || mode.Agent {
-		mode.Provider = profile.ProviderRequired
+		mode.Provider = provider.StartupRequired
 	}
 	scannerLogger := logger
 	if !directScannerDebugEnabled(option, scannerArgs) {
@@ -223,15 +225,15 @@ func runDirectScannerMode(ctx context.Context, newProfile func(profile.Request) 
 			CallId: callID, Name: emitter, IsError: runErr != nil,
 			DurationMs: uint64(time.Since(startedAt).Milliseconds()),
 		}
-		stopReason := string(agent.StopReasonCompleted)
+		stopReason := string(agenthooks.StopReasonCompleted)
 		closeReason := agentsession.SessionCloseCompleted
 		if runErr != nil {
 			result.Output = []*aop.Content{aop.Text(runErr.Error())}
-			stopReason = string(agent.StopReasonError)
+			stopReason = string(agenthooks.StopReasonError)
 			closeReason = agentsession.SessionCloseError
 		}
 		if isCanceled {
-			stopReason = string(agent.StopReasonCanceled)
+			stopReason = string(agenthooks.StopReasonCanceled)
 			closeReason = agentsession.SessionCloseCanceled
 		}
 		application.Publish(&aop.Event{

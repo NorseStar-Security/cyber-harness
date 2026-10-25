@@ -3,15 +3,17 @@ package agent
 import (
 	"context"
 	"fmt"
-	aop "github.com/chainreactors/cyber/aop"
-	coreevents "github.com/chainreactors/cyber/core/events"
-	types "github.com/chainreactors/cyber/core/types"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"sync"
 	"sync/atomic"
 	"testing"
+
+	provider "github.com/chainreactors/cyber/agent/provider"
+	aop "github.com/chainreactors/cyber/aop"
+	coreevents "github.com/chainreactors/cyber/core/events"
+	types "github.com/chainreactors/cyber/core/types"
 )
 
 // streamEventCollector records message/message.delta events from the bus.
@@ -54,8 +56,8 @@ func (c *streamEventCollector) assistantMessages() []*aop.Message {
 	return out
 }
 
-func reasoningStreamEvents() []ChatCompletionStreamEvent {
-	return []ChatCompletionStreamEvent{
+func reasoningStreamEvents() []provider.ChatCompletionStreamEvent {
+	return []provider.ChatCompletionStreamEvent{
 		roleDelta("assistant"),
 		reasoningDelta("think-"),
 		reasoningDelta("hard"),
@@ -123,25 +125,25 @@ func TestStreamDeltasAndFinalMessageShareMessageID(t *testing.T) {
 // then streams successfully.
 type flakyStreamProvider struct {
 	calls   atomic.Int32
-	events  []ChatCompletionStreamEvent
-	partial []ChatCompletionStreamEvent
+	events  []provider.ChatCompletionStreamEvent
+	partial []provider.ChatCompletionStreamEvent
 }
 
 func (p *flakyStreamProvider) Name() string { return "flaky-stream" }
 
-func (p *flakyStreamProvider) ChatCompletion(context.Context, *ChatCompletionRequest) (*ChatCompletionResponse, error) {
+func (p *flakyStreamProvider) ChatCompletion(context.Context, *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 	return nil, retryableTimeoutError{}
 }
 
-func (p *flakyStreamProvider) ChatCompletionStream(ctx context.Context, _ *ChatCompletionRequest) (<-chan ChatCompletionStreamEvent, error) {
+func (p *flakyStreamProvider) ChatCompletionStream(ctx context.Context, _ *provider.ChatCompletionRequest) (<-chan provider.ChatCompletionStreamEvent, error) {
 	events := p.events
 	if p.calls.Add(1) == 1 {
 		if len(p.partial) == 0 {
 			return nil, retryableTimeoutError{}
 		}
-		events = append(append([]ChatCompletionStreamEvent(nil), p.partial...), ChatCompletionStreamEvent{Err: retryableTimeoutError{}})
+		events = append(append([]provider.ChatCompletionStreamEvent(nil), p.partial...), provider.ChatCompletionStreamEvent{Err: retryableTimeoutError{}})
 	}
-	ch := make(chan ChatCompletionStreamEvent)
+	ch := make(chan provider.ChatCompletionStreamEvent)
 	go func() {
 		defer close(ch)
 		for _, event := range events {
@@ -198,9 +200,9 @@ func TestPartialStreamRetryReplacesFailedAttempt(t *testing.T) {
 	for _, reasoning := range []bool{false, true} {
 		t.Run(fmt.Sprint(reasoning), func(t *testing.T) {
 			collector := &streamEventCollector{}
-			partial := []ChatCompletionStreamEvent{textDelta("stale answer")}
+			partial := []provider.ChatCompletionStreamEvent{textDelta("stale answer")}
 			if reasoning {
-				partial = append([]ChatCompletionStreamEvent{reasoningDelta("stale thought")}, partial...)
+				partial = append([]provider.ChatCompletionStreamEvent{reasoningDelta("stale thought")}, partial...)
 			}
 			llm := &flakyStreamProvider{partial: partial, events: reasoningStreamEvents()}
 			_, err := NewAgent(Config{Loop: StandardLoop{}, Provider: llm, Model: "test", Stream: true, MaxRetries: 1, Bus: testBus(collector.handler)}).Run(context.Background(), TextInput("hi"))
@@ -234,14 +236,14 @@ func TestPartialStreamRetryReplacesFailedAttempt(t *testing.T) {
 type terminalStreamProvider struct{}
 
 func (terminalStreamProvider) Name() string { return "terminal-stream" }
-func (terminalStreamProvider) ChatCompletion(context.Context, *ChatCompletionRequest) (*ChatCompletionResponse, error) {
+func (terminalStreamProvider) ChatCompletion(context.Context, *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 	return nil, fmt.Errorf("bad request")
 }
-func (terminalStreamProvider) ChatCompletionStream(ctx context.Context, _ *ChatCompletionRequest) (<-chan ChatCompletionStreamEvent, error) {
-	ch := make(chan ChatCompletionStreamEvent)
+func (terminalStreamProvider) ChatCompletionStream(ctx context.Context, _ *provider.ChatCompletionRequest) (<-chan provider.ChatCompletionStreamEvent, error) {
+	ch := make(chan provider.ChatCompletionStreamEvent)
 	go func() {
 		defer close(ch)
-		for _, event := range []ChatCompletionStreamEvent{textDelta("stale answer"), {Err: fmt.Errorf("bad request")}} {
+		for _, event := range []provider.ChatCompletionStreamEvent{textDelta("stale answer"), {Err: fmt.Errorf("bad request")}} {
 			select {
 			case ch <- event:
 			case <-ctx.Done():
@@ -324,8 +326,8 @@ func TestProviderFrameCapturePreservesExactBytesAndIsOptIn(t *testing.T) {
 	}))
 	defer server.Close()
 
-	newProvider := func() Provider {
-		provider, err := NewProvider(&ProviderConfig{
+	newProvider := func() provider.Provider {
+		provider, err := provider.NewProvider(&provider.ProviderConfig{
 			Provider: "openai", BaseURL: server.URL + "/v1", APIKey: "secret", Model: "test", Timeout: 5,
 		})
 		if err != nil {
@@ -388,7 +390,7 @@ func TestAnthropicProviderFrameCapturePreservesExactBytes(t *testing.T) {
 		_, _ = w.Write(responseBody)
 	}))
 	defer server.Close()
-	provider, err := NewProvider(&ProviderConfig{
+	provider, err := provider.NewProvider(&provider.ProviderConfig{
 		Provider: "anthropic", BaseURL: server.URL + "/v1", APIKey: "secret", Model: "claude-test", Timeout: 5,
 	})
 	if err != nil {
@@ -425,7 +427,7 @@ func TestProviderFrameCapturePreservesSSEFrameOrder(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	provider, err := NewProvider(&ProviderConfig{
+	provider, err := provider.NewProvider(&provider.ProviderConfig{
 		Provider: "openai", BaseURL: server.URL + "/v1", APIKey: "secret", Model: "test", Timeout: 5,
 	})
 	if err != nil {

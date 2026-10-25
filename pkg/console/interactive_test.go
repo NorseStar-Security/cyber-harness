@@ -15,7 +15,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/chainreactors/cyber/agent"
 	"github.com/chainreactors/cyber/agent/provider"
 	aop "github.com/chainreactors/cyber/aop"
 	"github.com/chainreactors/cyber/core/types"
@@ -65,18 +64,18 @@ func TestAgentConsoleResetsUnsupportedTerminalInputModes(t *testing.T) {
 }
 
 type captureConsoleProvider struct {
-	requests []*agent.ChatCompletionRequest
+	requests []*provider.ChatCompletionRequest
 }
 
 func (p *captureConsoleProvider) Name() string { return "capture" }
 
-func (p *captureConsoleProvider) ChatCompletion(_ context.Context, req *agent.ChatCompletionRequest) (*agent.ChatCompletionResponse, error) {
+func (p *captureConsoleProvider) ChatCompletion(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 	cp := *req
 	cp.Messages = append([]*aop.Message(nil), req.Messages...)
 	p.requests = append(p.requests, &cp)
-	return &agent.ChatCompletionResponse{
-		Choices: []agent.Choice{{
-			Message: agent.TextMessage("assistant", "ok"),
+	return &provider.ChatCompletionResponse{
+		Choices: []provider.Choice{{
+			Message: provider.TextMessage("assistant", "ok"),
 		}},
 	}, nil
 }
@@ -233,7 +232,7 @@ func TestAgentConsoleRotatesSessionAfterRuntimeResumeAndClear(t *testing.T) {
 	repl, _ := newTestConsole(t, &cfg.Option{}, nil, &stdout, &stderr)
 	handle := repl.session
 	previousID := handle.ID()
-	writeConsoleSession(t, path, "test", time.Now(), agent.TextMessage("user", "history"))
+	writeConsoleSession(t, path, "test", time.Now(), provider.TextMessage("user", "history"))
 	if _, err := executeAndWait(repl, "/resume "+path); err != nil {
 		t.Fatal(err)
 	}
@@ -289,7 +288,7 @@ func TestAgentConsoleModelCommandListsAndSwitches(t *testing.T) {
 
 	var stdout, stderr bytes.Buffer
 	option := &cfg.Option{}
-	repl, _ := newTestConsole(t, option, nil, &stdout, &stderr, agent.ProviderConfig{Provider: "openai", BaseURL: srv.URL + "/v1", APIKey: "sk-test", Model: "model-a"})
+	repl, _ := newTestConsole(t, option, nil, &stdout, &stderr, provider.ProviderConfig{Provider: "openai", BaseURL: srv.URL + "/v1", APIKey: "sk-test", Model: "model-a"})
 	session := repl.session
 
 	if _, err := executeAndWait(repl, "/model"); err != nil {
@@ -333,10 +332,7 @@ func TestAgentConsoleModelCommandListsAndSwitches(t *testing.T) {
 func TestAgentConsoleResumeLoadsSessionMessages(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "session-resume.jsonl")
-	writeConsoleSession(t, path, "test-model", time.Now(),
-		agent.TextMessage("user", "previous user"),
-		agent.TextMessage("assistant", "previous assistant"),
-	)
+	writeConsoleSession(t, path, "test-model", time.Now(), provider.TextMessage("user", "previous user"), provider.TextMessage("assistant", "previous assistant"))
 	var stdout, stderr bytes.Buffer
 	prov := &captureConsoleProvider{}
 	repl, _ := newTestConsole(t, &cfg.Option{}, prov, &stdout, &stderr)
@@ -406,8 +402,8 @@ func TestAgentConsoleResumeListsAndSelectsSession(t *testing.T) {
 	dir := t.TempDir()
 	oldPath := filepath.Join(dir, "session-old.jsonl")
 	newPath := filepath.Join(dir, "session-new.jsonl")
-	writeConsoleSession(t, oldPath, "old-model", time.Date(2026, 7, 12, 10, 0, 0, 0, time.UTC), agent.TextMessage("user", "old message"))
-	writeConsoleSession(t, newPath, "new-model", time.Date(2026, 7, 13, 10, 0, 0, 0, time.UTC), agent.TextMessage("user", "new message"))
+	writeConsoleSession(t, oldPath, "old-model", time.Date(2026, 7, 12, 10, 0, 0, 0, time.UTC), provider.TextMessage("user", "old message"))
+	writeConsoleSession(t, newPath, "new-model", time.Date(2026, 7, 13, 10, 0, 0, 0, time.UTC), provider.TextMessage("user", "new message"))
 
 	var stdout, stderr bytes.Buffer
 	repl, _ := newTestConsole(t, &cfg.Option{}, nil, &stdout, &stderr)

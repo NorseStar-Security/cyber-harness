@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/chainreactors/cyber/agent"
+	agenthooks "github.com/chainreactors/cyber/agent/hooks"
 	agentsession "github.com/chainreactors/cyber/agent/session"
 	aop "github.com/chainreactors/cyber/aop"
 	cfg "github.com/chainreactors/cyber/pkg/config"
@@ -143,7 +143,7 @@ func RunTask(ctx context.Context, rt *agentsession.Runtime, option *cfg.Option, 
 		if runErr != nil {
 			return runErr
 		}
-		if validation.Check == nil || result == nil || result.Stop != agent.StopReasonCompleted {
+		if validation.Check == nil || result == nil || result.Stop != agenthooks.StopReasonCompleted {
 			return nil
 		}
 		checkErr := validation.Check(ctx)

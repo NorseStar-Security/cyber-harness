@@ -7,6 +7,7 @@ import (
 	"slices"
 	"testing"
 
+	provider "github.com/chainreactors/cyber/agent/provider"
 	agentsession "github.com/chainreactors/cyber/agent/session"
 	"github.com/chainreactors/cyber/core/telemetry"
 	cfg "github.com/chainreactors/cyber/pkg/config"
@@ -32,7 +33,7 @@ func TestRecordFullRunnerBuildsDefaultRecordTool(t *testing.T) {
 	option.DataDir = t.TempDir()
 	profile, err := newAIScanProfile(profilepkg.Request{
 		Option:       option,
-		ProviderMode: profilepkg.ProviderDisabled,
+		ProviderMode: provider.StartupDisabled,
 		Session:      &agentsession.Config{},
 		Logger:       telemetry.NopLogger(),
 	})

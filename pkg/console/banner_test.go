@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/chainreactors/cyber/agent"
+	provider "github.com/chainreactors/cyber/agent/provider"
 	outputpkg "github.com/chainreactors/cyber/pkg/output"
 )
 
@@ -133,7 +133,7 @@ func TestRenderBoxTableClipsWideIntermediateColumns(t *testing.T) {
 }
 
 func TestProviderModelDoesNotDependOnCommands(t *testing.T) {
-	runtime, _ := newConsoleRuntime(t, nil, agent.ProviderConfig{Provider: "anthropic", Model: "claude-test"})
+	runtime, _ := newConsoleRuntime(t, nil, provider.ProviderConfig{Provider: "anthropic", Model: "claude-test"})
 	r := &AgentConsole{runtime: runtime}
 	provider, model := r.providerModel()
 	if provider != "anthropic" || model != "claude-test" {
