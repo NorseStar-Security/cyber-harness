@@ -18,10 +18,6 @@ type Capability struct {
 	UIContribs []string `json:"ui_contributions,omitempty"`
 }
 
-// CapabilityManifest is the descriptive form consumed by profile adapters.
-// Capability is kept as the short name for route/config call sites.
-type CapabilityManifest = Capability
-
 // Profile describes an external node distribution that can be connected to
 // this Hub. It is deliberately smaller than a capability: the profile is an
 // installable product, while capabilities are the features it contributes

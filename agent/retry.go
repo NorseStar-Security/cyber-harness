@@ -42,8 +42,8 @@ func isRetryableError(err error) bool {
 	if isContextOverflowError(err) {
 		return false
 	}
-	if errors.Is(err, ErrCallTimeout) || errors.Is(err, ErrStreamStalled) ||
-		errors.Is(err, ErrStreamIncomplete) || errors.Is(err, errEmptyResponse) {
+	if errors.Is(err, provider.ErrCallTimeout) || errors.Is(err, provider.ErrStreamStalled) ||
+		errors.Is(err, provider.ErrStreamIncomplete) || errors.Is(err, errEmptyResponse) {
 		return true
 	}
 	if errors.Is(err, context.Canceled) {
@@ -56,7 +56,7 @@ func isRetryableError(err error) bool {
 	if errors.As(err, &netErr) && netErr.Timeout() {
 		return true
 	}
-	var apiErr *APIError
+	var apiErr *provider.APIError
 	if errors.As(err, &apiErr) {
 		return apiErr.IsRetryable()
 	}
@@ -126,7 +126,7 @@ func retryDelayFor(attempt int, err error) time.Duration {
 // retryAfterFromError parses a Retry-After header (integer seconds form) from
 // an APIError, if present. Returns 0 when absent or unparseable.
 func retryAfterFromError(err error) time.Duration {
-	var apiErr *APIError
+	var apiErr *provider.APIError
 	if !errors.As(err, &apiErr) {
 		return 0
 	}
@@ -288,7 +288,7 @@ func requestAssistantMessageWithUsage(ctx context.Context, cfg Config, em *aopEm
 	if policy.DisableTools {
 		tools = nil
 	}
-	req := &ChatCompletionRequest{
+	req := &provider.ChatCompletionRequest{
 		Purpose:        policy.Purpose,
 		Model:          cfg.Model,
 		Messages:       messages,
@@ -311,7 +311,7 @@ func requestAssistantMessageWithUsage(ctx context.Context, cfg Config, em *aopEm
 		Model: req.Model, Messages: uint32(len(req.Messages)), MaxTokens: uint32(max(req.MaxTokens, 0)), Stream: cfg.Stream,
 	})
 	if cfg.Stream {
-		if streaming, ok := cfg.Provider.(StreamingProvider); ok {
+		if streaming, ok := cfg.Provider.(provider.StreamingProvider); ok {
 			assistant, usage, streamed, err := streamAssistantMessageWithUsage(ctx, streaming, req, em, cfg.Logger, turn, messageID)
 			if err == nil && policy.DisableTools && len(provider.MessageToolCalls(assistant.message)) > 0 {
 				return nil, usage, streamed, fmt.Errorf("model request policy forbids tool calls for %s", req.Purpose)
@@ -381,7 +381,7 @@ func estimateRequestTokens(messages []*aop.Message, tools []*aop.ToolDefinition)
 	return total
 }
 
-func streamAssistantMessageWithUsage(ctx context.Context, p StreamingProvider, req *ChatCompletionRequest, em *aopEmitter, logger telemetry.Logger, turn int, messageID string) (*assistantTurn, *aop.TokenUsage, bool, error) {
+func streamAssistantMessageWithUsage(ctx context.Context, p provider.StreamingProvider, req *provider.ChatCompletionRequest, em *aopEmitter, logger telemetry.Logger, turn int, messageID string) (*assistantTurn, *aop.TokenUsage, bool, error) {
 	events, err := p.ChatCompletionStream(ctx, req)
 	if err != nil {
 		return nil, nil, false, fmt.Errorf("LLM stream failed at turn %d: %w", turn, err)

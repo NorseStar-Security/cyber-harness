@@ -1,5 +1,3 @@
-//go:build full
-
 // Engine manages the headless browser lifecycle.
 // Ported from nuclei pkg/protocols/headless/engine/engine.go.
 

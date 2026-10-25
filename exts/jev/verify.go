@@ -13,7 +13,7 @@ import (
 
 type replayResult struct {
 	facts      json.RawMessage
-	candidates map[string]binding
+	candidates map[string]NativeCall
 	branches   []replayBranch
 }
 type replayBranch struct {
@@ -82,7 +82,7 @@ var errProbeStop = errors.New("pure probe reached native dispatch")
 // pairs. No provider or native tool is invoked during publication checks.
 // The exact same program and bridges are used in foreground execution.
 func probeReflexArguments(ctx context.Context, reflex *Program, input, args map[string]any, results []map[string]any, allowMissing bool) (replayResult, error) {
-	candidates := map[string]binding{}
+	candidates := map[string]NativeCall{}
 	states := []any{}
 	branches := []replayBranch{}
 	queue := []map[string]string{{}}
@@ -125,7 +125,7 @@ func probeReflexArguments(ctx context.Context, reflex *Program, input, args map[
 			}
 			prefix[node] = chosen
 		}
-		judge := func(claim Claim) (*jevapi.Evaluation, error) {
+		judge := func(claim jevapi.Claim) (*decision.Evaluation, error) {
 			calls++
 			if calls > maxDecisions {
 				return nil, fmt.Errorf("nonterminating decision loop")
@@ -144,7 +144,7 @@ func probeReflexArguments(ctx context.Context, reflex *Program, input, args map[
 					}
 				}
 				alternatives(node, chosen, claim.Options)
-				return &jevapi.Evaluation{Value: &decision.Evaluation_Choice{Choice: chosen}}, nil
+				return &decision.Evaluation{Value: &decision.Evaluation_Choice{Choice: chosen}}, nil
 			case jevapi.ClaimScore, jevapi.ClaimNoul:
 				if chosen == "" {
 					chosen = "middle"
@@ -162,13 +162,13 @@ func probeReflexArguments(ctx context.Context, reflex *Program, input, args map[
 					value = upper
 				}
 				if claim.Type == jevapi.ClaimScore {
-					return &jevapi.Evaluation{Value: &decision.Evaluation_Score{Score: value}}, nil
+					return &decision.Evaluation{Value: &decision.Evaluation_Score{Score: value}}, nil
 				}
-				return &jevapi.Evaluation{Value: &decision.Evaluation_Noul{Noul: value}}, nil
+				return &decision.Evaluation{Value: &decision.Evaluation_Noul{Noul: value}}, nil
 			}
 			return nil, fmt.Errorf("unsupported Claim type")
 		}
-		execute := func(candidate binding) (map[string]any, error) {
+		execute := func(candidate NativeCall) (map[string]any, error) {
 			dispatched++
 			if dispatched > maxCandidates {
 				return nil, fmt.Errorf("native replay exceeds finite budget")
@@ -187,7 +187,7 @@ func probeReflexArguments(ctx context.Context, reflex *Program, input, args map[
 			if cursor < len(results) {
 				result := results[cursor]
 				args, _ := json.Marshal(result["arguments"])
-				if (binding{Name: fmt.Sprint(result["name"]), Arguments: args}).replayKey() == candidate.replayKey() {
+				if (NativeCall{Name: fmt.Sprint(result["name"]), Arguments: args}).replayKey() == candidate.replayKey() {
 					cursor++
 					evidence[fmt.Sprint(result["call_id"])] = result
 					if !candidate.Read {
@@ -197,7 +197,7 @@ func probeReflexArguments(ctx context.Context, reflex *Program, input, args map[
 				}
 				gap = fmt.Sprintf("native call %d differs from the recorded call", cursor)
 				index := cursor
-				diagnostic = &CompilerDiagnostic{Code: "native_call_mismatch", Stage: "replay", Status: "repair", Message: gap, Call: &index, Expected: json.RawMessage((binding{Name: fmt.Sprint(result["name"]), Arguments: args}).replayKey()), Actual: json.RawMessage(candidate.replayKey()), Replayed: cursor, Recorded: len(results), Action: "Compare the decoded argv and every native option. Recover exact current example values with inspect_evidence. Replay can supply only this recorded call's result; a different operation needs its own actual evidence."}
+				diagnostic = &CompilerDiagnostic{Code: "native_call_mismatch", Stage: "replay", Status: "repair", Message: gap, Call: &index, Expected: json.RawMessage((NativeCall{Name: fmt.Sprint(result["name"]), Arguments: args}).replayKey()), Actual: json.RawMessage(candidate.replayKey()), Replayed: cursor, Recorded: len(results), Action: "Compare the decoded argv and every native option. Recover exact current example values with inspect_evidence. Replay can supply only this recorded call's result; a different operation needs its own actual evidence."}
 			} else {
 				gap = "generated call has no recorded result"
 				index := cursor
@@ -300,16 +300,16 @@ func (r *observationReplay) witnesses(ctx context.Context) ([]map[string]any, er
 	}
 	return rows, nil
 }
-func compactWitnesses(witnesses []map[string]any) ([]map[string]any, map[string]binding) {
+func compactWitnesses(witnesses []map[string]any) ([]map[string]any, map[string]NativeCall) {
 	rows := []map[string]any{}
-	bindings := map[string]binding{}
+	bindings := map[string]NativeCall{}
 	for _, witness := range witnesses {
 		row := map[string]any{}
 		for k, v := range witness {
 			row[k] = v
 		}
 		refs := map[string]string{}
-		for id, c := range witness["candidates"].(map[string]binding) {
+		for id, c := range witness["candidates"].(map[string]NativeCall) {
 			ref := "b" + digest(c)
 			bindings[ref] = c
 			refs[id] = ref

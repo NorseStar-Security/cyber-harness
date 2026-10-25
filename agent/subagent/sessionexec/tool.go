@@ -55,7 +55,7 @@ func (t *Tool) Definition() *aop.ToolDefinition {
 	return coretool.Def(t.Name(), t.Description(), Args{})
 }
 
-func (t *Tool) Execute(ctx context.Context, arguments string) (*coretool.Result, error) {
+func (t *Tool) Execute(ctx context.Context, arguments string) (*aop.ToolResult, error) {
 	args, err := coretool.ParseArgs[Args](arguments)
 	if err != nil {
 		return nil, err

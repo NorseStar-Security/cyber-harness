@@ -51,11 +51,11 @@ func (t *Tool) Description() string {
 	return "Capture desktop or application-window screenshots and H.264 MP4 recordings. Supports synchronous duration recording and asynchronous start/stop/status sessions."
 }
 
-func (t *Tool) Definition() *coretool.Definition {
+func (t *Tool) Definition() *aop.ToolDefinition {
 	return coretool.Def(t.Name(), t.Description(), Args{})
 }
 
-func (t *Tool) Execute(ctx context.Context, arguments string) (*coretool.Result, error) {
+func (t *Tool) Execute(ctx context.Context, arguments string) (*aop.ToolResult, error) {
 	args, err := coretool.ParseArgs[Args](arguments)
 	if err != nil {
 		return nil, err
@@ -100,7 +100,7 @@ func (t *Tool) Execute(ctx context.Context, arguments string) (*coretool.Result,
 	}
 }
 
-func (t *Tool) screenshot(ctx context.Context, args Args) (*coretool.Result, error) {
+func (t *Tool) screenshot(ctx context.Context, args Args) (*aop.ToolResult, error) {
 	if t.backend == nil {
 		return nil, fmt.Errorf("capture backend is unavailable")
 	}
@@ -148,7 +148,7 @@ func (t *Tool) screenshot(ctx context.Context, args Args) (*coretool.Result, err
 		MimeType string     `json:"mime_type"`
 	}{"screenshot", target.Info, path, len(data), "image/png"}
 	text, _ := json.MarshalIndent(meta, "", "  ")
-	return &coretool.Result{Output: []*aop.Content{
+	return &aop.ToolResult{Output: []*aop.Content{
 		aop.Text(string(text)),
 		aop.MediaData("image", preview.MimeType, filepath.Base(path), preview.Data),
 	}}, nil

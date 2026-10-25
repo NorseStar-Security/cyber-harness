@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/chainreactors/cyber/agent"
+	agenthooks "github.com/chainreactors/cyber/agent/hooks"
 	"github.com/chainreactors/cyber/aop"
 	"github.com/chainreactors/cyber/core/extension"
 	"github.com/chainreactors/cyber/core/hooks"
@@ -44,7 +45,7 @@ func TestSubagentWithMemoryIOA(t *testing.T) {
 				if records[0].Meta["subagent"].(map[string]any)["session_id"] != cfg.SessionID {
 					return nil, fmt.Errorf("wrong child identity")
 				}
-				return &agent.Result{Output: "done", Stop: agent.StopReasonCompleted}, nil
+				return &agent.Result{Output: "done", Stop: agenthooks.StopReasonCompleted}, nil
 			})})
 
 			tool := newSubagentTestTool(t, parent.Cfg)

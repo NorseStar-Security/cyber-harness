@@ -233,7 +233,7 @@ func (s *commandSession) statusText() string {
 	tools, commandRegistry, store := rt.tools, rt.commandRegistry, rt.skills
 	config := s.state.agent.ConfigSnapshot()
 	provider, model := config.Provider, config.Model
-	providerConfig := agent.ProviderConfig{}
+	providerConfig := providerpkg.ProviderConfig{}
 	if providers != nil {
 		_, providerConfig = providers.Current()
 	}
@@ -1281,9 +1281,9 @@ func (s *sessionState) startRun(ctx context.Context, input RunInput) (*Run, erro
 			result, runErr := s.executeRun(runCtx, turnID, input)
 			runResult := result
 			if runResult == nil {
-				runResult = &agent.Result{Stop: agent.StopReasonError, Err: runErr}
+				runResult = &agent.Result{Stop: agenthooks.StopReasonError, Err: runErr}
 				if errors.Is(runErr, context.Canceled) || errors.Is(runErr, context.DeadlineExceeded) {
-					runResult.Stop = agent.StopReasonCanceled
+					runResult.Stop = agenthooks.StopReasonCanceled
 				}
 			}
 			s.result, s.runErr = runResult, runErr
@@ -1295,9 +1295,9 @@ func (s *sessionState) startRun(ctx context.Context, input RunInput) (*Run, erro
 			s.runtime.finishRun(run, runResult, runErr)
 		},
 		reject: func(err error) {
-			result := &agent.Result{Stop: agent.StopReasonCanceled, Err: err}
+			result := &agent.Result{Stop: agenthooks.StopReasonCanceled, Err: err}
 			if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
-				result.Stop = agent.StopReasonError
+				result.Stop = agenthooks.StopReasonError
 			}
 			s.emitTurnStarted(turnID)
 			s.result, s.runErr = result, err
@@ -1597,17 +1597,17 @@ func (rt *Runtime) unregisterRun(run *Run) {
 	rt.mu.Unlock()
 }
 
-func sessionStop(result *agent.Result, err error) agent.StopReason {
+func sessionStop(result *agent.Result, err error) agenthooks.StopReason {
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-		return agent.StopReasonCanceled
+		return agenthooks.StopReasonCanceled
 	}
 	if err != nil {
-		return agent.StopReasonError
+		return agenthooks.StopReasonError
 	}
 	if result != nil {
 		return result.Stop
 	}
-	return agent.StopReasonCompleted
+	return agenthooks.StopReasonCompleted
 }
 
 // Callback failure must not strand close waiters or prevent parent cleanup.

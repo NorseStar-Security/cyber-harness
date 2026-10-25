@@ -1,5 +1,3 @@
-//go:build full
-
 package playwright
 
 import (
@@ -67,7 +65,10 @@ func (c *Command) execConsole(ctx context.Context, args []string) (string, error
 			return "", fmt.Errorf("playwright console: %w", err)
 		}
 		var entries []consoleEntry
-		if err := res.Value.Unmarshal(&entries); err != nil || len(entries) == 0 {
+		if err := res.Value.Unmarshal(&entries); err != nil {
+			return "", fmt.Errorf("playwright console: parse messages: %w", err)
+		}
+		if len(entries) == 0 {
 			return "No console messages", nil
 		}
 
@@ -259,7 +260,10 @@ func (c *Command) execWebStorageList(ctx context.Context, args []string, storage
 			return "", fmt.Errorf("playwright %s-list: %w", storageType, err)
 		}
 		var items map[string]string
-		if err := res.Value.Unmarshal(&items); err != nil || len(items) == 0 {
+		if err := res.Value.Unmarshal(&items); err != nil {
+			return "", fmt.Errorf("playwright %s-list: parse items: %w", storageType, err)
+		}
+		if len(items) == 0 {
 			return fmt.Sprintf("%s: empty", storageType), nil
 		}
 		data, _ := json.MarshalIndent(items, "", "  ")

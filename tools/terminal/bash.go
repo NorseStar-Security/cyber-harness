@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	aop "github.com/chainreactors/cyber/aop"
 	"io"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	aop "github.com/chainreactors/cyber/aop"
 
 	"github.com/chainreactors/cyber/agent/inbox"
 	"github.com/chainreactors/cyber/core/hooks"
@@ -202,11 +203,11 @@ func (a BashArgs) Validate() error {
 	return nil
 }
 
-func (t *BashTool) Definition() *coretool.Definition {
+func (t *BashTool) Definition() *aop.ToolDefinition {
 	return coretool.Def("bash", t.Description(), BashArgs{})
 }
 
-func (t *BashTool) Execute(ctx context.Context, arguments string) (*coretool.Result, error) {
+func (t *BashTool) Execute(ctx context.Context, arguments string) (*aop.ToolResult, error) {
 	args, err := coretool.ParseArgs[BashArgs](arguments)
 	if err != nil {
 		return nil, err
@@ -318,7 +319,7 @@ func (t *BashTool) RunForeground(ctx context.Context, command string, options Ba
 // collected ToolResult (bounded text and media), streaming raw
 // output through options.OnOutput. Transports that must remain foreground
 // (AOP tool.call) use this instead of Execute.
-func (t *BashTool) RunForegroundTool(ctx context.Context, command string, options BashExecOptions) (*coretool.Result, error) {
+func (t *BashTool) RunForegroundTool(ctx context.Context, command string, options BashExecOptions) (*aop.ToolResult, error) {
 	if t.maxTimeout > 0 && options.Timeout > t.maxTimeout {
 		return nil, fmt.Errorf("foreground bash timeout %s exceeds runner ceiling %s", options.Timeout, t.maxTimeout)
 	}
@@ -418,7 +419,7 @@ func joinedWriter(session, extra io.Writer) io.Writer {
 	return io.MultiWriter(session, extra)
 }
 
-func (t *BashTool) waitOrBackground(execution *coretool.Execution, ctx context.Context, targetInbox inbox.Inbox, wait time.Duration) *coretool.Result {
+func (t *BashTool) waitOrBackground(execution *coretool.Execution, ctx context.Context, targetInbox inbox.Inbox, wait time.Duration) *aop.ToolResult {
 	done := t.tasks.Done(execution.ID)
 	var interrupt <-chan struct{}
 	if targetInbox != nil {
@@ -455,7 +456,7 @@ func (t *BashTool) waitOrBackground(execution *coretool.Execution, ctx context.C
 	}
 }
 
-func (t *BashTool) background(execution *coretool.Execution, targetInbox inbox.Inbox, reason string) *coretool.Result {
+func (t *BashTool) background(execution *coretool.Execution, targetInbox inbox.Inbox, reason string) *aop.ToolResult {
 	info, ok := t.tasks.Get(execution.ID)
 	if !ok || info.State != proc.StateRunning {
 		return t.collectResult(execution)
@@ -471,7 +472,7 @@ func (t *BashTool) background(execution *coretool.Execution, targetInbox inbox.I
 		reason, info.ID, info.Name, info.ID, info.ID) + t.outputFileHint(info.ID, execution.Dir))
 }
 
-func (t *BashTool) collectResult(execution *coretool.Execution) *coretool.Result {
+func (t *BashTool) collectResult(execution *coretool.Execution) *aop.ToolResult {
 	// A completed native session still has completion hooks and process control
 	// to drain. Returning earlier cancels the tool's scope while observers are
 	// recording the successful process, spuriously turning it into cancellation.

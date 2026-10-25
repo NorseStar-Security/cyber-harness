@@ -3,9 +3,11 @@ package files
 import (
 	"context"
 	"fmt"
-	coretool "github.com/chainreactors/cyber/core/tool"
 	"strings"
 	"unicode/utf8"
+
+	aop "github.com/chainreactors/cyber/aop"
+	coretool "github.com/chainreactors/cyber/core/tool"
 )
 
 // toolsFor constructs the four basic tools owned by the files extension.
@@ -55,14 +57,14 @@ func (t *fileTool) Description() string {
 	return "Read a bounded UTF-8 text file inside the configured directory or an explicitly selected read-only mount."
 }
 
-func (t *fileTool) Definition() *coretool.Definition {
+func (t *fileTool) Definition() *aop.ToolDefinition {
 	if t.write {
 		return coretool.Def(t.Name(), t.Description(), writeArgs{})
 	}
 	return coretool.Def(t.Name(), t.Description(), readArgs{})
 }
 
-func (t *fileTool) Execute(ctx context.Context, arguments string) (*coretool.Result, error) {
+func (t *fileTool) Execute(ctx context.Context, arguments string) (*aop.ToolResult, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}

@@ -11,6 +11,7 @@ import (
 	toolpb "github.com/chainreactors/cyber/aop/tool"
 	"github.com/chainreactors/cyber/core/eventbus"
 	"github.com/chainreactors/cyber/core/operation"
+	toolhooks "github.com/chainreactors/cyber/core/tool/hooks"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -48,15 +49,7 @@ func ExecuteToolRequest(ctx context.Context, operationID string, request *toolpb
 	started := time.Now()
 	result, execErr := executor.ExecuteTool(ctx, call.Name, string(arguments))
 	progress.Flush()
-	if result == nil {
-		result = &aop.ToolResult{}
-	}
-	if execErr != nil {
-		result.IsError = true
-		if len(result.Output) == 0 {
-			result.Output = []*aop.Content{aop.Text(execErr.Error())}
-		}
-	}
+	result = toolhooks.Feedback(result, execErr)
 	if result.CallId == "" {
 		result.DurationMs = uint64(time.Since(started).Milliseconds())
 	}

@@ -18,7 +18,7 @@ import (
 	"github.com/chainreactors/cyber/core/operation"
 	"github.com/chainreactors/cyber/core/telemetry"
 	coretool "github.com/chainreactors/cyber/core/tool"
-	"github.com/chainreactors/cyber/pkg/node/tool"
+	toolnode "github.com/chainreactors/cyber/pkg/node/tool"
 	"github.com/chainreactors/cyber/pkg/testutil/hosttest"
 	"github.com/gorilla/websocket"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -36,12 +36,12 @@ type testTool struct {
 
 func (t *testTool) Name() string        { return "echo" }
 func (t *testTool) Description() string { return "echo or wait" }
-func (t *testTool) Definition() *coretool.Definition {
+func (t *testTool) Definition() *aop.ToolDefinition {
 	return coretool.Def(t.Name(), t.Description(), struct {
 		Value string `json:"value"`
 	}{})
 }
-func (t *testTool) Execute(ctx context.Context, arguments string) (*coretool.Result, error) {
+func (t *testTool) Execute(ctx context.Context, arguments string) (*aop.ToolResult, error) {
 	if arguments == `{"value":"wait"}` {
 		invocation := operation.InvocationFromContext(ctx)
 		if invocation.Progress != nil {

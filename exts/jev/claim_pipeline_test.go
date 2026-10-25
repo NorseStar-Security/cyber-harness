@@ -29,7 +29,7 @@ import (
 // scripted in the local variant; the Agent, command executor, native contracts,
 // compiler Agent, replay, semantic review, publication and reload are real.
 func TestClaimToReflexPipeline(t *testing.T) {
-	for _, claim := range []Claim{
+	for _, claim := range []jevapi.Claim{
 		{Type: jevapi.ClaimNoul, Context: "Inspect the currently requested target through claimlab inspect and report its actual current receipt."},
 		{Type: jevapi.ClaimChoice, Context: "For a requested current target, choose inspect to obtain its native receipt or defer when the target is absent.", Options: []string{"inspect", "defer"}},
 		{Type: jevapi.ClaimScore, Context: "Assess evidence for the requested target's current native receipt, from unavailable to inspected to complete.", Options: []string{"unavailable", "inspected", "complete"}},
@@ -118,7 +118,7 @@ func TestLiveClaimToReflexPipeline(t *testing.T) {
 		}
 		mode = "real-jev-and-llm"
 	}
-	runClaimPipeline(t, mode, client, llm, Claim{Type: jevapi.ClaimNoul, Context: "Inspect the currently requested target through claimlab inspect and report its actual current receipt."})
+	runClaimPipeline(t, mode, client, llm, jevapi.Claim{Type: jevapi.ClaimNoul, Context: "Inspect the currently requested target through claimlab inspect and report its actual current receipt."})
 }
 
 func pipelineDecisions(req inferenceRequest) map[string]inferenceAnswer {
@@ -259,7 +259,7 @@ func pipelineTarget(req *provider.ChatCompletionRequest) (string, error) {
 	return "", fmt.Errorf("current target absent from model context")
 }
 
-func (f *pipelineFixture) inference(real provider.Provider, claim Claim, coldTarget string) provider.Provider {
+func (f *pipelineFixture) inference(real provider.Provider, claim jevapi.Claim, coldTarget string) provider.Provider {
 	return testProvider(func(ctx context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 		f.mu.Lock()
 		kind := req.Purpose
@@ -289,8 +289,8 @@ func (f *pipelineFixture) inference(real provider.Provider, claim Claim, coldTar
 		switch kind {
 		case "claims":
 			return reply(provider.TextMessage("assistant", jsonText(struct {
-				Claims []Claim `json:"claims"`
-			}{[]Claim{claim}}))), nil
+				Claims []jevapi.Claim `json:"claims"`
+			}{[]jevapi.Claim{claim}}))), nil
 		case "compilation":
 			// First submit a mismatched example. The real compiler must return
 			// a replay diagnostic to this same model before accepting a repair.
@@ -342,7 +342,7 @@ func (f *pipelineFixture) inference(real provider.Provider, claim Claim, coldTar
 	})
 }
 
-func runClaimPipeline(t *testing.T, mode string, client *jevapi.Client, real provider.Provider, claim Claim) {
+func runClaimPipeline(t *testing.T, mode string, client *jevapi.Client, real provider.Provider, claim jevapi.Claim) {
 	t.Helper()
 	started := time.Now()
 	f := &pipelineFixture{}

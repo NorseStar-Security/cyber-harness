@@ -74,7 +74,7 @@ func (t *Tool) track(id string, task *subagent.Run, cfg agent.Config) func(sessi
 				return
 			}
 			defer producer.Done()
-			if !outcome.Started || outcome.Result == nil {
+			if !outcome.Started || (outcome.Result == nil && outcome.Err == nil) {
 				return
 			}
 			status, content := subagentCompletion(outcome.Result, outcome.Err)

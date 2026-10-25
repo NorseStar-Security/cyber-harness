@@ -19,7 +19,8 @@ import (
 	terminaltool "github.com/chainreactors/cyber/tools/terminal"
 
 	"github.com/chainreactors/cyber/agent"
-	"github.com/chainreactors/cyber/agent/provider"
+	agenthooks "github.com/chainreactors/cyber/agent/hooks"
+	providerapi "github.com/chainreactors/cyber/agent/provider"
 	aop "github.com/chainreactors/cyber/aop"
 	coreevents "github.com/chainreactors/cyber/core/events"
 	coreoutput "github.com/chainreactors/cyber/core/events/jsonl"
@@ -57,7 +58,7 @@ func TestLoopPanicCompletesRunAndLeavesSessionDrainable(t *testing.T) {
 		t.Fatal("panicking loop stranded the Run")
 	}
 	result, err := run.Wait()
-	if err == nil || !strings.Contains(err.Error(), "test loop failure") || result == nil || result.Stop != agent.StopReasonError {
+	if err == nil || !strings.Contains(err.Error(), "test loop failure") || result == nil || result.Stop != agenthooks.StopReasonError {
 		t.Fatalf("panic result: %v, %v", result, err)
 	}
 	if _, err := session.Command(t.Context(), "/status"); err != nil {
@@ -295,7 +296,7 @@ func TestResourceCloseCancelsAllExternallyParentedSessionsBeforeWaiting(t *testi
 }
 
 type persistenceProvider struct {
-	requests []*provider.ChatCompletionRequest
+	requests []*providerapi.ChatCompletionRequest
 }
 
 type lifecycleOutput struct {
@@ -437,10 +438,10 @@ func TestRuntimeCloseKeepsSharedTerminalManager(t *testing.T) {
 
 func (p *persistenceProvider) Name() string { return "persistence" }
 
-func (p *persistenceProvider) ChatCompletion(_ context.Context, request *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
+func (p *persistenceProvider) ChatCompletion(_ context.Context, request *providerapi.ChatCompletionRequest) (*providerapi.ChatCompletionResponse, error) {
 	p.requests = append(p.requests, request)
-	return &provider.ChatCompletionResponse{
-		Choices: []provider.Choice{{Message: provider.TextMessage("assistant", "persisted response")}},
+	return &providerapi.ChatCompletionResponse{
+		Choices: []providerapi.Choice{{Message: providerapi.TextMessage("assistant", "persisted response")}},
 	}, nil
 }
 
@@ -664,12 +665,7 @@ func TestCompactRotatesAndPersistsOnlyCompactedContext(t *testing.T) {
 	_, runtime, output := newPersistenceRuntimeWithMode(t, option, provider, true)
 	runtime.agentConfig.Compaction = agent.CompactionSettings{KeepRecentTokens: 20, ReserveTokens: 64}
 	long := strings.Repeat("history ", 120)
-	messages := []*aop.Message{
-		agent.TextMessage("user", long+"one"),
-		agent.TextMessage("assistant", long+"two"),
-		agent.TextMessage("user", long+"three"),
-		agent.TextMessage("assistant", "recent answer"),
-	}
+	messages := []*aop.Message{providerapi.TextMessage("user", long+"one"), providerapi.TextMessage("assistant", long+"two"), providerapi.TextMessage("user", long+"three"), providerapi.TextMessage("assistant", "recent answer")}
 	session, err := runtime.OpenSession(context.Background(), SessionOptions{ID: "main-repl", Messages: messages})
 	if err != nil {
 		t.Fatal(err)
@@ -805,7 +801,7 @@ func newPersistenceRuntimeWithMode(t *testing.T, option *cfg.Option, llm *persis
 	if err := appSet.Load(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	app.Providers.Set(llm, agent.ProviderConfig{Provider: llm.Name(), Model: "test-model", MaxTokens: 128, ContextWindow: 128000})
+	app.Providers.Set(llm, providerapi.ProviderConfig{Provider: llm.Name(), Model: "test-model", MaxTokens: 128, ContextWindow: 128000})
 	primary := "task"
 	if interactive {
 		primary = "main-repl"
@@ -885,7 +881,7 @@ func writePersistenceSessionForID(t *testing.T, path, sessionID string) {
 	}
 }
 
-func persistenceRequestText(request *provider.ChatCompletionRequest) string {
+func persistenceRequestText(request *providerapi.ChatCompletionRequest) string {
 	if request == nil {
 		return ""
 	}
@@ -895,7 +891,7 @@ func persistenceRequestText(request *provider.ChatCompletionRequest) string {
 func persistenceMessagesText(messages []*aop.Message) string {
 	var parts []string
 	for _, message := range messages {
-		parts = append(parts, provider.MessageText(message))
+		parts = append(parts, providerapi.MessageText(message))
 	}
 	return strings.Join(parts, "\n")
 }
@@ -990,7 +986,7 @@ func TestSessionModelChangeKeepsOtherSessionsAndInFlightSnapshot(t *testing.T) {
 				return nil, ctx.Err()
 			}
 		}
-		return &agent.Result{Output: config.Model, Stop: agent.StopReasonCompleted}, nil
+		return &agent.Result{Output: config.Model, Stop: agenthooks.StopReasonCompleted}, nil
 	})
 	session, err := rt.OpenSession(t.Context(), SessionOptions{ID: "model-change"})
 	if err != nil {

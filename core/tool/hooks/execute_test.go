@@ -3,6 +3,9 @@ package hooks
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io/fs"
+	"strings"
 	"testing"
 
 	aop "github.com/chainreactors/cyber/aop"
@@ -76,7 +79,7 @@ func TestAfterPreservesContentAndCannotEraseCancellation(t *testing.T) {
 		operation.RequestCancel(ctx, want)
 		return &aop.ToolResult{Output: []*aop.Content{aop.Text("committed before cancellation"), aop.Text("second block")}}, nil
 	})
-	if !errors.Is(err, want) || !result.IsError || !result.Terminate || len(result.Output) != 2 {
+	if !errors.Is(err, want) || !result.IsError || !result.Terminate || len(result.Output) != 3 || result.Output[2].GetText().GetText() != "\ncanceled by policy" {
 		t.Fatalf("result=%v err=%v", result, err)
 	}
 }
@@ -96,5 +99,24 @@ func TestBeforeCannotModifyInvocationArguments(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestCompletionKeepsCauseAndPartialFeedback(t *testing.T) {
+	r := hooks.New()
+	cause := &fs.PathError{Op: "read", Path: "missing", Err: fs.ErrNotExist}
+	want := fmt.Errorf("use correct path: %w", cause)
+	Completed.On(r, "observe", func(_ context.Context, c Completion) (struct{}, error) {
+		var pathErr *fs.PathError
+		if !errors.Is(c.Err, fs.ErrNotExist) || !errors.As(c.Err, &pathErr) || pathErr != cause || !c.Result.IsError || len(c.Result.Output) != 2 || !strings.Contains(c.Result.Output[1].GetText().GetText(), "use correct path") {
+			t.Errorf("completion=%v", c)
+		}
+		return struct{}{}, nil
+	})
+	_, err := Execute(t.Context(), r, "read", "{}", func(context.Context, string) (*aop.ToolResult, error) {
+		return &aop.ToolResult{Output: []*aop.Content{aop.Text("partial")}}, want
+	})
+	if !errors.Is(err, want) {
+		t.Fatalf("err=%v", err)
 	}
 }

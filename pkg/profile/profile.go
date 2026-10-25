@@ -39,17 +39,7 @@ type Profile interface {
 // construction remain decisions of the concrete distribution constructor.
 type Request struct {
 	Option       *cfg.Option
-	ProviderMode ProviderMode
+	ProviderMode provider.StartupMode
 	Session      *agentsession.Config
 	Logger       telemetry.Logger
 }
-
-// ProviderMode is the host's provider requirement for one profile graph and the
-// mode consumed directly by provider startup.
-type ProviderMode = provider.StartupMode
-
-const (
-	ProviderDisabled = provider.StartupDisabled
-	ProviderRequired = provider.StartupRequired
-	ProviderOptional = provider.StartupOptional
-)

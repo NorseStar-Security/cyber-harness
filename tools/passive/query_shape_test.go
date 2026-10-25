@@ -1,5 +1,3 @@
-//go:build full
-
 package passive_test
 
 import (
@@ -11,14 +9,14 @@ import (
 
 	"github.com/chainreactors/cyber/core/telemetry"
 	coretool "github.com/chainreactors/cyber/core/tool"
-	passivecmd "github.com/chainreactors/cyber/tools/passive"
-	"github.com/chainreactors/cyber/tools/scan/engine"
+	"github.com/chainreactors/cyber/tools/passive"
+
 	"github.com/projectdiscovery/uncover/sources"
 )
 
 func TestPassiveQueryShape(t *testing.T) {
 	engine := &functionalPassiveEngine{}
-	command := passivecmd.New(engine).WithLogger(telemetry.NopLogger())
+	command := passive.New(engine).WithLogger(telemetry.NopLogger())
 	var output bytes.Buffer
 	_, err := command.Run(t.Context(), &coretool.Execution{Args: []string{"-s", "fofa", `domain="example.test"`}, Stdout: &output, Stderr: &output})
 	if err != nil {
@@ -47,7 +45,7 @@ func (e *functionalPassiveEngine) QueryRaw(ctx context.Context, source, query st
 	default:
 	}
 	e.queries = append(e.queries, source+":"+query)
-	raw, _ := json.Marshal(engine.RawFofa{
+	raw, _ := json.Marshal(passive.RawFofa{
 		IP: "192.0.2.10", Port: "443", Host: "https://example.test",
 		Domain: "example.test", Title: "Regression Asset", ICP: "TEST-ICP",
 	})

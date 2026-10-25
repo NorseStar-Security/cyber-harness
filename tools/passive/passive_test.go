@@ -1,5 +1,3 @@
-//go:build full
-
 package passive
 
 import (
@@ -7,12 +5,11 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/chainreactors/cyber/tools/scan/engine"
 	"github.com/projectdiscovery/uncover/sources"
 )
 
 func TestUncoverPythonFofaShape(t *testing.T) {
-	raw, _ := json.Marshal(engine.RawFofa{
+	raw, _ := json.Marshal(RawFofa{
 		IP: "192.0.2.4", Port: "443", Host: "https://example.com",
 		Domain: "example.com", Title: "Example", ICP: "ICP1",
 	})
@@ -40,7 +37,7 @@ func TestUncoverPythonFofaShape(t *testing.T) {
 }
 
 func TestUncoverPythonHunterShape(t *testing.T) {
-	raw, _ := json.Marshal(engine.RawHunter{
+	raw, _ := json.Marshal(RawHunter{
 		IP: "192.0.2.4", Port: "443", URL: "http://example.com:443",
 		Domain: "example.com", Status: "200", Company: "Example Inc",
 		Frame: "nginx,spring", Title: "Example", ICP: "ICP1",

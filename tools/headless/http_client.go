@@ -1,5 +1,3 @@
-//go:build full
-
 // Simplified HTTP client for headless hijack, ported from nuclei engine/http_client.go.
 // Differences from nuclei: no fastdialer, no TLS impersonation, no client certs.
 
@@ -23,7 +21,7 @@ func newHTTPClient(proxy string, timeout time.Duration) *http.Client {
 
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: true, //nolint:gosec // Browser replay must tolerate target certificates, including self-signed certificates.
 			MinVersion:         tls.VersionTLS10,
 		},
 		DialContext:         (&net.Dialer{Timeout: timeout}).DialContext,

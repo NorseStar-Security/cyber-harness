@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/chainreactors/cyber/agent"
 	"github.com/chainreactors/cyber/agent/provider"
 	agentsession "github.com/chainreactors/cyber/agent/session"
 	aop "github.com/chainreactors/cyber/aop"
@@ -27,7 +26,7 @@ type gateProvider struct {
 }
 
 func (*gateProvider) Name() string { return "gate" }
-func (p *gateProvider) ChatCompletion(ctx context.Context, req *agent.ChatCompletionRequest) (*agent.ChatCompletionResponse, error) {
+func (p *gateProvider) ChatCompletion(ctx context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 	call := p.calls.Add(1)
 	for i := len(req.Messages) - 1; i >= 0; i-- {
 		if req.Messages[i].Role == "user" {
@@ -44,9 +43,9 @@ func (p *gateProvider) ChatCompletion(ctx context.Context, req *agent.ChatComple
 			return nil, ctx.Err()
 		}
 	}
-	return &agent.ChatCompletionResponse{Choices: []agent.Choice{{Message: agent.TextMessage("assistant", "done")}}}, nil
+	return &provider.ChatCompletionResponse{Choices: []provider.Choice{{Message: provider.TextMessage("assistant", "done")}}}, nil
 }
-func newTestConsole(t *testing.T, option *cfg.Option, provider agent.Provider, stdout, stderr io.Writer, configs ...agent.ProviderConfig) (*AgentConsole, *apptest.Fixture) {
+func newTestConsole(t *testing.T, option *cfg.Option, provider provider.Provider, stdout, stderr io.Writer, configs ...provider.ProviderConfig) (*AgentConsole, *apptest.Fixture) {
 	t.Helper()
 	if option == nil {
 		option = &cfg.Option{}

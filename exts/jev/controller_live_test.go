@@ -2,9 +2,11 @@ package jev
 
 import (
 	"context"
-	jevapi "github.com/chainreactors/cyber/agent/provider/jev"
 	"os"
 	"testing"
+
+	jevapi "github.com/chainreactors/cyber/agent/provider/jev"
+	decision "github.com/chainreactors/cyber/core/decision"
 )
 
 func TestLiveReflexGenerationBoundary(t *testing.T) {
@@ -19,9 +21,9 @@ func TestLiveReflexGenerationBoundary(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct{ user, want string }{{"Cancel this task", "cancel"}, {"Export something", "missing"}} {
-		result, err := runReflexJS(t.Context(), &r, map[string]any{"user": tc.user, "tools": []any{}, "history": []any{}}, nil, func(c Claim) (*jevapi.Evaluation, error) {
+		result, err := runReflexJS(t.Context(), &r, map[string]any{"user": tc.user, "tools": []any{}, "history": []any{}}, nil, func(c jevapi.Claim) (*decision.Evaluation, error) {
 			c.Context += "\nCurrent user: " + tc.user
-			out, err := client.Evaluate(context.Background(), map[string]Claim{"runtime": c})
+			out, err := client.Evaluate(context.Background(), map[string]jevapi.Claim{"runtime": c})
 			if err != nil {
 				return nil, err
 			}

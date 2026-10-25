@@ -4,11 +4,12 @@ import (
 	"context"
 
 	"errors"
-	coretool "github.com/chainreactors/cyber/core/tool"
 	"strings"
 	"testing"
 	"time"
 	"unicode/utf8"
+
+	coretool "github.com/chainreactors/cyber/core/tool"
 
 	aop "github.com/chainreactors/cyber/aop"
 	toolpb "github.com/chainreactors/cyber/aop/tool"
@@ -21,7 +22,7 @@ import (
 
 type aopTestExecutor struct{}
 
-func (aopTestExecutor) Execute(_ context.Context, arguments string) (*coretool.Result, error) {
+func (aopTestExecutor) Execute(_ context.Context, arguments string) (*aop.ToolResult, error) {
 	return coretool.TextResult("echo:" + arguments), nil
 }
 
@@ -29,8 +30,8 @@ type structuredResultExecutor struct {
 	err error
 }
 
-func (e structuredResultExecutor) Execute(context.Context, string) (*coretool.Result, error) {
-	return &coretool.Result{
+func (e structuredResultExecutor) Execute(context.Context, string) (*aop.ToolResult, error) {
+	return &aop.ToolResult{
 		Output: []*aop.Content{
 			aop.Text("partial"),
 			aop.Image("image/png", []byte("image")),
@@ -69,7 +70,7 @@ func TestExecuteToolRequestPreservesPartialOutputOnExecutionError(t *testing.T) 
 		t.Fatal(err)
 	}
 	result := event.GetToolResult()
-	if !result.IsError || len(result.Output) != 2 || result.Output[0].GetText().GetText() != "partial" || result.Output[1].GetMedia() == nil {
+	if !result.IsError || len(result.Output) != 3 || !strings.Contains(coretool.ResultText(result), "failed") || result.Output[0].GetText().GetText() != "partial" || result.Output[1].GetMedia() == nil {
 		t.Fatalf("result = %+v", result)
 	}
 }
@@ -99,12 +100,12 @@ type recordingBash struct {
 
 func (*recordingBash) Name() string        { return "bash" }
 func (*recordingBash) Description() string { return "test bash" }
-func (*recordingBash) Definition() *coretool.Definition {
+func (*recordingBash) Definition() *aop.ToolDefinition {
 	return coretool.Def("bash", "test bash", struct {
 		Command string `json:"command"`
 	}{})
 }
-func (b *recordingBash) Execute(ctx context.Context, arguments string) (*coretool.Result, error) {
+func (b *recordingBash) Execute(ctx context.Context, arguments string) (*aop.ToolResult, error) {
 	args, err := coretool.ParseArgs[terminaltool.BashArgs](arguments)
 	if err != nil {
 		return nil, err
@@ -116,7 +117,7 @@ func (b *recordingBash) Execute(ctx context.Context, arguments string) (*coretoo
 	}
 	return b.RunForegroundTool(ctx, args.Command, options)
 }
-func (b *recordingBash) RunForegroundTool(_ context.Context, command string, options terminaltool.BashExecOptions) (*coretool.Result, error) {
+func (b *recordingBash) RunForegroundTool(_ context.Context, command string, options terminaltool.BashExecOptions) (*aop.ToolResult, error) {
 	b.command = command
 	b.options = options
 	options.OnOutput([]byte("streamed\n"))
@@ -166,9 +167,9 @@ func TestExecuteToolRequestForegroundPreservesExplicitZeroTimeout(t *testing.T) 
 
 type invalidTextResultExecutor struct{}
 
-func (invalidTextResultExecutor) Execute(context.Context, string) (*coretool.Result, error) {
+func (invalidTextResultExecutor) Execute(context.Context, string) (*aop.ToolResult, error) {
 	invalid := string([]byte{'r', 0xff, 's'})
-	return &coretool.Result{Output: []*aop.Content{{
+	return &aop.ToolResult{Output: []*aop.Content{{
 		Value: &aop.Content_Text{Text: &aop.TextContent{Text: invalid}},
 	}}}, nil
 }
@@ -190,11 +191,11 @@ func TestExecuteToolRequestSanitizesDirectToolResultText(t *testing.T) {
 
 type panicForegroundBash struct{ recordingBash }
 
-func (*panicForegroundBash) Execute(context.Context, string) (*coretool.Result, error) {
+func (*panicForegroundBash) Execute(context.Context, string) (*aop.ToolResult, error) {
 	panic("foreground boom")
 }
 
-func (*panicForegroundBash) RunForegroundTool(context.Context, string, terminaltool.BashExecOptions) (*coretool.Result, error) {
+func (*panicForegroundBash) RunForegroundTool(context.Context, string, terminaltool.BashExecOptions) (*aop.ToolResult, error) {
 	panic("foreground boom")
 }
 
@@ -217,19 +218,19 @@ func TestExecuteToolRequestForegroundPanicIsReturnedWithoutStack(t *testing.T) {
 
 func (aopTestExecutor) Name() string        { return "echo" }
 func (aopTestExecutor) Description() string { return "test" }
-func (aopTestExecutor) Definition() *coretool.Definition {
+func (aopTestExecutor) Definition() *aop.ToolDefinition {
 	return coretool.Def("echo", "test", struct{}{})
 }
 
 func (structuredResultExecutor) Name() string        { return "scan" }
 func (structuredResultExecutor) Description() string { return "test" }
-func (structuredResultExecutor) Definition() *coretool.Definition {
+func (structuredResultExecutor) Definition() *aop.ToolDefinition {
 	return coretool.Def("scan", "test", struct{}{})
 }
 
 func (invalidTextResultExecutor) Name() string        { return "scan" }
 func (invalidTextResultExecutor) Description() string { return "test" }
-func (invalidTextResultExecutor) Definition() *coretool.Definition {
+func (invalidTextResultExecutor) Definition() *aop.ToolDefinition {
 	return coretool.Def("scan", "test", struct{}{})
 }
 
@@ -240,11 +241,11 @@ func testRegistry(t testing.TB, value coretool.Tool) coretool.Executor {
 
 type singleToolExecutor struct{ value coretool.Tool }
 
-func (e singleToolExecutor) ToolDefinitions() []*coretool.Definition {
-	return []*coretool.Definition{e.value.Definition()}
+func (e singleToolExecutor) ToolDefinitions() []*aop.ToolDefinition {
+	return []*aop.ToolDefinition{e.value.Definition()}
 }
 
-func (e singleToolExecutor) ExecuteTool(ctx context.Context, name, arguments string) (*coretool.Result, error) {
+func (e singleToolExecutor) ExecuteTool(ctx context.Context, name, arguments string) (*aop.ToolResult, error) {
 	if name != e.value.Name() {
 		return nil, errors.New("unknown tool")
 	}

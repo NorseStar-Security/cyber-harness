@@ -15,6 +15,7 @@ import (
 	"github.com/chainreactors/cyber/pkg/testutil/apptest"
 
 	"github.com/chainreactors/cyber/agent"
+	provider "github.com/chainreactors/cyber/agent/provider"
 	"github.com/chainreactors/cyber/agent/session"
 	"github.com/chainreactors/cyber/agent/skills"
 	coretool "github.com/chainreactors/cyber/core/tool"
@@ -27,7 +28,7 @@ func TestAgentStatusIncludesLLMHealthFailure(t *testing.T) {
 	}))
 	defer server.Close()
 	app := apptest.NewFixture(t, nil, nil)
-	if _, _, err := app.Providers.Reload(context.Background(), agent.ProviderConfig{
+	if _, _, err := app.Providers.Reload(context.Background(), provider.ProviderConfig{
 		Provider: "openai", Model: "gpt-test", BaseURL: server.URL + "/v1", APIKey: "test",
 	}, nil); err != nil {
 		t.Fatal(err)

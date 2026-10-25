@@ -1,6 +1,4 @@
-//go:build full
-
-package engine
+package passive
 
 import (
 	"context"

@@ -48,7 +48,7 @@ func (e *Extension) Load(scope *extension.Scope) error {
 	fetch := searchtools.NewFetchCommand().WithProxy(proxy).WithProxyCA(proxyCA)
 	fetchCommand := coretool.Command{
 		Name: fetch.Name(), Usage: fetch.Usage(),
-		DescriptionPath: "cyber://skills/cyber/okf/runtime/fetch.md",
+		DescriptionPath: "cyber://skills/runtime/fetch.md",
 		Run:             fetch.Run,
 	}
 

@@ -13,6 +13,8 @@ import (
 	"syscall"
 	"time"
 
+	passiveconfig "github.com/chainreactors/cyber/exts/passive/config"
+
 	"github.com/chainreactors/cyber/core/telemetry"
 	scannerext "github.com/chainreactors/cyber/exts/scanner"
 	hostcli "github.com/chainreactors/cyber/pkg/cli"
@@ -28,7 +30,7 @@ const runModeWeb cfg.RunMode = "web"
 
 func cliCommandSummary() string {
 	base := "agent, web, serve"
-	summaries := scannerext.Names()
+	summaries := productScannerNames()
 	if len(summaries) == 0 {
 		return base
 	}
@@ -172,7 +174,7 @@ func parseCLIWithOutput(args []string, stdout io.Writer) (parsedCLI, error) {
 	rest, err := parser.ParseArgs(args)
 	if err != nil {
 		if flagsErr, ok := err.(*goflags.Error); ok && flagsErr.Type == goflags.ErrHelp {
-			if scannerName := firstCommandName(args, rootFlagValueArity); scannerext.Available(scannerName) {
+			if scannerName := firstCommandName(args, rootFlagValueArity); productScannerAvailable(scannerName) {
 				option := cfg.Option{MiscOptions: cli.MiscOptions}
 				finalizeOptions(&option, nil)
 				option.Timeout = 3600
@@ -370,8 +372,8 @@ func buildOption(cli *cliOptions, parser *goflags.Parser) cfg.Option {
 func newCLIParser(cli *cliOptions, options goflags.Options) *goflags.Parser {
 	parser := goflags.NewParser(cli, options)
 	configuration.RegisterHelp(parser)
-	for _, name := range scannerext.Names() {
-		if _, err := parser.AddCommand(name, scannerext.Description(name), "", &struct{}{}); err != nil {
+	for _, name := range productScannerNames() {
+		if _, err := parser.AddCommand(name, productScannerDescription(name), "", &struct{}{}); err != nil {
 			panic(err)
 		}
 	}
@@ -402,7 +404,7 @@ Examples:
   aiscan scan -i http://target.example --verify=on --sniper --model gpt-4o
   aiscan agent -p "find web services and check vulnerabilities" -i 192.168.1.0/24
   aiscan web --addr 0.0.0.0:8080
-  aiscan serve --token mykey --addr 0.0.0.0:8765`, strings.Join(scannerext.UsageLines(), "\n"))
+  aiscan serve --token mykey --addr 0.0.0.0:8765`, strings.Join(productScannerUsageLines(), "\n"))
 	return parser
 }
 
@@ -411,7 +413,7 @@ func parserOptionsForArgs(args []string) goflags.Options {
 	if len(args) == 0 {
 		return options
 	}
-	if scannerext.Available(firstCommandName(args, rootFlagValueArity)) {
+	if productScannerAvailable(firstCommandName(args, rootFlagValueArity)) {
 		options |= goflags.IgnoreUnknown
 	}
 	return options
@@ -420,7 +422,7 @@ func parserOptionsForArgs(args []string) goflags.Options {
 func splitScannerCommand(args []string) (string, []string, []string, bool) {
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
-		if scannerext.Available(arg) {
+		if productScannerAvailable(arg) {
 			return arg, append([]string(nil), args[:i]...), append([]string(nil), args[i+1:]...), true
 		}
 		if shouldSkipRootFlagValue(arg) && i+1 < len(args) {
@@ -522,20 +524,20 @@ var scannerKnownFlags = []knownFlag{
 	}},
 	{names: []string{"--llm-proxy"}, arity: 1, apply: func(o *cfg.Option, v string) { o.LLMProxy = v }},
 	{names: []string{"--fofa-key"}, arity: 1, extension: true, apply: func(o *cfg.Option, v string) {
-		setExtension(o, scannerext.ReconConfigKey, "fofa_key", v)
+		setExtension(o, passiveconfig.ReconConfigKey, "fofa_key", v)
 	}},
 	{names: []string{"--hunter-api-key"}, arity: 1, extension: true, apply: func(o *cfg.Option, v string) {
-		setExtension(o, scannerext.ReconConfigKey, "hunter_api_key", v)
+		setExtension(o, passiveconfig.ReconConfigKey, "hunter_api_key", v)
 	}},
 	{names: []string{"--tavily-key"}, arity: 1, extension: true, apply: func(o *cfg.Option, v string) {
-		setExtension(o, scannerext.ReconConfigKey, "tavily_key", v)
+		setExtension(o, passiveconfig.ReconConfigKey, "tavily_key", v)
 	}},
 	{names: []string{"--recon-proxy"}, arity: 1, extension: true, apply: func(o *cfg.Option, v string) {
-		setExtension(o, scannerext.ReconConfigKey, "proxy", v)
+		setExtension(o, passiveconfig.ReconConfigKey, "proxy", v)
 	}},
 	{names: []string{"--recon-limit"}, arity: 1, extension: true, apply: func(o *cfg.Option, v string) {
 		if n, e := strconv.Atoi(v); e == nil {
-			setExtension(o, scannerext.ReconConfigKey, "limit", n)
+			setExtension(o, passiveconfig.ReconConfigKey, "limit", n)
 		}
 	}},
 	{names: []string{"--heartbeat"}, arity: 1, apply: func(o *cfg.Option, v string) {
@@ -602,7 +604,7 @@ func selectedMode(parser *goflags.Parser) cfg.RunMode {
 	case "web":
 		return runModeWeb
 	default:
-		if scannerext.Available(active.Name) {
+		if productScannerAvailable(active.Name) {
 			return cfg.RunModeScanner
 		}
 	}
@@ -614,7 +616,7 @@ func selectedScanner(parser *goflags.Parser) string {
 	if active == nil {
 		return ""
 	}
-	if scannerext.Available(active.Name) {
+	if productScannerAvailable(active.Name) {
 		return active.Name
 	}
 	return ""

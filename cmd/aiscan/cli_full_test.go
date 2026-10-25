@@ -6,7 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	scannerext "github.com/chainreactors/cyber/exts/scanner"
+	passiveconfig "github.com/chainreactors/cyber/exts/passive/config"
+
 	cfg "github.com/chainreactors/cyber/pkg/config"
 )
 
@@ -30,7 +31,7 @@ func TestParseCLIReconCommandsAndFlags(t *testing.T) {
 	if !reflect.DeepEqual(parsed.ScannerArgs, wantArgs) {
 		t.Fatalf("scanner args = %#v, want %#v", parsed.ScannerArgs, wantArgs)
 	}
-	recon, err := scannerext.ReadRecon(&parsed.Option)
+	recon, err := passiveconfig.ReadRecon(&parsed.Option)
 	if err != nil {
 		t.Fatal(err)
 	}

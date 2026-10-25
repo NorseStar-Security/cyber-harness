@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/carapace-sh/carapace"
-	"github.com/chainreactors/cyber/agent"
 	"github.com/chainreactors/cyber/agent/provider"
 	agentsession "github.com/chainreactors/cyber/agent/session"
 	aop "github.com/chainreactors/cyber/aop"
@@ -1014,9 +1013,9 @@ func agentConsoleHistoryPath(option *cfg.Option) string {
 	return filepath.Join(cfg.ResolveDataDir(directory), "agent_history")
 }
 
-func (r *AgentConsole) providerConfig() agent.ProviderConfig {
+func (r *AgentConsole) providerConfig() provider.ProviderConfig {
 	if r == nil || r.runtime == nil {
-		return agent.ProviderConfig{}
+		return provider.ProviderConfig{}
 	}
 	_, pc := r.runtime.ProviderState()
 	if r.session != nil {

@@ -533,7 +533,9 @@ func parseOpenAIWebSearchResponse(data []byte, maxResults int) (*WebSearchRespon
 	}
 
 	var raw struct {
+		Status string `json:"status"`
 		Output []struct {
+			Status  string `json:"status"`
 			Type    string `json:"type"`
 			Content []struct {
 				Type        string `json:"type"`
@@ -550,6 +552,15 @@ func parseOpenAIWebSearchResponse(data []byte, maxResults int) (*WebSearchRespon
 		return nil, fmt.Errorf("parse web search response: %w", err)
 	}
 
+	searched := false
+	for _, block := range raw.Output {
+		if block.Type == "web_search_call" && block.Status == "completed" {
+			searched = true
+		}
+	}
+	if !searched || (raw.Status != "" && raw.Status != "completed") {
+		return nil, fmt.Errorf("web search was not completed: no completed web_search_call or incomplete response (status=%q)", raw.Status)
+	}
 	out := &WebSearchResponse{}
 	seen := make(map[string]struct{})
 	for _, block := range raw.Output {
@@ -564,7 +575,7 @@ func parseOpenAIWebSearchResponse(data []byte, maxResults int) (*WebSearchRespon
 				if ann.Type != "url_citation" || ann.URL == "" {
 					continue
 				}
-				if _, ok := seen[ann.URL]; ok {
+				if _, ok := seen[ann.URL]; ok || len(out.Results) >= maxResults {
 					continue
 				}
 				seen[ann.URL] = struct{}{}

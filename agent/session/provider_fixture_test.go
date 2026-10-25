@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/chainreactors/cyber/agent"
+	provider "github.com/chainreactors/cyber/agent/provider"
 )
 
 type taskLoop func(context.Context, agent.Config) (*agent.Result, error)
@@ -16,12 +17,12 @@ func (f taskLoop) Run(ctx context.Context, cfg agent.Config) (*agent.Result, err
 
 type scriptedProvider struct {
 	mu        sync.Mutex
-	responses []*agent.ChatCompletionResponse
-	requests  []*agent.ChatCompletionRequest
+	responses []*provider.ChatCompletionResponse
+	requests  []*provider.ChatCompletionRequest
 }
 
 func (p *scriptedProvider) Name() string { return "scripted" }
-func (p *scriptedProvider) ChatCompletion(_ context.Context, req *agent.ChatCompletionRequest) (*agent.ChatCompletionResponse, error) {
+func (p *scriptedProvider) ChatCompletion(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.requests = append(p.requests, req)

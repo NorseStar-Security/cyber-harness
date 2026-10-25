@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/chainreactors/cyber/agent"
+	agenthooks "github.com/chainreactors/cyber/agent/hooks"
 	"github.com/chainreactors/cyber/agent/prompt"
 	"github.com/chainreactors/cyber/agent/provider"
 	aop "github.com/chainreactors/cyber/aop"
@@ -113,7 +114,7 @@ func RunWithEval(ctx context.Context, a *agent.Agent, cfg EvalLoopConfig, opts .
 		// against, and is exactly when a fresh feedback round is most useful.
 		// (The old gate skipped everything but Terminated/Completed, so a
 		// turn-capped agent silently never got evaluated.)
-		if result.Stop == agent.StopReasonError || result.Stop == agent.StopReasonCanceled {
+		if result.Stop == agenthooks.StopReasonError || result.Stop == agenthooks.StopReasonCanceled {
 			return finish(result), lastVerdict, result.Err
 		}
 

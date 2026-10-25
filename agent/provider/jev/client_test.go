@@ -12,6 +12,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	decision "github.com/chainreactors/cyber/core/decision"
 )
 
 type inferenceQuestion struct {
@@ -151,7 +153,7 @@ func TestEvaluatePreservesTypedClaimsAndNativeMetadata(t *testing.T) {
 }
 
 func TestNumericAnswersRejectMissingWrongTypeAndOutOfRangeValues(t *testing.T) {
-	for _, kind := range []ClaimType{ClaimScore, ClaimNoul} {
+	for _, kind := range []decision.ClaimType{ClaimScore, ClaimNoul} {
 		for _, head := range []string{
 			`{"type":"` + kind.String() + `"}`, `{"type":"choice","choice":"yes"}`,
 			`{"type":"` + kind.String() + `","` + kind.String() + `":-0.1}`,

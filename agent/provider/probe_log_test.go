@@ -10,7 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/chainreactors/cyber/agent"
 	providerapi "github.com/chainreactors/cyber/agent/provider"
 	"github.com/chainreactors/cyber/core/telemetry"
 )
@@ -33,7 +32,7 @@ func TestLogLLMProbeStatusReady(t *testing.T) {
 	var logBuf bytes.Buffer
 	logger := telemetry.NewLogger(telemetry.LogConfig{Debug: true, Output: &logBuf})
 
-	health := providerapi.Probe(context.Background(), agent.ProviderConfig{
+	health := providerapi.Probe(context.Background(), providerapi.ProviderConfig{
 		Provider: "openai",
 		BaseURL:  srv.URL + "/v1",
 		APIKey:   "sk-test",
@@ -60,7 +59,7 @@ func TestLogLLMProbeStatusUnready(t *testing.T) {
 	var logBuf bytes.Buffer
 	logger := telemetry.NewLogger(telemetry.LogConfig{Output: &logBuf})
 
-	health := providerapi.Probe(context.Background(), agent.ProviderConfig{
+	health := providerapi.Probe(context.Background(), providerapi.ProviderConfig{
 		Provider: "openai",
 		BaseURL:  srv.URL + "/v1",
 		APIKey:   "sk-test",

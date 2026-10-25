@@ -1,4 +1,4 @@
-//go:build full && record && cgo && (windows || linux)
+//go:build record && cgo && (windows || linux)
 
 package main
 

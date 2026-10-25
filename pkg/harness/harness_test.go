@@ -8,6 +8,7 @@ import (
 	"github.com/chainreactors/cyber/agent"
 	"github.com/chainreactors/cyber/agent/provider"
 	agentsession "github.com/chainreactors/cyber/agent/session"
+	aop "github.com/chainreactors/cyber/aop"
 	"github.com/chainreactors/cyber/core/extension"
 	coretool "github.com/chainreactors/cyber/core/tool"
 	"github.com/chainreactors/cyber/pkg/harness"
@@ -17,10 +18,10 @@ type helloTool struct{}
 
 func (helloTool) Name() string        { return "hello" }
 func (helloTool) Description() string { return "say hello" }
-func (helloTool) Definition() *coretool.Definition {
+func (helloTool) Definition() *aop.ToolDefinition {
 	return coretool.Def("hello", "say hello", struct{}{})
 }
-func (helloTool) Execute(context.Context, string) (*coretool.Result, error) {
+func (helloTool) Execute(context.Context, string) (*aop.ToolResult, error) {
 	return coretool.TextResult("hello"), nil
 }
 

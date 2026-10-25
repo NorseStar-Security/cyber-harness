@@ -11,6 +11,7 @@ import (
 	"unicode"
 
 	"github.com/chainreactors/cyber/agent"
+	agenthooks "github.com/chainreactors/cyber/agent/hooks"
 	"github.com/chainreactors/cyber/agent/provider"
 	aop "github.com/chainreactors/cyber/aop"
 	"github.com/chainreactors/cyber/core/truncate"
@@ -559,7 +560,7 @@ func (o *AgentOutput) HandleEvent(event *aop.Event) {
 		o.turnEnd(o.runCount)
 		o.agentEnd(data)
 		switch {
-		case data.StopReason == string(agent.StopReasonCanceled):
+		case data.StopReason == string(agenthooks.StopReasonCanceled):
 			if !o.quiet() {
 				fmt.Fprintln(o.Stderr(), o.dim("Task stopped."))
 			}
@@ -892,7 +893,7 @@ func (o *AgentOutput) agentEnd(data *aop.TurnEnded) {
 	}
 	lastRole, lastContentLen, lastReasoningLen, lastPreview := summarizeMessageData(o.lastAssistant)
 	hint := ""
-	if data.StopReason == string(agent.StopReasonCompleted) && lastRole == "assistant" {
+	if data.StopReason == string(agenthooks.StopReasonCompleted) && lastRole == "assistant" {
 		hint = " hint=no_tool_calls_no_pending_work"
 	}
 	errText := ""

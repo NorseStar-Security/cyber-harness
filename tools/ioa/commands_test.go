@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/chainreactors/cyber/agent"
+	provider "github.com/chainreactors/cyber/agent/provider"
 	"github.com/chainreactors/cyber/core/operation"
 	coretool "github.com/chainreactors/cyber/core/tool"
 	"github.com/chainreactors/cyber/pkg/testutil/hosttest"
@@ -505,7 +506,7 @@ func TestLLMIOAToolUsage(t *testing.T) {
 	baseURL := envOr("LIVE_TEST_BASE_URL", "https://api.deepseek.com")
 	model := envOr("LIVE_TEST_MODEL", "deepseek-v4-pro")
 
-	llm, err := agent.NewProvider(&agent.ProviderConfig{
+	llm, err := provider.NewProvider(&provider.ProviderConfig{
 		BaseURL: baseURL,
 		APIKey:  apiKey,
 		Model:   model,

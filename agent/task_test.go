@@ -6,7 +6,9 @@ import (
 	"testing"
 	"time"
 
+	agenthooks "github.com/chainreactors/cyber/agent/hooks"
 	"github.com/chainreactors/cyber/agent/inbox"
+	provider "github.com/chainreactors/cyber/agent/provider"
 	aop "github.com/chainreactors/cyber/aop"
 	coreevents "github.com/chainreactors/cyber/core/events"
 	"github.com/chainreactors/cyber/core/operation"
@@ -22,7 +24,7 @@ func TestRunTaskIsolatesParentAndCorrelatesEvents(t *testing.T) {
 	var events []*aop.Event
 	bus.Observe(func(ev *aop.Event) { events = append(events, ev) })
 	parent := NewAgent(Config{Loop: StandardLoop{}, Model: "selected-model", SessionID: "parent", TurnID: "parent-turn", MessageCounter: 42, Bus: bus,
-		Provider: &scriptedProvider{responses: []*ChatCompletionResponse{chatResponse(NewTextMessage("assistant", "done"))}},
+		Provider: &scriptedProvider{responses: []*provider.ChatCompletionResponse{chatResponse(NewTextMessage("assistant", "done"))}},
 	})
 	parent.LoadMessages([]*aop.Message{TextInput("private history")})
 	_ = parent.Cfg.Inbox.Push(inbox.NewUserMessage("pending parent input"))
@@ -128,7 +130,7 @@ func TestRunTaskPanicFinishesTrace(t *testing.T) {
 		childInbox = cfg.Inbox
 		panic("worker failure")
 	})}, &types.DelegationDetail{Task: "work"})
-	if err == nil || ended == nil || ended.Error == nil || ended.StopReason != string(StopReasonError) || !closed || !childInbox.Closed() {
+	if err == nil || ended == nil || ended.Error == nil || ended.StopReason != string(agenthooks.StopReasonError) || !closed || !childInbox.Closed() {
 		t.Fatalf("err=%v terminal=%v closed=%v", err, ended, closed)
 	}
 }

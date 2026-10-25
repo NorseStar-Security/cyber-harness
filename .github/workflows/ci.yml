@@ -317,7 +317,7 @@ jobs:
       - name: Run scanner functional regressions
         run: |
           go test -tags "$FULL_CAPS_TAGS" -count=1 -timeout 5m -v \
-            -run 'Test(ScannerFunctionalRegression|FullScannerFunctionalRegression)$' \
+            -run 'Test(ScannerFunctionalRegression|ComposedScannerFunctionalRegression)$' \
             ./exts/scanner
 
       - name: Run remaining full-tag unit variants
@@ -325,7 +325,7 @@ jobs:
           go test -tags "$FULL_CAPS_TAGS" -count=1 -timeout 5m \
             ./cmd/aiscan ./agent/skills ./tools/passive ./tools/scan/engine
           go test -tags "$FULL_CAPS_TAGS" -count=1 -timeout 5m \
-            -run '^TestKatanaProfileExtender$' \
+            -run '^TestCrawler(ProfilesAreExplicitlyComposed|FiltersAndDeduplicatesTargets)$' \
             ./tools/scan
           go test -tags "$FULL_CAPS_TAGS" -count=1 -timeout 5m \
             -run '^Test(Parse|Execute_|ResolvePath_|NameAndUsage|WithDefaultSession|Format)' \
@@ -394,7 +394,7 @@ jobs:
             ./tools/katana
           go test -tags "$FULL_CAPS_TAGS" -count=1 -timeout 2m -v \
             -run '^TestE2EKatanaDeepRendersAuthenticatedSPA$' \
-            ./tools/scan
+            ./tools/katana
 
   e2e:
     runs-on: ubuntu-22.04

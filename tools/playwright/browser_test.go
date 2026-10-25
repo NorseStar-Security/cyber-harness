@@ -1,13 +1,9 @@
-//go:build full
-
 package playwright
 
 import (
 	"bytes"
 	"context"
 	"fmt"
-	coretool "github.com/chainreactors/cyber/core/tool"
-	"github.com/go-rod/rod/lib/launcher"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -16,6 +12,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	coretool "github.com/chainreactors/cyber/core/tool"
+	"github.com/go-rod/rod/lib/launcher"
 )
 
 // ---------------------------------------------------------------------------

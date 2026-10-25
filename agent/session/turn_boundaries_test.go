@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/chainreactors/cyber/agent"
+	agenthooks "github.com/chainreactors/cyber/agent/hooks"
 	"github.com/chainreactors/cyber/agent/provider"
 	aop "github.com/chainreactors/cyber/aop"
 )
@@ -98,7 +99,7 @@ func TestCancelQueuedRunsAndWrongSessionDoNotInterruptRunningTurn(t *testing.T) 
 		case <-time.After(time.Second):
 			t.Fatalf("turn %s did not drain", run.TurnID())
 		}
-		if result, err := run.Wait(); !errors.Is(err, context.Canceled) || result.Stop != agent.StopReasonCanceled {
+		if result, err := run.Wait(); !errors.Is(err, context.Canceled) || result.Stop != agenthooks.StopReasonCanceled {
 			t.Fatalf("turn %s = %v, %v", run.TurnID(), result, err)
 		}
 	}

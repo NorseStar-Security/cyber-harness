@@ -21,8 +21,8 @@ func TestContextRewriterLeavesDecisionWithModel(t *testing.T) {
 			})
 			_, cfg, _ := testInstallation(t, Config{Mode: "auto"}, client)
 			if useHook {
-				hooks.Context.On(cfg.Hooks, "rewrite", func(_ context.Context, ev hooks.ContextEvent) (hooks.ContextResult, error) {
-					return hooks.ContextResult{Messages: []*aop.Message{provider.TextMessage("user", "Updated task")}}, nil
+				hooks.Context.On(cfg.Hooks, "rewrite", func(_ context.Context, ev hooks.ContextEvent) ([]*aop.Message, error) {
+					return []*aop.Message{provider.TextMessage("user", "Updated task")}, nil
 				})
 			} else {
 				cfg.TransformContext = func([]*aop.Message) []*aop.Message {

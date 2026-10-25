@@ -16,18 +16,16 @@ import (
 // A binding is a native Executor call emitted by the generated function.
 type NativeCall coretool.NativeCall
 
-type binding = NativeCall
-
-func (b binding) call() *aop.ToolCall {
+func (b NativeCall) call() *aop.ToolCall {
 	return &aop.ToolCall{Name: b.Name, Arguments: &aop.EncodedValue{Data: b.Arguments, MediaType: aop.JSONMediaType}}
 }
 
-func (b binding) canonical() string { return canonical(b.call()) }
+func (b NativeCall) canonical() string { return canonical(b.call()) }
 
 // Shell quoting is transport encoding. Compare decoded literal argv when both
 // calls are a single expansion-free command, retaining every other argument.
 // Compound scripts and opaque tools still require exact recorded arguments.
-func (b binding) replayKey() string {
+func (b NativeCall) replayKey() string {
 	prepared, err := prepareBinding(b)
 	if err != nil || len(prepared.Argv) == 0 {
 		return b.canonical()
@@ -88,7 +86,7 @@ func (e *Extension) capabilities(cfg agent.Config, states ...json.RawMessage) (m
 // Semantic authorization needs the proposed operation's protocol, not every
 // installed tool's manual or the host's deterministic verification catalog.
 // Keep current constraints and evidence intact while avoiding catalog overflow.
-func bindingCapabilities(candidate binding, capabilities map[string]any) map[string]any {
+func bindingCapabilities(candidate NativeCall, capabilities map[string]any) map[string]any {
 	tools, commands := []any{}, []any{}
 	definitions, _ := capabilities["tools"].([]any)
 	for _, value := range definitions {

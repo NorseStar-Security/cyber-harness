@@ -60,7 +60,10 @@ func (c *Command) WithEvents(events aop.EventPublisher) *Command {
 
 func (c *Command) Name() string { return "katana" }
 
-func (c *Command) Usage() string {
+func (c *Command) Usage() string { return Usage() }
+
+// Usage describes the command without constructing a crawler.
+func Usage() string {
 	return `katana - deep web crawling with full parameter discovery
 Usage: katana -u <url> [options]
 

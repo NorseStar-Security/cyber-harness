@@ -15,8 +15,10 @@ import (
 	"github.com/chainreactors/cyber/agent/provider"
 	jevapi "github.com/chainreactors/cyber/agent/provider/jev"
 	aop "github.com/chainreactors/cyber/aop"
+	decision "github.com/chainreactors/cyber/core/decision"
 	"github.com/chainreactors/cyber/core/operation"
 	coretool "github.com/chainreactors/cyber/core/tool"
+	toolhooks "github.com/chainreactors/cyber/core/tool/hooks"
 	"github.com/dop251/goja"
 	"google.golang.org/protobuf/proto"
 )
@@ -127,7 +129,7 @@ func (e *Extension) beforeModel(ctx context.Context, ev hooks.ContextEvent) ([]*
 		return nil, nil
 	}
 	question := choiceClaim(decisionInstructions+" Select the applicable generated capability. Final composition stays with the main model.", options)
-	response, err := e.exchange(ctx, "jev_execution", json.RawMessage(jsonText(map[string]any{"context": raw, "reflexes": reflexCatalog(lib.Reflexes)})), map[string]Claim{"entry": question})
+	response, err := e.exchange(ctx, "jev_execution", json.RawMessage(jsonText(map[string]any{"context": raw, "reflexes": reflexCatalog(lib.Reflexes)})), map[string]jevapi.Claim{"entry": question})
 	if err != nil {
 		return nil, nil
 	}
@@ -190,20 +192,20 @@ func (e *Extension) beforeModel(ctx context.Context, ev hooks.ContextEvent) ([]*
 		trace.step = uint32(decisions + calls)
 		return nil
 	})
-	judge := func(claim Claim) (*jevapi.Evaluation, error) {
+	judge := func(claim jevapi.Claim) (*decision.Evaluation, error) {
 		if decisions >= maxDecisions {
 			return nil, handoffError{"JEV decision budget reached"}
 		}
 		decisions++
 		trace.step = uint32(decisions + calls)
 		// Raw constraints are supplied by the host, not replaceable by generated summaries.
-		response, err := e.exchange(ctx, "jev_execution", json.RawMessage(jsonText(map[string]any{"context": raw, "arguments": record.Arguments})), map[string]Claim{"runtime": claim})
+		response, err := e.exchange(ctx, "jev_execution", json.RawMessage(jsonText(map[string]any{"context": raw, "arguments": record.Arguments})), map[string]jevapi.Claim{"runtime": claim})
 		if err != nil {
 			return nil, handoffError{"JEV judgment unavailable: " + err.Error()}
 		}
 		return response.Values["runtime"], nil
 	}
-	execute := func(candidate binding) (map[string]any, error) {
+	execute := func(candidate NativeCall) (map[string]any, error) {
 		if cfg.Tools == nil {
 			return nil, handoffError{"native Executor unavailable"}
 		}
@@ -252,14 +254,12 @@ func (e *Extension) beforeModel(ctx context.Context, ev hooks.ContextEvent) ([]*
 		invocation.CallID, invocation.SessionID, invocation.TurnID, invocation.Emitter = call.Id, ev.SessionID, ev.TurnID, "jev"
 		started := time.Now()
 		result, execErr := cfg.Tools.ExecuteTool(operation.ContextWithInvocation(ctx, invocation), call.Name, string(candidate.Arguments))
-		if result == nil {
+		if result == nil && execErr == nil {
 			result = coretool.ErrorResult("missing native result; outcome unknown")
 		}
+		result = toolhooks.Feedback(result, execErr)
 		result = proto.CloneOf(result)
 		result.CallId, result.Name = call.Id, call.Name
-		if execErr != nil {
-			result.IsError = true
-		}
 		value := runtimeResult(call, result)
 		e.updateTask(run, task, func(r *taskRecord) { r.NativeEvidence[result.CallId] = cloneJSONMap(value) })
 		if !candidate.Read {

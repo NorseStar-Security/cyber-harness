@@ -137,7 +137,7 @@ func (a *Agent) Continue(ctx context.Context, opts ...RunOption) (*Result, error
 // SetProvider hot-swaps the LLM provider (and model, when non-empty) on the
 // agent. A run already in flight keeps the provider it snapshotted at start; the
 // next run picks up the new one. Safe to call concurrently with Run/Continue.
-func (a *Agent) SetProvider(p Provider, model string) {
+func (a *Agent) SetProvider(p providerpkg.Provider, model string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.Cfg.Provider = p
@@ -147,7 +147,7 @@ func (a *Agent) SetProvider(p Provider, model string) {
 }
 
 // SetProviderConfig hot-swaps the provider together with its model limits.
-func (a *Agent) SetProviderConfig(p Provider, providerConfig ProviderConfig) {
+func (a *Agent) SetProviderConfig(p providerpkg.Provider, providerConfig providerpkg.ProviderConfig) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.Cfg.Provider = p

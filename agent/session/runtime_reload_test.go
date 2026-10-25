@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/chainreactors/cyber/agent"
+	agenthooks "github.com/chainreactors/cyber/agent/hooks"
 	"github.com/chainreactors/cyber/agent/provider"
 	aop "github.com/chainreactors/cyber/aop"
 )
@@ -49,7 +50,7 @@ func TestProviderReloadFollowsTurnBoundaryAndPreservesExplicitModels(t *testing.
 				return nil, ctx.Err()
 			}
 		}
-		return &agent.Result{Output: config.Model, Messages: config.Messages, Stop: agent.StopReasonCompleted}, nil
+		return &agent.Result{Output: config.Model, Messages: config.Messages, Stop: agenthooks.StopReasonCompleted}, nil
 	})
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()

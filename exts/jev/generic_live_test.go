@@ -40,12 +40,12 @@ func (f *liveNativeWorkflow) reset(index int) string {
 }
 
 func (f *liveNativeWorkflow) tools() []coretool.Tool {
-	encode := func(value any) *coretool.Result {
+	encode := func(value any) *aop.ToolResult {
 		data, _ := json.Marshal(value)
 		return coretool.TextResult(string(data))
 	}
 	return []coretool.Tool{
-		nativeFixtureTool{definition: coretool.Def(f.names[0], `Read the current resource catalog without modifying it. Returns JSON {phase:"ready", version:string, items:[{id:string,label:string}]}. Read once per task and use current identifiers and version for activation.`, struct{}{}), run: func(context.Context, string) (*coretool.Result, error) {
+		nativeFixtureTool{definition: coretool.Def(f.names[0], `Read the current resource catalog without modifying it. Returns JSON {phase:"ready", version:string, items:[{id:string,label:string}]}. Read once per task and use current identifiers and version for activation.`, struct{}{}), run: func(context.Context, string) (*aop.ToolResult, error) {
 			f.mu.Lock()
 			defer f.mu.Unlock()
 			f.reads++
@@ -58,7 +58,7 @@ func (f *liveNativeWorkflow) tools() []coretool.Tool {
 		nativeFixtureTool{definition: coretool.Def(f.names[1], `Activate exactly one catalog resource using its id and current version. This creates an effect and must not be replayed. Returns JSON {phase:"pending", job:string}; then read the job receipt.`, struct {
 			ID      string `json:"id"`
 			Version string `json:"version"`
-		}{}), run: func(_ context.Context, arguments string) (*coretool.Result, error) {
+		}{}), run: func(_ context.Context, arguments string) (*aop.ToolResult, error) {
 			var args struct{ ID, Version string }
 			if err := json.Unmarshal([]byte(arguments), &args); err != nil {
 				return nil, err
@@ -74,7 +74,7 @@ func (f *liveNativeWorkflow) tools() []coretool.Tool {
 		}},
 		nativeFixtureTool{definition: coretool.Def(f.names[2], `Read an activation job without changing it. Use its actual returned job identifier. While pending returns JSON {phase:"pending",job:string}; poll again until JSON {phase:"complete",receipt:string}. Do not repeat activation.`, struct {
 			Job string `json:"job"`
-		}{}), run: func(_ context.Context, arguments string) (*coretool.Result, error) {
+		}{}), run: func(_ context.Context, arguments string) (*aop.ToolResult, error) {
 			var args struct{ Job string }
 			if err := json.Unmarshal([]byte(arguments), &args); err != nil {
 				return nil, err

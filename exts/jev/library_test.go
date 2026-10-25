@@ -14,7 +14,7 @@ import (
 func TestLibraryRejectsDraftsAndInvalidReferences(t *testing.T) {
 	e := testLaboratory(t)
 	r := qualifiedLaboratory(t, e, observationCapabilities("bash"))
-	c := Claim{Type: jevapi.ClaimNoul, Context: "Inspect current native results."}
+	c := jevapi.Claim{Type: jevapi.ClaimNoul, Context: "Inspect current native results."}
 	cid := "c" + digest(c)[:16]
 	rid := "r" + digest(r)[:16]
 	lib := library{Claims: map[string]claimRecord{cid: {Claim: c}}, Reflexes: map[string]Reflex{rid: {Program: r, Claims: []string{cid}}}}
@@ -86,10 +86,10 @@ func TestReflexMetadataDoesNotChangeProgramIdentity(t *testing.T) {
 func TestArchivedReflexCannotBypassPublicationCapacity(t *testing.T) {
 	e := testLaboratory(t)
 	r := qualifiedLaboratory(t, e, observationCapabilities("bash"))
-	c := Claim{Type: jevapi.ClaimNoul, Context: "Add current items."}
+	c := jevapi.Claim{Type: jevapi.ClaimNoul, Context: "Add current items."}
 	cid := "c" + digest(c)[:16]
 	e.library.Claims[cid] = claimRecord{Claim: c}
-	plan := &compilation{claims: map[string]Claim{cid: c}}
+	plan := &compilation{claims: map[string]jevapi.Claim{cid: c}}
 	var archived string
 	for i := range maxReflexes + 1 {
 		r.When = fmt.Sprintf("Add current items, scene %d", i)

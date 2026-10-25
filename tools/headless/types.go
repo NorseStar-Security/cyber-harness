@@ -1,5 +1,3 @@
-//go:build full
-
 package headless
 
 import "github.com/chainreactors/neutron/protocols"

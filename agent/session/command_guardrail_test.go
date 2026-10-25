@@ -8,7 +8,6 @@ import (
 
 	"github.com/chainreactors/cyber/aop"
 	"github.com/chainreactors/cyber/core/operation"
-	coretool "github.com/chainreactors/cyber/core/tool"
 )
 
 type deniedCommandExecutor struct {
@@ -17,7 +16,7 @@ type deniedCommandExecutor struct {
 }
 
 func (*deniedCommandExecutor) ToolDefinitions() []*aop.ToolDefinition { return nil }
-func (e *deniedCommandExecutor) ExecuteTool(ctx context.Context, name, arguments string) (*coretool.Result, error) {
+func (e *deniedCommandExecutor) ExecuteTool(ctx context.Context, name, arguments string) (*aop.ToolResult, error) {
 	e.calls++
 	e.name = name
 	e.arguments = arguments

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/chainreactors/cyber/agent"
+	provider "github.com/chainreactors/cyber/agent/provider"
 	"github.com/chainreactors/cyber/agent/session"
 	"github.com/chainreactors/cyber/agent/subagent"
 	aop "github.com/chainreactors/cyber/aop"
@@ -35,7 +36,7 @@ func newSubagentTestTool(t *testing.T, cfg agent.Config) *testTool {
 	}
 	stream, _ := cfg.Bus.(*coreevents.Stream)
 	application := apptest.NewFixture(t, cfg.Logger, stream)
-	application.Providers.Set(cfg.Provider, agent.ProviderConfig{Model: cfg.Model})
+	application.Providers.Set(cfg.Provider, provider.ProviderConfig{Model: cfg.Model})
 	values := apptest.Entries(t, application)
 	registry := cfg.Hooks
 	if registry == nil {
@@ -73,12 +74,12 @@ func newSubagentTestTool(t *testing.T, cfg agent.Config) *testTool {
 
 type scriptedProvider struct {
 	mu        sync.Mutex
-	responses []*agent.ChatCompletionResponse
-	requests  []*agent.ChatCompletionRequest
+	responses []*provider.ChatCompletionResponse
+	requests  []*provider.ChatCompletionRequest
 }
 
 func (p *scriptedProvider) Name() string { return "scripted" }
-func (p *scriptedProvider) ChatCompletion(_ context.Context, req *agent.ChatCompletionRequest) (*agent.ChatCompletionResponse, error) {
+func (p *scriptedProvider) ChatCompletion(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.requests = append(p.requests, req)
@@ -89,24 +90,24 @@ func (p *scriptedProvider) ChatCompletion(_ context.Context, req *agent.ChatComp
 	p.responses = p.responses[1:]
 	return response, nil
 }
-func (p *scriptedProvider) requestsSnapshot() []*agent.ChatCompletionRequest {
+func (p *scriptedProvider) requestsSnapshot() []*provider.ChatCompletionRequest {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	return append([]*agent.ChatCompletionRequest(nil), p.requests...)
+	return append([]*provider.ChatCompletionRequest(nil), p.requests...)
 }
-func chatResponse(msg *aop.Message) *agent.ChatCompletionResponse {
-	return &agent.ChatCompletionResponse{Choices: []agent.Choice{{Message: msg}}}
+func chatResponse(msg *aop.Message) *provider.ChatCompletionResponse {
+	return &provider.ChatCompletionResponse{Choices: []provider.Choice{{Message: msg}}}
 }
 func newTestTools(t testing.TB, tools ...coretool.Tool) coretool.Executor {
 	return hosttest.Tools(t, tools...)
 }
 
 type callbackProvider struct {
-	fn func(context.Context, *agent.ChatCompletionRequest) (*agent.ChatCompletionResponse, error)
+	fn func(context.Context, *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error)
 }
 
 func (p *callbackProvider) Name() string { return "callback" }
-func (p *callbackProvider) ChatCompletion(ctx context.Context, req *agent.ChatCompletionRequest) (*agent.ChatCompletionResponse, error) {
+func (p *callbackProvider) ChatCompletion(ctx context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 	return p.fn(ctx, req)
 }
 

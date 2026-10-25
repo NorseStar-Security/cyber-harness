@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/chainreactors/cyber/agent"
+	agenthooks "github.com/chainreactors/cyber/agent/hooks"
 	"github.com/chainreactors/cyber/agent/provider"
 	aop "github.com/chainreactors/cyber/aop"
 	types "github.com/chainreactors/cyber/core/types"
@@ -56,7 +56,7 @@ func turnStartEvent(turn int) *aop.Event {
 
 func turnEndEvent(turn, contextTokens int) *aop.Event {
 	return &aop.Event{TurnId: "run-test", Payload: &aop.Event_TurnEnded{TurnEnded: &aop.TurnEnded{
-		StopReason: string(agent.StopReasonCompleted), ContextTokens: uint64(contextTokens),
+		StopReason: string(agenthooks.StopReasonCompleted), ContextTokens: uint64(contextTokens),
 	}}}
 }
 
@@ -1095,14 +1095,14 @@ func TestTurnEventsFinishOutputBeforeNextTurn(t *testing.T) {
 func TestTurnEventsFinishEmptyErrorAndCanceledOutput(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
-		stop      agent.StopReason
+		stop      agenthooks.StopReason
 		err       string
 		want      string
 		quietWant string
 	}{
-		{name: "empty", stop: agent.StopReasonCompleted, want: "No output.\n"},
-		{name: "error", stop: agent.StopReasonError, err: "provider unavailable", want: "error: provider unavailable\n", quietWant: "error: provider unavailable\n"},
-		{name: "canceled", stop: agent.StopReasonCanceled, err: "context canceled", want: "Task stopped.\n"},
+		{name: "empty", stop: agenthooks.StopReasonCompleted, want: "No output.\n"},
+		{name: "error", stop: agenthooks.StopReasonError, err: "provider unavailable", want: "error: provider unavailable\n", quietWant: "error: provider unavailable\n"},
+		{name: "canceled", stop: agenthooks.StopReasonCanceled, err: "context canceled", want: "Task stopped.\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			for _, quiet := range []bool{false, true} {

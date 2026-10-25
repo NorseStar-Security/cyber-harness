@@ -14,7 +14,7 @@ import (
 )
 
 type CompactConfig struct {
-	Provider           Provider
+	Provider           provider.Provider
 	Model              string
 	KeepRecentTokens   int
 	ReserveTokens      int
@@ -276,7 +276,7 @@ func serializeMessages(msgs []*aop.Message) string {
 	return sb.String()
 }
 
-func summarizeConversation(ctx context.Context, p Provider, model string, resolver prompt.Resolver, logger telemetry.Logger, target prompt.Target, msgs []*aop.Message, customInstructions string, maxTokens int) (string, error) {
+func summarizeConversation(ctx context.Context, p provider.Provider, model string, resolver prompt.Resolver, logger telemetry.Logger, target prompt.Target, msgs []*aop.Message, customInstructions string, maxTokens int) (string, error) {
 	if resolver == nil {
 		return "", fmt.Errorf("compact prompt resolver is nil")
 	}
@@ -294,7 +294,7 @@ func summarizeConversation(ctx context.Context, p Provider, model string, resolv
 	userContent := "<conversation>\n" + serializeMessages(msgs) + "</conversation>\n\n" + requestPrompt
 
 	temp := float64(0)
-	resp, err := p.ChatCompletion(ctx, &ChatCompletionRequest{
+	resp, err := p.ChatCompletion(ctx, &provider.ChatCompletionRequest{
 		Model: model,
 		Messages: []*aop.Message{
 			provider.TextMessage("system", systemPrompt),

@@ -731,6 +731,7 @@ func parseAnthropicWebSearchResponse(data []byte) (*WebSearchResponse, error) {
 	}
 
 	out := &WebSearchResponse{}
+	searched := false
 	for _, block := range raw.Content {
 		switch block.Type {
 		case "web_search_tool_result":
@@ -738,19 +739,27 @@ func parseAnthropicWebSearchResponse(data []byte) (*WebSearchResponse, error) {
 				Title string `json:"title"`
 				URL   string `json:"url"`
 			}
-			if json.Unmarshal(block.Content, &results) == nil {
-				for _, r := range results {
-					if r.URL == "" {
-						continue
-					}
-					out.Results = append(out.Results, WebSearchResult{Title: r.Title, URL: r.URL})
+			if len(block.Content) == 0 || block.Content[0] != '[' {
+				return nil, fmt.Errorf("web search failed: %s", block.Content)
+			}
+			if err := json.Unmarshal(block.Content, &results); err != nil {
+				return nil, fmt.Errorf("parse web search results: %w", err)
+			}
+			searched = true
+			for _, r := range results {
+				if r.URL == "" {
+					continue
 				}
+				out.Results = append(out.Results, WebSearchResult{Title: r.Title, URL: r.URL})
 			}
 		case "text":
 			if t := strings.TrimSpace(block.Text); t != "" {
 				out.Summary += t + "\n"
 			}
 		}
+	}
+	if !searched {
+		return nil, fmt.Errorf("web search was not executed: no web_search_tool_result")
 	}
 	out.Summary = strings.TrimSpace(out.Summary)
 	return out, nil

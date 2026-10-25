@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	provider "github.com/chainreactors/cyber/agent/provider"
 	"github.com/chainreactors/cyber/core/extension"
 	"github.com/chainreactors/cyber/core/hooks"
 	coretool "github.com/chainreactors/cyber/core/tool"
@@ -35,10 +36,10 @@ func TestToolAdmissionDenialKeepsAgentLoopRunning(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer set.Close(t.Context())
-			call := func(id, arguments string) *ChatCompletionResponse {
+			call := func(id, arguments string) *provider.ChatCompletionResponse {
 				return chatResponse(ChatMessage{Role: "assistant", ToolCalls: []ToolCall{{ID: id, Type: "function", Function: FunctionCall{Name: "echo", Arguments: arguments}}}})
 			}
-			llm := &scriptedProvider{responses: []*ChatCompletionResponse{call("first", `{"command":"blocked"}`), call("second", `{"command":"safe"}`), chatResponse(NewTextMessage("assistant", "finished safely"))}}
+			llm := &scriptedProvider{responses: []*provider.ChatCompletionResponse{call("first", `{"command":"blocked"}`), call("second", `{"command":"safe"}`), chatResponse(NewTextMessage("assistant", "finished safely"))}}
 			result, err := NewAgent(Config{Loop: StandardLoop{}, Provider: llm, Tools: tools, Model: "test", SessionID: "guardrail-loop"}).Run(t.Context(), TextInput("complete the task"))
 			if err != nil || result.Err != nil || result.Output != "finished safely" {
 				t.Fatalf("loop stopped at interception: %v, %v", result, err)

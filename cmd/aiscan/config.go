@@ -4,14 +4,14 @@ import (
 	"os"
 	"strings"
 
+	passiveconfig "github.com/chainreactors/cyber/exts/passive/config"
+
 	"github.com/chainreactors/cyber/agent/provider"
 	"github.com/chainreactors/cyber/core/telemetry"
 	scannerext "github.com/chainreactors/cyber/exts/scanner"
 	searchext "github.com/chainreactors/cyber/exts/search"
 	cfg "github.com/chainreactors/cyber/pkg/config"
-	profilepkg "github.com/chainreactors/cyber/pkg/profile"
 	"github.com/chainreactors/cyber/tools/resources"
-	"github.com/chainreactors/cyber/tools/scan/engine"
 )
 
 // appConfig selects the reusable capability packs in the reference
@@ -21,6 +21,8 @@ type appConfig struct {
 	DataDir           string
 	Provider          provider.StartupConfig
 	Scanner           scannerext.Config
+	Recon             passiveconfig.ReconOptions
+	ReconCredentials  map[string]string
 	TavilyKeys        string
 	PlaywrightSession string
 	OptionalTools     []string
@@ -31,12 +33,12 @@ type appConfig struct {
 	SkipEngines       bool
 }
 
-func appConfigFromOption(option *cfg.Option, providerMode profilepkg.ProviderMode, logger telemetry.Logger) appConfig {
+func appConfigFromOption(option *cfg.Option, providerMode provider.StartupMode, logger telemetry.Logger) appConfig {
 	dataDir := cfg.ResolveDataDir(option.DataDir)
 	// Sections were resolved and validated during startup; a read error here is
 	// structurally impossible, so a zero section is the safe fallback.
 	hub, _ := scannerext.ReadCyberhub(option)
-	recon, _ := scannerext.ReadRecon(option)
+	recon, _ := passiveconfig.ReadRecon(option)
 	searchKeys, _ := searchext.ReadKeys(option)
 	scanOptions, _ := scannerext.ReadScan(option)
 	return appConfig{
@@ -52,11 +54,8 @@ func appConfigFromOption(option *cfg.Option, providerMode profilepkg.ProviderMod
 				CyberhubURL: hub.URL, APIKey: hub.Key,
 				Mode: hub.Mode, Proxy: hub.Proxy,
 			},
-			Recon: engine.ReconOptions{
-				FofaKey: recon.FofaKey, HunterAPIKey: recon.HunterAPIKey, IngressProxy: recon.Proxy,
-				Limit: intValue(recon.Limit), Credentials: scannerext.UncoverCredentials(envLookup(option)),
-			},
 		},
+		Recon: recon, ReconCredentials: passiveconfig.UncoverCredentials(envLookup(option)),
 		TavilyKeys:        tavilyKeys(recon.TavilyKey, searchKeys),
 		PlaywrightSession: option.PlaywrightSession, OptionalTools: option.Tools,
 		MitmCapture: cloneBool(hub.Mitm), TrafficStorage: option.TrafficOptions,
@@ -79,13 +78,6 @@ func tavilyKeys(primary string, fallbacks ...string) string {
 		}
 	}
 	return strings.Join(keys, ",")
-}
-
-func intValue(value *int) int {
-	if value != nil {
-		return *value
-	}
-	return 0
 }
 
 func cloneBool(source *bool) *bool {
