@@ -67,6 +67,9 @@ test('compiler rounds and mechanism diagnostics retain separate usage', async ({
     event(8, { case: 'usage', value: { inputTokens: 50n, outputTokens: 5n } }),
     runtime(9, { case: 'decisionResult', value: { requestId: 'missing-usage' } })]
   await render(page, [...events, ...events])
+  await expect(page.locator('[data-record-id="mechanism-2"]').getByTestId('token-usage')).toHaveText('↓100↑10')
+  await expect(page.locator('[data-record-id="mechanism-4"]').getByTestId('token-usage')).toHaveCount(0)
+  await expect(page.locator('[data-record-id="mechanism-9"]').getByTestId('token-usage')).toHaveCount(0)
   await page.locator('[data-record-id="mechanism-3"]').click()
   const detail = page.locator('[data-control-current=true]')
   await expect(detail).toContainText('native read flag contradicts trusted contract')

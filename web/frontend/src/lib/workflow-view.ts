@@ -193,7 +193,8 @@ export function withWorkflows(items: ViewerTimelineItem[], source: readonly AOPE
           && eventTime(event) >= item.timestamp && (!next || eventTime(event) < next.timestamp)
           && (event.payload.case === 'messageDelta' || event.payload.case === 'message' && event.payload.value.role === 'assistant'))
         if (item.thinking?.trim()) add({ ...base, id: scope(sid, tid, item.id, 'thinking'), kind: 'reasoning', label: 'workflow.reasoning',
-          state: item.streaming ? 'pending' : 'completed', item: { ...item, tools: [], response: undefined, steps: undefined } })
+          state: item.streaming ? 'pending' : 'completed', item: { ...item, tools: [], steps: undefined,
+            response: item.response?.content.trim() || item.response?.metadata?.recap ? undefined : item.response } })
         for (const tool of item.tools) addTool(tool, base)
         if (item.response?.content.trim() || item.response?.metadata?.recap) {
           const timestamp = textEvents.length ? eventTime(textEvents[textEvents.length - 1]) : base.timestamp

@@ -85,6 +85,77 @@ test('delegated execution branches once and background events stay in their orig
   expect(workflow.nodes.find(node => node.background)?.state).toBe('pending')
 })
 
+test('card usage accumulates calls and excludes the turn aggregate after a response boundary', () => {
+  const usage = (seq: number, input: bigint, output: bigint) => event(seq, { case: 'usage', value: {
+    inputTokens: input, outputTokens: output, totalTokens: input + output, detail: { cache_read: input / 2n, cache_write: 0n },
+  } })
+  const events = [event(1, { case: 'message', value: { id: 'first', role: 'assistant', content: [{ value: { case: 'text', value: { text: 'First step' } } }] } }),
+    usage(2, 100n, 20n), usage(3, 50n, 10n), event(4, { case: 'status', value: { state: 'eval_start' } }),
+    event(5, { case: 'message', value: { id: 'last', role: 'assistant', content: [{ value: { case: 'text', value: { text: 'Final answer' } } }] } }),
+    usage(6, 40n, 5n), event(7, { case: 'turnEnded', value: { usage: { inputTokens: 190n, outputTokens: 35n, totalTokens: 225n } } })]
+  const items = reduceAOPToTimeline([...events, ...events], { responseBoundary: e => e.payload.case === 'status' })
+  expect(items.filter(item => item.kind === 'assistant_response').map(item => item.response?.metadata?.usage)).toEqual([
+    { input_tokens: 150, output_tokens: 30, total_tokens: 180, cache_read: 75, cache_write: 0, model: '' },
+    { input_tokens: 40, output_tokens: 5, total_tokens: 45, cache_read: 20, cache_write: 0, model: '' },
+  ])
+})
+
+for (const width of [390, 1280]) test(`card token usage stays compact and appears once through live updates and replay ${width}`, async ({ page }, info) => {
+  await page.setViewportSize({ width, height: 900 })
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.route('**/cyber.rpc.artifact.ArtifactService/SyncArtifacts', route => route.fulfill({
+    contentType: 'application/proto', body: Buffer.from(toBinary(SyncArtifactsResponseSchema, create(SyncArtifactsResponseSchema))),
+  }))
+  await mount(page)
+  const first = [event(1, { case: 'turnStarted', value: {} }),
+    event(2, { case: 'message', value: { id: 'thought', role: 'assistant', content: [{ value: { case: 'reasoning', value: { text: 'Inspect the recorded evidence.' } } }] } }),
+    event(3, { case: 'toolCall', value: call }), event(4, { case: 'toolResult', value: { callId: call.id, name: call.name,
+      output: [{ value: { case: 'text', value: { text: 'Current evidence retrieved.' } } }] } }),
+    event(5, { case: 'usage', value: { inputTokens: 1200n, outputTokens: 240n, totalTokens: 1440n, detail: { cache_read: 960n, cache_write: 0n } } })]
+  await render(page, first)
+  const badges = page.getByTestId('token-usage')
+  await expect(badges).toHaveCount(1)
+  await expect(badges.first()).toHaveText('↓1.2k↑24080%')
+  const rest = [event(6, { case: 'status', value: { state: 'eval_start' } }),
+    event(7, { case: 'message', value: { id: 'reply', role: 'assistant', content: [{ value: { case: 'text', value: { text: 'Recorded evidence verified.' } } }] } }),
+    event(8, { case: 'usage', value: { inputTokens: 300n, outputTokens: 30n, totalTokens: 330n, detail: { cache_read: 0n } } }),
+    event(9, { case: 'turnEnded', value: { usage: { inputTokens: 1500n, outputTokens: 270n, totalTokens: 1770n } } })]
+  await render(page, rest, true)
+  await expect(badges).toHaveCount(2)
+  await expect(page.locator('[data-kind=tool]').getByTestId('token-usage')).toHaveCount(0)
+  await expect(page.locator('[data-kind=response]').getByTestId('token-usage')).toHaveCount(0)
+  await expect(page.getByTestId('assistant-response-footer').getByTestId('token-usage')).toHaveText('↓300↑30')
+  await badges.first().focus()
+  await expect(page.getByRole('tooltip')).toContainText('缓存读取 960 token')
+  await expect(page.getByRole('tooltip')).toContainText('缓存写入 0 token')
+  await page.keyboard.press('Escape')
+  const content = await badges.allTextContents()
+  await render(page, [...first, ...rest, ...first, ...rest])
+  await expect(badges).toHaveCount(2)
+  expect(await badges.allTextContents()).toEqual(content)
+  for (const badge of await badges.all()) {
+    const bounds = await badge.boundingBox()
+    expect(bounds!.height).toBeLessThan(24)
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width)
+  }
+  await badges.first().evaluate(element => (element as HTMLElement).blur())
+  await expect(page.getByRole('tooltip')).toHaveCount(0)
+  await page.screenshot({ path: info.outputPath(`card-token-usage-${width}.png`), fullPage: true })
+})
+
+test('total-only usage stays visible and unreported usage adds no placeholder', async ({ page }) => {
+  await mount(page)
+  const answer = event(1, { case: 'message', value: { id: 'answer', role: 'assistant',
+    content: [{ value: { case: 'text', value: { text: 'Verified current evidence.' } } }] } })
+  await render(page, [answer])
+  await expect(page.getByTestId('token-usage')).toHaveCount(0)
+  await render(page, [event(2, { case: 'turnEnded', value: { usage: { totalTokens: 11n } } })], true)
+  await expect(page.getByTestId('token-usage')).toHaveText('11 tok')
+  await expect(page.getByTestId('token-usage')).toHaveAccessibleName('合计 11 token')
+  await render(page, [answer, event(2, { case: 'usage', value: { inputTokens: 100n, detail: { usage_missing: 1n } } })])
+  await expect(page.getByTestId('token-usage')).toHaveCount(0)
+})
+
 test('live decisions and tool receipts update inline without duplicating their content', async ({ page }, info) => {
   await mount(page)
   const initial = [event(1, { case: 'turnStarted', value: {} }), trace(2, { case: 'takeover', value: { definition } }),

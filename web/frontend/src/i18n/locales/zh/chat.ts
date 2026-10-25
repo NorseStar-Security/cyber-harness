@@ -1,4 +1,10 @@
 export default {
+  tokenInput: '输入 {{count}} token',
+  tokenOutput: '输出 {{count}} token',
+  tokenTotal: '合计 {{count}} token',
+  tokenCacheRead: '缓存读取 {{count}} token',
+  tokenCacheWrite: '缓存写入 {{count}} token',
+  tokenCacheHit: '缓存 {{percent}}%',
   connectNodeHint: '输入目标即可开始；请先在节点面板连接执行节点。',
   chat: '对话',
   terminal: '终端',
