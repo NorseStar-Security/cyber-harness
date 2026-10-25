@@ -1,5 +1,3 @@
-//go:build full
-
 package katana
 
 import (
@@ -12,7 +10,7 @@ func NewCommand(logger telemetry.Logger, proxy string, events aop.EventPublisher
 	impl := New().WithLogger(logger).WithProxy(proxy).WithEvents(events)
 	return coretool.Command{
 		Name: impl.Name(), Usage: impl.Usage(),
-		DescriptionPath: "cyber://skills/cyber/okf/easm/katana.md",
+		DescriptionPath: "cyber://skills/katana/katana.md",
 		Run:             impl.Run,
 	}
 }

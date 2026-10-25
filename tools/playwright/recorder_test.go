@@ -1,5 +1,3 @@
-//go:build full
-
 package playwright
 
 import (
@@ -7,10 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	coretool "github.com/chainreactors/cyber/core/tool"
-	"github.com/chainreactors/cyber/tools/headless"
-	"github.com/go-rod/rod/lib/launcher"
-	"gopkg.in/yaml.v3"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -19,6 +13,11 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	coretool "github.com/chainreactors/cyber/core/tool"
+	"github.com/chainreactors/cyber/tools/headless"
+	"github.com/go-rod/rod/lib/launcher"
+	"gopkg.in/yaml.v3"
 )
 
 func TestRecorderBasicActions(t *testing.T) {

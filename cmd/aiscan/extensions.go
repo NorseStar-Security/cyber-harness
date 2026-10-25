@@ -56,7 +56,9 @@ func extensions(config appConfig, loop agent.Loop, workDir string, proxy extensi
 	extensions = append(extensions, okfext.New(prompt.MainSystem, scan.ScannerSystemTarget), loopext.New(loop), subagentext.New(), arsenal)
 
 	if !config.SkipEngines {
-		extensions = append(extensions, scannerext.New(config.Scanner, workDir), protonext.New(protonext.Config{Directory: workDir}))
+		extensions = append(extensions, scannerext.New(scannerConfig(config.Scanner), workDir), protonext.New(protonext.Config{Directory: workDir}))
+
+		extensions = append(extensions, discoveryExtensions(config)...)
 	}
 	if optionalToolEnabled(config.OptionalTools, "search") {
 		extensions = append(extensions, searchext.New(searchext.Options{TavilyKeys: config.TavilyKeys}))

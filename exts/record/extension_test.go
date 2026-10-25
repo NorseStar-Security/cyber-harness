@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/chainreactors/cyber/core/extension"
 	coretool "github.com/chainreactors/cyber/core/tool"
+	"github.com/chainreactors/cyber/pkg/testutil/hosttest"
 )
 
 func TestExtensionOwnsRecordTool(t *testing.T) {
@@ -17,10 +17,7 @@ func TestExtensionOwnsRecordTool(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	set, err := extension.New(registry, instance)
-	if err != nil {
-		t.Fatal(err)
-	}
+	set := hosttest.Set(t, hosttest.Capabilities(), registry, instance)
 	if err := set.Load(t.Context()); err != nil {
 		t.Fatal(err)
 	}

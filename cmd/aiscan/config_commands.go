@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	passiveconfig "github.com/chainreactors/cyber/exts/passive/config"
+
 	ioaclient "github.com/chainreactors/cyber/exts/ioa/client"
 	scannerext "github.com/chainreactors/cyber/exts/scanner"
 	searchext "github.com/chainreactors/cyber/exts/search"
@@ -25,9 +27,9 @@ func configChecks(ctx context.Context, option *cfg.Option, online bool) []config
 	if hub, err := scannerext.ReadCyberhub(option); err == nil && hub.URL != "" {
 		selected = append(selected, scannerext.CyberhubConfigKey)
 	}
-	recon, reconErr := scannerext.ReadRecon(option)
+	recon, reconErr := passiveconfig.ReadRecon(option)
 	if reconErr == nil && (recon.FofaKey != "" || recon.HunterAPIKey != "") {
-		selected = append(selected, scannerext.ReconConfigKey)
+		selected = append(selected, passiveconfig.ReconConfigKey)
 	}
 	searchKeys, searchErr := searchext.ReadKeys(option)
 	if (reconErr == nil && recon.TavilyKey != "") || (searchErr == nil && searchKeys != "") {

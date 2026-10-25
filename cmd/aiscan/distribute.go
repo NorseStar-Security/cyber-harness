@@ -2,6 +2,7 @@ package main
 
 import (
 	types "github.com/chainreactors/cyber/core/types"
+	passiveconfig "github.com/chainreactors/cyber/exts/passive/config"
 	scannerext "github.com/chainreactors/cyber/exts/scanner"
 	searchext "github.com/chainreactors/cyber/exts/search"
 	cfg "github.com/chainreactors/cyber/pkg/config"
@@ -15,7 +16,7 @@ func DistributeFromOption(option *cfg.Option) (*types.DistributeConfig, error) {
 	if _, err := scannerext.ReadCyberhub(option); err != nil {
 		return nil, err
 	}
-	_, err := scannerext.ReadRecon(option)
+	_, err := passiveconfig.ReadRecon(option)
 	if err != nil {
 		return nil, err
 	}

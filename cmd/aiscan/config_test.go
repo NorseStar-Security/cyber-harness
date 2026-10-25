@@ -3,6 +3,8 @@ package main
 import (
 	"testing"
 
+	passiveconfig "github.com/chainreactors/cyber/exts/passive/config"
+
 	"github.com/chainreactors/cyber/agent/provider"
 	"github.com/chainreactors/cyber/core/telemetry"
 	scannerext "github.com/chainreactors/cyber/exts/scanner"
@@ -19,8 +21,8 @@ func TestApplicationConfigFromOptionCarriesWideSettings(t *testing.T) {
 				"url": "https://hub", "key": "hub-key", "mode": "release",
 				"proxy": "http://proxy", "mitm": false,
 			},
-			scannerext.ReconConfigKey: {"fofa_key": "fofa", "hunter_api_key": "hk", "proxy": "http://recon-proxy"},
-			searchext.ConfigKey:       {"tavily_keys": "tv-1,tv-2"},
+			passiveconfig.ReconConfigKey: {"fofa_key": "fofa", "hunter_api_key": "hk", "proxy": "http://recon-proxy"},
+			searchext.ConfigKey:          {"tavily_keys": "tv-1,tv-2"},
 		},
 		AgentOptions:      cfg.AgentOptions{Tools: []string{"search", "browser"}},
 		PlaywrightSession: "browser-1",
@@ -33,7 +35,7 @@ func TestApplicationConfigFromOptionCarriesWideSettings(t *testing.T) {
 	if config.Scanner.Resources.CyberhubURL != "https://hub" || config.Scanner.Resources.APIKey != "hub-key" || config.Scanner.Resources.Mode != "release" || config.Scanner.Resources.Proxy != "http://proxy" {
 		t.Fatalf("cyberhub config = %+v", config.Scanner)
 	}
-	if config.Scanner.Recon.FofaKey != "fofa" || config.Scanner.Recon.HunterAPIKey != "hk" || config.Scanner.Recon.IngressProxy != "http://recon-proxy" {
+	if config.Recon.FofaKey != "fofa" || config.Recon.HunterAPIKey != "hk" || config.Recon.Proxy != "http://recon-proxy" {
 		t.Fatalf("recon config = %+v", config.Scanner)
 	}
 	if config.TavilyKeys != "tv-1,tv-2" || len(config.OptionalTools) != 2 {
@@ -42,7 +44,7 @@ func TestApplicationConfigFromOptionCarriesWideSettings(t *testing.T) {
 	if config.MitmCapture == nil || *config.MitmCapture || config.PlaywrightSession != "browser-1" || config.TrafficStorage != option.TrafficOptions {
 		t.Fatalf("tool extras = %+v", config)
 	}
-	if config.Scanner.Recon.Credentials["SHODAN_API_KEY"] != "shodan-key" {
+	if config.ReconCredentials["SHODAN_API_KEY"] != "shodan-key" {
 		t.Fatalf("scanner extras = %+v", config.Scanner)
 	}
 }

@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+
+	passiveconfig "github.com/chainreactors/cyber/exts/passive/config"
+
 	"github.com/chainreactors/cyber/core/resource"
 	guardrailext "github.com/chainreactors/cyber/exts/guardrail"
 	ioaclient "github.com/chainreactors/cyber/exts/ioa/client"
@@ -10,12 +13,13 @@ import (
 	hostcli "github.com/chainreactors/cyber/pkg/cli"
 	cfg "github.com/chainreactors/cyber/pkg/config"
 
+	"sync"
+
 	recordext "github.com/chainreactors/cyber/exts/record"
 	scannerext "github.com/chainreactors/cyber/exts/scanner"
 	searchext "github.com/chainreactors/cyber/exts/search"
 	sessionext "github.com/chainreactors/cyber/exts/session"
 	flags "github.com/jessevdk/go-flags"
-	"sync"
 )
 
 // defaultSections is the declaration graph of a host that contributes no CLI
@@ -57,6 +61,8 @@ func declareResources(cli *hostcli.Registry, agentOptions *cfg.AgentOptions) *cf
 	mustDeclare(guardrailext.Declare(resources))
 	mustDeclare(jevext.Declare(resources))
 	mustDeclare(scannerext.Declare(resources))
+	mustDeclare(passiveconfig.Declare(resources))
+	mustDeclare(resourceAddReconFlags(resources))
 	mustDeclare(searchext.Declare(resources))
 	if agentOptions != nil {
 		mustDeclare(sessionext.Declare(resources, agentOptions))

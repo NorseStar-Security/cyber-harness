@@ -1,5 +1,3 @@
-//go:build full
-
 // Simplified HTTP client for headless hijack, ported from nuclei engine/http_client.go.
 // Differences from nuclei: no fastdialer, no TLS impersonation, no client certs.
 

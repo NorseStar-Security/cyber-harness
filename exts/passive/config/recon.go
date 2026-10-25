@@ -1,4 +1,4 @@
-package scanner
+package config
 
 import (
 	cfg "github.com/chainreactors/cyber/pkg/config"
@@ -77,5 +77,5 @@ func ReadRecon(option *cfg.Option) (ReconOptions, error) {
 
 // ReconFlagGroup contributes the recon flags to a command.
 func ReconFlagGroup() cfg.FlagGroup {
-	return cfg.FlagGroup{Name: "Recon Options", Options: &ReconOptions{}, Hidden: !fullEdition}
+	return cfg.FlagGroup{Name: "Recon Options", Options: &ReconOptions{}}
 }

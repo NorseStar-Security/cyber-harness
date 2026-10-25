@@ -1,5 +1,5 @@
-// Package headless provides shared browser discovery and, with the full build
-// tag, browser lifecycle management and page action execution.
+// Package headless provides shared browser discovery, lifecycle management
+// and page action execution.
 package headless
 
 import (

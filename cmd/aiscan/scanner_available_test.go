@@ -3,12 +3,10 @@ package main
 import (
 	"slices"
 	"testing"
-
-	scannerext "github.com/chainreactors/cyber/exts/scanner"
 )
 
 func scannerNames() []string {
-	names := scannerext.Names()
+	names := productScannerNames()
 	slices.Sort(names)
 	return names
 }

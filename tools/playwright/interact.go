@@ -1,5 +1,3 @@
-//go:build full
-
 package playwright
 
 import (

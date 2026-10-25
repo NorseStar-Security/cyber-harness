@@ -1,5 +1,3 @@
-//go:build full
-
 // Package passive wraps uncover for cyberspace recon as the "passive" command.
 package passive
 
@@ -16,7 +14,7 @@ import (
 
 	"github.com/chainreactors/cyber/core/telemetry"
 	coretool "github.com/chainreactors/cyber/core/tool"
-	"github.com/chainreactors/cyber/tools/scan/engine"
+
 	"github.com/projectdiscovery/uncover/sources"
 )
 
@@ -64,8 +62,12 @@ func (c *Command) InitLogger(l telemetry.Logger) {
 
 func (c *Command) Name() string { return "passive" }
 
-func (c *Command) Usage() string {
-	avail := c.sourceList()
+// Usage describes passive flags before a backend has been configured.
+func Usage() string { return usage(nil) }
+
+func (c *Command) Usage() string { return usage(c.sourceList()) }
+
+func usage(avail []string) string {
 	availStr := "none configured"
 	if len(avail) > 0 {
 		availStr = strings.Join(avail, ", ")
@@ -205,7 +207,7 @@ func uncoverPython(src string, results []sources.Result) any {
 	case "fofa":
 		out := make([]pyFofa, 0, len(results))
 		for _, r := range results {
-			var raw engine.RawFofa
+			var raw RawFofa
 			_ = json.Unmarshal(r.Raw, &raw)
 			out = append(out, pyFofa{
 				IP: raw.IP, Port: raw.Port, URL: raw.Host,
@@ -214,9 +216,9 @@ func uncoverPython(src string, results []sources.Result) any {
 		}
 		return out
 	case "hunter":
-		out := make([]engine.RawHunter, 0, len(results))
+		out := make([]RawHunter, 0, len(results))
 		for _, r := range results {
-			var raw engine.RawHunter
+			var raw RawHunter
 			_ = json.Unmarshal(r.Raw, &raw)
 			out = append(out, raw)
 		}

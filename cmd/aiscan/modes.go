@@ -19,7 +19,6 @@ import (
 	"github.com/chainreactors/cyber/core/telemetry"
 	coretool "github.com/chainreactors/cyber/core/tool"
 	types "github.com/chainreactors/cyber/core/types"
-	scannerext "github.com/chainreactors/cyber/exts/scanner"
 	taskcli "github.com/chainreactors/cyber/pkg/cli/task"
 	cfg "github.com/chainreactors/cyber/pkg/config"
 	"github.com/chainreactors/cyber/pkg/console"
@@ -110,7 +109,7 @@ type shellHost interface {
 
 func runDirectScannerMode(ctx context.Context, newProfile func(profile.Request) (profile.Profile, error), option *cfg.Option, rest []string, logger telemetry.Logger, outputTask *taskcli.Output) (runErr error) {
 	if cfg.IsScannerHelpRequest(rest) {
-		if usage, ok := scannerext.Usage(rest[0]); ok {
+		if usage, ok := productScannerUsage(rest[0]); ok {
 			_, err := fmt.Fprint(outputTask.Stdout(), usage)
 			if err != nil {
 				return err

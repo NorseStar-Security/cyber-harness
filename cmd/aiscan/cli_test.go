@@ -382,7 +382,7 @@ func TestAgentHelpRendersAgentOptionsWithoutRootCatalog(t *testing.T) {
 func TestScannerHelpRegistryUsesGeneratedFlagHelp(t *testing.T) {
 	for _, name := range []string{"scan", "gogo", "spray", "zombie", "neutron"} {
 		t.Run(name, func(t *testing.T) {
-			help, ok := scannerext.Usage(name)
+			help, ok := productScannerUsage(name)
 			if !ok {
 				t.Fatalf("StaticScannerUsage(%q) was not registered", name)
 			}
@@ -400,7 +400,7 @@ func TestScannerHelpRegistryUsesGeneratedFlagHelp(t *testing.T) {
 }
 
 func TestParseCLIProtonUsesDirectScannerMode(t *testing.T) {
-	help, ok := scannerext.Usage("proton")
+	help, ok := productScannerUsage("proton")
 	if !ok {
 		t.Fatal("proton scanner help was not registered")
 	}

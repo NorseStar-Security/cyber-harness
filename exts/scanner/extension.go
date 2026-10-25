@@ -6,10 +6,10 @@ import (
 	"io/fs"
 
 	curltools "github.com/chainreactors/cyber/tools/curl"
+	"github.com/chainreactors/cyber/tools/cyberhub"
 	gotools "github.com/chainreactors/cyber/tools/gogo"
 	neutrontools "github.com/chainreactors/cyber/tools/neutron"
 	"github.com/chainreactors/cyber/tools/scan"
-	searchtools "github.com/chainreactors/cyber/tools/search"
 	spraytools "github.com/chainreactors/cyber/tools/spray"
 	zombietools "github.com/chainreactors/cyber/tools/zombie"
 	"github.com/chainreactors/sdk/pkg/association"
@@ -36,7 +36,7 @@ import (
 // Config contains only scanner inputs selected by the Profile.
 type Config struct {
 	Resources resources.Options
-	Recon     engine.ReconOptions
+	Crawler   scan.Crawler
 	// AgentName tags the scanner worker's AOP events; the composition root
 	// sets it (aiscan passes "cyber").
 	AgentName string
@@ -89,11 +89,9 @@ func (e *Extension) Load(scope *extension.Scope) error {
 	if err != nil {
 		logger.Warnf("scanner engines init error=%q action=continue_without_scanners", err)
 		e.engines = nil
-	} else {
-		e.engines.SetupUncover(e.config.Recon, logger)
 	}
 
-	var options []scan.Option
+	options := []scan.Option{scan.WithCrawler(e.config.Crawler)}
 	if !e.executionOnly {
 		providers, err := extension.Use[*provider.State](scope)
 		if err != nil {
@@ -235,7 +233,7 @@ func (e *Extension) Load(scope *extension.Scope) error {
 	if e.engines != nil {
 		index = e.engines.Index
 	}
-	cyberhub := searchtools.NewCyberhubSearch(index)
+	cyberhub := cyberhub.NewCyberhubSearch(index)
 	values = append(values, coretool.Command{
 		Name: cyberhub.Name(), Usage: cyberhub.Usage(),
 		DescriptionPath: "cyber://skills/runtime/search.md",
@@ -257,7 +255,6 @@ func (e *Extension) Load(scope *extension.Scope) error {
 			Run:             impl.Run,
 		})
 	}
-	values = append(values, manifestScannerCommands(stream, e.engines, logger, proxyURL)...)
 	if err := extension.Add(scope, values...); err != nil {
 		return err
 	}

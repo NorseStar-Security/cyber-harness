@@ -106,7 +106,7 @@ func shouldStreamScannerOutput(rest []string) bool {
 }
 
 func isDirectScannerJSONOutput(rest []string) bool {
-	if len(rest) == 0 || !scannerext.Available(rest[0]) {
+	if len(rest) == 0 || !productScannerAvailable(rest[0]) {
 		return false
 	}
 	args := rest[1:]
@@ -204,7 +204,7 @@ func runScannerWithAgent(ctx context.Context, option *cfg.Option, runtime *agent
 
 func resolveScannerIntent(option *cfg.Option, store *skills.Store, command string) (string, error) {
 	var sections []string
-	if conceptURI := scan.ScannerConceptURI(command); conceptURI != "" && scannerext.Available(command) {
+	if conceptURI := scan.ScannerConceptURI(command); conceptURI != "" && productScannerAvailable(command) {
 		if body, ok, err := store.ReadVirtualBody(conceptURI); err == nil && ok && body != "" {
 			sections = append(sections, skills.FormatVirtualInvocation(command, conceptURI, body))
 		}

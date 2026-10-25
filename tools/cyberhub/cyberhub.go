@@ -1,18 +1,19 @@
-package search
+package cyberhub
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strconv"
+	"strings"
+
 	coretool "github.com/chainreactors/cyber/core/tool"
 	"github.com/chainreactors/fingers/alias"
 	fingerslib "github.com/chainreactors/fingers/fingers"
 	"github.com/chainreactors/neutron/templates"
 	"github.com/chainreactors/sdk/pkg/association"
 	goflags "github.com/jessevdk/go-flags"
-	"sort"
-	"strconv"
-	"strings"
 )
 
 const (

@@ -1,24 +1,10 @@
-//go:build full
-
 package scan
 
 import (
 	"context"
-	"io"
-	"log/slog"
-	"math"
 	"net/url"
 	"strings"
 	"sync"
-	"sync/atomic"
-
-	browserutil "github.com/chainreactors/cyber/tools/headless"
-	"github.com/projectdiscovery/katana/pkg/engine"
-	"github.com/projectdiscovery/katana/pkg/engine/headless"
-	"github.com/projectdiscovery/katana/pkg/engine/standard"
-	katanaoutput "github.com/projectdiscovery/katana/pkg/output"
-	katanatypes "github.com/projectdiscovery/katana/pkg/types"
-	"github.com/projectdiscovery/katana/pkg/utils/queue"
 
 	"github.com/chainreactors/cyber/tools/scan/pipeline"
 )
@@ -28,9 +14,12 @@ const (
 	capKatanaDeep  = "katana_deep"
 )
 
-func extendKatanaProfile(mode string, p *profile) {
-	switch mode {
-	case scanModeQuick:
+func (c *Command) extendKatanaProfile(mode string, p *profile) {
+	if c.crawler == nil {
+		return
+	}
+	switch strings.ToLower(strings.TrimSpace(mode)) {
+	case "", scanModeQuick:
 		p.Capabilities[capKatanaCrawl] = struct{}{}
 		if p.CrawlDepth > 1 {
 			p.CrawlDepth = 1
@@ -72,6 +61,9 @@ func (c *Command) buildKatanaCapabilities(p profile) []pipeline.Capability[event
 }
 
 func runKatanaCrawl(ctx context.Context, c *Command, e event, depth int, jsMode bool, emit func(event)) {
+	if c.crawler == nil {
+		return
+	}
 	wt, ok := e.Target.(webTarget)
 	if !ok || wt.URL == "" {
 		return
@@ -87,11 +79,10 @@ func runKatanaCrawl(ctx context.Context, c *Command, e event, depth int, jsMode 
 
 	var mu sync.Mutex
 	seen := make(map[string]struct{})
-	handleResult := func(r *katanaoutput.Result) {
-		if r == nil || r.Request == nil || r.Request.URL == "" {
+	handleResult := func(discoveredURL string) {
+		if discoveredURL == "" {
 			return
 		}
-		discoveredURL := r.Request.URL
 
 		if seedRDN != "" && !sameRootDomain(discoveredURL, seedRDN) {
 			return
@@ -111,72 +102,8 @@ func runKatanaCrawl(ctx context.Context, c *Command, e event, depth int, jsMode 
 		emit(targetEvent(source, newWebTarget(discoveredURL, wt.HostHeader)))
 	}
 
-	options := &katanatypes.Options{
-		Context:                ctx,
-		MaxDepth:               depth,
-		FieldScope:             "rdn",
-		BodyReadSize:           math.MaxInt,
-		RateLimit:              150,
-		Strategy:               queue.DepthFirst.String(),
-		Silent:                 true,
-		ScrapeJSResponses:      jsMode,
-		ScrapeJSLuiceResponses: jsMode,
-		Headless:               jsMode,
-		Timeout:                10,
-		TimeStable:             1,
-		MaxFailureCount:        10,
-		PageLoadStrategy:       "heuristic",
-		DOMWaitTime:            5,
-		Concurrency:            10,
-		Parallelism:            10,
-		OnResult: func(r katanaoutput.Result) {
-			handleResult(&r)
-		},
-	}
-	if proxy := c.proxyForContext(ctx); proxy != "" {
-		options.Proxy = proxy
-	}
-	if jsMode {
-		binary, err := browserutil.Discover()
-		if err != nil {
-			emitError(emit, source, "katana browser discovery: %v", err)
-			return
-		}
-		if binary.Path != "" {
-			options.SystemChromePath = binary.Path
-			options.UseInstalledChrome = true
-		}
-	}
-
-	// Use instance-owned output and logging: this process hosts other tools, so
-	// construction must not reconfigure the global logger.
-	crawlerOptions, err := katanatypes.NewCrawlerOptionsWithOutput(
-		options,
-		&scanResultWriter{onResult: handleResult},
-		slog.New(slog.NewTextHandler(io.Discard, nil)),
-	)
-	if err != nil {
-		emitError(emit, source, "katana init %s: %v", wt.URL, err)
-		return
-	}
-	defer crawlerOptions.Close()
-
-	var crawler engine.Engine
-	if jsMode {
-		crawler, err = headless.New(crawlerOptions)
-	} else {
-		crawler, err = standard.New(crawlerOptions)
-	}
-	if err != nil {
-		emitError(emit, source, "katana create %s: %v", wt.URL, err)
-		return
-	}
-	defer crawler.Close()
-
-	if err := crawler.Crawl(wt.URL); err != nil {
-		if ctx.Err() == nil {
-			emitError(emit, source, "katana crawl %s: %v", wt.URL, err)
-		}
+	if err := c.crawler(ctx, wt.URL, wt.HostHeader, depth, jsMode, c.proxyForContext(ctx), handleResult); err != nil && ctx.Err() == nil {
+		emitError(emit, source, "%v", err)
 	}
 }
 
@@ -201,21 +128,3 @@ func sameRootDomain(rawURL, rdn string) bool {
 	host := parsed.Hostname()
 	return host == rdn || strings.HasSuffix(host, "."+rdn)
 }
-
-type scanResultWriter struct {
-	onResult    func(*katanaoutput.Result)
-	resultCount atomic.Int64
-}
-
-func (w *scanResultWriter) Close() error { return nil }
-func (w *scanResultWriter) Write(result *katanaoutput.Result) error {
-	if result != nil {
-		w.resultCount.Add(1)
-	}
-	if w.onResult != nil {
-		w.onResult(result)
-	}
-	return nil
-}
-func (w *scanResultWriter) WriteErr(_ *katanaoutput.Error) error { return nil }
-func (w *scanResultWriter) GetResultCount() int64                { return w.resultCount.Load() }

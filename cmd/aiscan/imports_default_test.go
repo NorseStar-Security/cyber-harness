@@ -29,5 +29,12 @@ func TestDefaultCLIExcludesFullScannerCommands(t *testing.T) {
 // file, so STANDARD_CGO only keeps the release binary free of a C toolchain,
 // while a test build may legitimately leave cgo at its default.
 func TestStandardManifestTags(t *testing.T) {
+	if recordExtensionLinked {
+		// Native record can be composed without the full discovery stack.
+		// This custom composition is exactly STANDARD plus record.
+		assertManifestTags(t, "STANDARD", "record")
+		assertManifestCGO(t, "RECORD")
+		return
+	}
 	assertManifestTags(t, "STANDARD")
 }
