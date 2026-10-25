@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/chainreactors/cyber/agent/inbox"
+	aop "github.com/chainreactors/cyber/aop"
 	coretool "github.com/chainreactors/cyber/core/tool"
 )
 
@@ -20,10 +21,10 @@ func (*InboxWaitTool) Name() string { return "inbox_wait" }
 func (*InboxWaitTool) Description() string {
 	return "Wait for incoming messages without polling or ending the task. Returns immediately if messages are already queued. Messages enter your context on the next turn; do not read history to retrieve them."
 }
-func (t *InboxWaitTool) Definition() *coretool.Definition {
+func (t *InboxWaitTool) Definition() *aop.ToolDefinition {
 	return coretool.Def(t.Name(), t.Description(), inboxWaitArgs{})
 }
-func (*InboxWaitTool) Execute(ctx context.Context, arguments string) (*coretool.Result, error) {
+func (*InboxWaitTool) Execute(ctx context.Context, arguments string) (*aop.ToolResult, error) {
 	args, err := coretool.ParseArgs[inboxWaitArgs](arguments)
 	if err != nil {
 		return nil, err

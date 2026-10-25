@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	jevapi "github.com/chainreactors/cyber/agent/provider/jev"
+	decision "github.com/chainreactors/cyber/core/decision"
 	coretool "github.com/chainreactors/cyber/core/tool"
 )
 
@@ -51,7 +52,7 @@ var testTrajectories sync.Map
 
 type NativeContract struct {
 	ID, Version, Description string
-	Classify                 func(NativeCall) (Access, error)
+	Classify                 func(NativeCall) (coretool.NativeAccess, error)
 	Outcome                  func(NativeCall, map[string]any) string
 	Resolve                  func(NativeCall, NativeCall, map[string]any) bool
 }
@@ -62,7 +63,7 @@ type VerificationCase struct {
 	ID        string
 	Input     map[string]any
 	Arguments map[string]any
-	Judge     func(Claim) (*jevapi.Evaluation, error)
+	Judge     func(jevapi.Claim) (*decision.Evaluation, error)
 	Execute   func(NativeCall) (map[string]any, error)
 	Check     func(VerificationRun) error
 }
@@ -146,7 +147,7 @@ func (s *VerificationSuite) native() coretool.NativeContracts {
 	}
 	return n
 }
-func (s *VerificationSuite) access(c NativeCall) (Access, error) {
+func (s *VerificationSuite) access(c NativeCall) (coretool.NativeAccess, error) {
 	ids := make([]string, 0, len(s.Contracts))
 	for id := range s.Contracts {
 		ids = append(ids, id)
@@ -259,7 +260,7 @@ func qualifyIndependent(e *Extension, ctx context.Context, r *Program, caps map[
 		}
 		judge := c.Judge
 		if judge == nil {
-			judge = func(Claim) (*jevapi.Evaluation, error) {
+			judge = func(jevapi.Claim) (*decision.Evaluation, error) {
 				return nil, errors.New("verification case has no judgment evidence")
 			}
 		}
@@ -268,7 +269,7 @@ func qualifyIndependent(e *Extension, ctx context.Context, r *Program, caps map[
 		}
 		originalJudge := judge
 		decisions := 0
-		judge = func(claim Claim) (*jevapi.Evaluation, error) {
+		judge = func(claim jevapi.Claim) (*decision.Evaluation, error) {
 			decisions++
 			if decisions > maxDecisions {
 				return nil, handoffError{"JEV decision budget reached"}

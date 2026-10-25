@@ -1,5 +1,3 @@
-//go:build full
-
 package playwright
 
 import (
@@ -238,6 +236,7 @@ func convertToFormTextArea(el *katanatypes.HTMLElement) formfill.FormTextArea {
 // Argument parsing
 // ---------------------------------------------------------------------------
 
+//nolint:gosec // G602: every flag value is bounds checked before advancing the argument index.
 func parseAutofillOpts(args []string) (sessName string, formIndex int, overrides map[string]string, err error) {
 	overrides = make(map[string]string)
 

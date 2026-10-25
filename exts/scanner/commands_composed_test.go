@@ -1,5 +1,3 @@
-//go:build full
-
 package scanner
 
 import (
@@ -9,11 +7,14 @@ import (
 	"time"
 
 	toolpb "github.com/chainreactors/cyber/aop/tool"
-	"github.com/chainreactors/cyber/tools/scan/engine"
+	katanaext "github.com/chainreactors/cyber/exts/katana"
+	passiveext "github.com/chainreactors/cyber/exts/passive"
+	"github.com/chainreactors/cyber/tools/katana"
+	"github.com/chainreactors/cyber/tools/passive"
 )
 
-func TestFullScannerCommandsAreInstalled(t *testing.T) {
-	reg := installScanner(t, t.TempDir(), Config{Recon: engine.ReconOptions{FofaKey: "deadbeef"}}).commands
+func TestComposedScannerCommandsAreInstalled(t *testing.T) {
+	reg := installScanner(t, t.TempDir(), Config{Crawler: katana.Crawl}, katanaext.New(), passiveext.New(passive.ReconOptions{FofaKey: "deadbeef"})).commands
 	for _, name := range []string{"katana", "passive"} {
 		if !reg.Has(name) {
 			t.Fatalf("missing %s", name)
@@ -21,9 +22,9 @@ func TestFullScannerCommandsAreInstalled(t *testing.T) {
 	}
 }
 
-func TestFullScannerFunctionalRegression(t *testing.T) {
+func TestComposedScannerFunctionalRegression(t *testing.T) {
 	httpServer := newScannerHTTPFixture(t)
-	installed := installScanner(t, t.TempDir(), Config{Recon: engine.ReconOptions{FofaKey: "deadbeef"}})
+	installed := installScanner(t, t.TempDir(), Config{Crawler: katana.Crawl}, katanaext.New(), passiveext.New(passive.ReconOptions{FofaKey: "deadbeef"}))
 	registry := installed.commands
 	recorder := newFunctionalRecorder(installed.events)
 

@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/chainreactors/cyber/agent"
 	"github.com/chainreactors/cyber/agent/provider"
 )
 
@@ -25,7 +24,7 @@ func TestReloadProviderPreservesNewerStateAndBuildFailure(t *testing.T) {
 	a := &provider.State{}
 	done := make(chan error, 1)
 	go func() {
-		_, _, err := a.Reload(context.Background(), agent.ProviderConfig{
+		_, _, err := a.Reload(context.Background(), provider.ProviderConfig{
 			Provider: "openai", Model: "old", BaseURL: srv.URL + "/v1", APIKey: "test",
 		}, nil)
 		done <- err
@@ -40,8 +39,8 @@ func TestReloadProviderPreservesNewerStateAndBuildFailure(t *testing.T) {
 	if pending.Model != "old" || a.Health().State != provider.HealthConfigured {
 		t.Fatal("valid provider must be installed while the probe is pending")
 	}
-	newConfig := agent.ProviderConfig{Provider: "openai", Model: "new", BaseURL: srv.URL + "/v1", APIKey: "test"}
-	newProvider, err := agent.NewProviderFromResolved(&newConfig)
+	newConfig := provider.ProviderConfig{Provider: "openai", Model: "new", BaseURL: srv.URL + "/v1", APIKey: "test"}
+	newProvider, err := provider.NewProviderFromResolved(&newConfig)
 	if err != nil {
 		unblock.Do(func() { close(release) })
 		t.Fatal(err)
@@ -55,7 +54,7 @@ func TestReloadProviderPreservesNewerStateAndBuildFailure(t *testing.T) {
 	if current != newProvider || config.Model != "new" || a.Health().State != provider.HealthConfigured {
 		t.Fatal("late probe overwrote a newer provider or its health")
 	}
-	if _, _, err := a.Reload(context.Background(), agent.ProviderConfig{Provider: "unsupported"}, nil); err == nil {
+	if _, _, err := a.Reload(context.Background(), provider.ProviderConfig{Provider: "unsupported"}, nil); err == nil {
 		t.Fatal("unsupported provider was accepted")
 	}
 	current, config = a.Current()

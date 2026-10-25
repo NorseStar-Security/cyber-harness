@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/cyber/core/decision"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/chainreactors/cyber/core/decision"
 
 	"github.com/chainreactors/cyber/agent"
 	"github.com/chainreactors/cyber/agent/hooks"
@@ -37,7 +38,7 @@ func TestReflexLibraryQualificationAndImmutableView(t *testing.T) {
 		t.Run(condition, func(t *testing.T) {
 			e := testLaboratory(t)
 			r := qualifiedLaboratory(t, e, observationCapabilities("bash"))
-			c := Claim{Type: jevapi.ClaimNoul, Context: "Add current items and verify their completion."}
+			c := jevapi.Claim{Type: jevapi.ClaimNoul, Context: "Add current items and verify their completion."}
 			cid := "c" + digest(c)[:16]
 			if condition == "changed_source" {
 				r.Observe += " "
@@ -100,10 +101,10 @@ func TestReflexLibraryQualificationAndImmutableView(t *testing.T) {
 
 func TestReflexPublicationRequiresQualificationAndOwnsItsSnapshot(t *testing.T) {
 	e := testLaboratory(t)
-	c := Claim{Type: jevapi.ClaimNoul, Context: "Add items with current parameters."}
+	c := jevapi.Claim{Type: jevapi.ClaimNoul, Context: "Add items with current parameters."}
 	cid := "c" + digest(c)[:16]
 	e.library.Claims[cid] = claimRecord{Claim: c}
-	p := &compilation{claims: map[string]Claim{cid: c}, ids: []string{cid}, capabilities: observationCapabilities("bash")}
+	p := &compilation{claims: map[string]jevapi.Claim{cid: c}, ids: []string{cid}, capabilities: observationCapabilities("bash")}
 	r := laboratoryReflex()
 	if err := r.validate(); err != nil {
 		t.Fatal(err)
@@ -336,7 +337,10 @@ func TestReflexShellAndEvidenceBoundaries(t *testing.T) {
 	}
 }
 
-func laboratorySuiteAccess(c NativeCall) (Access, error) { s := laboratorySuite(); return s.access(c) }
+func laboratorySuiteAccess(c NativeCall) (coretool.NativeAccess, error) {
+	s := laboratorySuite()
+	return s.access(c)
+}
 
 func TestReflexCompilerEffortAndCancellationOwnItsLifetime(t *testing.T) {
 	e := testLaboratory(t)
@@ -396,8 +400,8 @@ func TestReflexPureSemanticCapabilityAndFreshArguments(t *testing.T) {
 				expected = strings.ToUpper(value)
 			}
 			cases = append(cases, VerificationCase{ID: fmt.Sprint(i), Input: map[string]any{"user": mode + ":" + value}, Arguments: map[string]any{"mode": mode, "value": value},
-				Judge: func(claim Claim) (*jevapi.Evaluation, error) {
-					return &jevapi.Evaluation{Value: &decision.Evaluation_Choice{Choice: mode}}, nil
+				Judge: func(claim jevapi.Claim) (*decision.Evaluation, error) {
+					return &decision.Evaluation{Value: &decision.Evaluation_Choice{Choice: mode}}, nil
 				},
 				Execute: func(NativeCall) (map[string]any, error) { return nil, errors.New("pure capability must not dispatch") },
 				Check: func(run VerificationRun) error {

@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 
+	aop "github.com/chainreactors/cyber/aop"
 	"github.com/chainreactors/cyber/core/extension"
 	"github.com/chainreactors/cyber/core/hooks"
 	coreregistry "github.com/chainreactors/cyber/core/registry"
@@ -22,7 +23,7 @@ var (
 
 type registeredTool struct {
 	tool       Tool
-	definition *Definition
+	definition *aop.ToolDefinition
 }
 
 // ToolRegistry is the tool resource Point and execution boundary for one Profile.
@@ -57,7 +58,7 @@ func (r *ToolRegistry) Add(tools ...Tool) (resource.Handle, error) {
 			Name: name,
 			Value: registeredTool{
 				tool:       value,
-				definition: proto.Clone(definition).(*Definition),
+				definition: proto.Clone(definition).(*aop.ToolDefinition),
 			},
 		})
 	}
@@ -93,19 +94,20 @@ func (r *ToolRegistry) Close(ctx context.Context) error {
 	return r.store.Close(ctx)
 }
 
-func (r *ToolRegistry) ToolDefinitions() []*Definition {
+func (r *ToolRegistry) ToolDefinitions() []*aop.ToolDefinition {
 	if r == nil || r.store == nil {
 		return nil
 	}
 	entries := r.store.Entries()
-	definitions := make([]*Definition, 0, len(entries))
+	definitions := make([]*aop.ToolDefinition, 0, len(entries))
 	for _, entry := range entries {
-		definitions = append(definitions, proto.Clone(entry.Value.definition).(*Definition))
+		definitions = append(definitions, proto.Clone(entry.Value.definition).(*aop.ToolDefinition))
 	}
 	return definitions
 }
 
-func (r *ToolRegistry) ExecuteTool(ctx context.Context, name, arguments string) (result *Result, err error) {
+func (r *ToolRegistry) ExecuteTool(ctx context.Context, name, arguments string) (result *aop.ToolResult, err error) {
+	defer func() { result = toolhooks.Feedback(result, err) }()
 	if r == nil || r.store == nil {
 		return nil, ErrUnavailable
 	}

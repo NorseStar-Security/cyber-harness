@@ -4,19 +4,21 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"slices"
+	"strings"
+	"testing"
+
 	"github.com/chainreactors/cyber/core/resource"
 	types "github.com/chainreactors/cyber/core/types"
+	passiveconfig "github.com/chainreactors/cyber/exts/passive/config"
 	scannerext "github.com/chainreactors/cyber/exts/scanner"
 	searchext "github.com/chainreactors/cyber/exts/search"
 	hostcli "github.com/chainreactors/cyber/pkg/cli"
 	configpkg "github.com/chainreactors/cyber/pkg/config"
 	flags "github.com/jessevdk/go-flags"
 	"google.golang.org/protobuf/types/known/structpb"
-	"net/http"
-	"net/http/httptest"
-	"slices"
-	"strings"
-	"testing"
 )
 
 // fakeConfigStore is a minimal in-memory ConfigStore.
@@ -56,6 +58,9 @@ func newConfig(backend ConfigBackend) *Config {
 		panic(err)
 	}
 	if err := scannerext.Declare(resources); err != nil {
+		panic(err)
+	}
+	if err := passiveconfig.Declare(resources); err != nil {
 		panic(err)
 	}
 	if err := searchext.Declare(resources); err != nil {
@@ -231,9 +236,9 @@ func TestConnectionFofaSuccessAndStoredKeyFallback(t *testing.T) {
 		})
 	}))
 	defer srv.Close()
-	orig := scannerext.FofaInfoEndpoint
-	scannerext.FofaInfoEndpoint = srv.URL
-	defer func() { scannerext.FofaInfoEndpoint = orig }()
+	orig := passiveconfig.FofaInfoEndpoint
+	passiveconfig.FofaInfoEndpoint = srv.URL
+	defer func() { passiveconfig.FofaInfoEndpoint = orig }()
 
 	// FOFA key left blank in the request: the stored secret must be used.
 	store := &fakeConfigStore{}
@@ -262,9 +267,9 @@ func TestConnectionFofaError(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]any{"error": true, "errmsg": "[-700] account invalid"})
 	}))
 	defer srv.Close()
-	orig := scannerext.FofaInfoEndpoint
-	scannerext.FofaInfoEndpoint = srv.URL
-	defer func() { scannerext.FofaInfoEndpoint = orig }()
+	orig := passiveconfig.FofaInfoEndpoint
+	passiveconfig.FofaInfoEndpoint = srv.URL
+	defer func() { passiveconfig.FofaInfoEndpoint = orig }()
 
 	resp, _ := testConn(context.Background(), &fakeConfigStore{}, "recon", configWith(func(c *types.DistributeConfig) {
 		setConfigSection(c, "recon", map[string]any{"fofa_key": "bad"})
@@ -289,9 +294,9 @@ func TestConnectionHunterSuccess(t *testing.T) {
 		})
 	}))
 	defer srv.Close()
-	orig := scannerext.HunterSearchEndpoint
-	scannerext.HunterSearchEndpoint = srv.URL
-	defer func() { scannerext.HunterSearchEndpoint = orig }()
+	orig := passiveconfig.HunterSearchEndpoint
+	passiveconfig.HunterSearchEndpoint = srv.URL
+	defer func() { passiveconfig.HunterSearchEndpoint = orig }()
 
 	resp, _ := testConn(context.Background(), &fakeConfigStore{}, "recon", configWith(func(c *types.DistributeConfig) {
 		setConfigSection(c, "recon", map[string]any{"hunter_api_key": "hk"})
@@ -306,9 +311,9 @@ func TestConnectionHunterError(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]any{"code": 401, "message": "invalid api-key"})
 	}))
 	defer srv.Close()
-	orig := scannerext.HunterSearchEndpoint
-	scannerext.HunterSearchEndpoint = srv.URL
-	defer func() { scannerext.HunterSearchEndpoint = orig }()
+	orig := passiveconfig.HunterSearchEndpoint
+	passiveconfig.HunterSearchEndpoint = srv.URL
+	defer func() { passiveconfig.HunterSearchEndpoint = orig }()
 
 	resp, _ := testConn(context.Background(), &fakeConfigStore{}, "recon", configWith(func(c *types.DistributeConfig) {
 		setConfigSection(c, "recon", map[string]any{"hunter_api_key": "bad"})

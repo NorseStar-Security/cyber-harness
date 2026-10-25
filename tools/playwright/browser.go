@@ -1,5 +1,3 @@
-//go:build full
-
 package playwright
 
 import (
@@ -723,7 +721,7 @@ func applyContextFlags(page *rod.Page, opts commonOpts) error {
 	return nil
 }
 
-// navigateTo navigates to URL and waits for the page to stabilise.
+// navigateTo navigates to URL and waits for the page to stabilize.
 func navigateTo(page *rod.Page, url string) error {
 	if err := page.Navigate(url); err != nil {
 		return fmt.Errorf("navigate: %w", err)
@@ -1139,6 +1137,7 @@ func parseContextFlag(args []string, i int, cf *contextFlags) (int, error) {
 	return 0, nil
 }
 
+//nolint:gosec // G602: every flag value is bounds checked before advancing the argument index.
 func parseCommonOpts(args []string, requireURL bool, usage string) (commonOpts, error) {
 	opts := commonOpts{timeout: defaultTimeout}
 
@@ -1182,6 +1181,7 @@ func parseCommonOpts(args []string, requireURL bool, usage string) (commonOpts, 
 	return opts, nil
 }
 
+//nolint:gosec // G602: every flag value is bounds checked before advancing the argument index.
 func parseScreenshotOpts(args []string, usage string) (screenshotOpts, error) {
 	opts := screenshotOpts{
 		commonOpts: commonOpts{timeout: defaultTimeout},
@@ -1251,6 +1251,7 @@ func parseScreenshotOpts(args []string, usage string) (screenshotOpts, error) {
 	return opts, nil
 }
 
+//nolint:gosec // G602: every flag value is bounds checked before advancing the argument index.
 func parseEvalOpts(args []string, usage string) (evalOpts, error) {
 	opts := evalOpts{
 		commonOpts: commonOpts{timeout: defaultTimeout},
@@ -1305,6 +1306,7 @@ func parseEvalOpts(args []string, usage string) (evalOpts, error) {
 	return opts, nil
 }
 
+//nolint:gosec // G602: every flag value is bounds checked before advancing the argument index.
 func parsePDFOpts(args []string, usage string) (pdfOpts, error) {
 	opts := pdfOpts{
 		commonOpts: commonOpts{timeout: defaultTimeout},

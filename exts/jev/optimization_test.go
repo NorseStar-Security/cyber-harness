@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/chainreactors/cyber/agent/provider"
+	jev "github.com/chainreactors/cyber/agent/provider/jev"
 	"github.com/chainreactors/cyber/aop"
 )
 
@@ -37,7 +38,7 @@ func TestCompilationCooldownCoversOtherClaimAndSession(t *testing.T) {
 	groups := 0
 	client := fakeJEV(t, func(req inferenceRequest) map[string]inferenceAnswer { groups++; return declarationAnswers(req, true) })
 	e, cfg, _ := testInstallation(t, Config{Mode: "auto"}, client)
-	var claims []Claim
+	var claims []jev.Claim
 	_ = json.Unmarshal([]byte(fixtureClaim), &claims)
 	other := claims[0]
 	other.Context = "Should the current operation continue?"

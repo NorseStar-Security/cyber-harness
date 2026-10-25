@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	jev "github.com/chainreactors/cyber/agent/provider/jev"
 	aop "github.com/chainreactors/cyber/aop"
 )
 
@@ -55,7 +56,7 @@ func TestLibraryDerivesCoverageWithoutPersistedCompilationIndex(t *testing.T) {
 	cid := "c" + digest(claim)[:16]
 	r := observationReflex(t, `js:function(){return {report:{}};}`)
 	rid := "r" + digest(r)[:16]
-	group := digest(map[string]Claim{cid: claim})
+	group := digest(map[string]jev.Claim{cid: claim})
 	if _, err := e.updateLibrary(func(lib *library) (bool, error) {
 		lib.Claims[cid] = claimRecord{Claim: claim}
 		lib.Reflexes[rid] = Reflex{Program: r, Claims: []string{cid}}

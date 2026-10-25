@@ -61,7 +61,7 @@ func TestTaskLifecycleOrdering(t *testing.T) {
 				if len(messages) != 2 || messages[0].Origin != inbox.OriginUser || messages[1].Origin != inbox.OriginPeer {
 					return nil, fmt.Errorf("input order: %#v", messages)
 				}
-				return &agent.Result{Output: "result", Stop: agent.StopReasonCompleted}, nil
+				return &agent.Result{Output: "result", Stop: agenthooks.StopReasonCompleted}, nil
 			})})
 
 			tool := newSubagentTestTool(t, parent.Cfg)
@@ -136,7 +136,7 @@ func TestTaskLifetimeAndFinalRecordDrain(t *testing.T) {
 		if ev.ParentToolCallID == "" {
 			return struct{}{}, nil
 		}
-		if ctx.Err() != nil || ev.Stop != agent.StopReasonCanceled {
+		if ctx.Err() != nil || ev.Stop != agenthooks.StopReasonCanceled {
 			return struct{}{}, fmt.Errorf("invalid final context/stop")
 		}
 		close(entered)

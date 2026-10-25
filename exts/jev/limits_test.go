@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/cyber/core/decision"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/chainreactors/cyber/core/decision"
 
 	"github.com/chainreactors/cyber/agent"
 	"github.com/chainreactors/cyber/agent/hooks"
@@ -102,8 +103,8 @@ func TestReflexNativeAndJudgmentLimits(t *testing.T) {
 				CheckInput: func(map[string]any, map[string]any) error { return nil }, CheckCall: func(VerificationCall) error { return nil }, CheckReport: func(VerificationReport) error { return errors.New("pending cannot report") },
 				Cases: func(map[string]any) []VerificationCase {
 					return []VerificationCase{{ID: "bounded", Input: map[string]any{},
-						Judge: func(Claim) (*jevapi.Evaluation, error) {
-							return &jevapi.Evaluation{Value: &decision.Evaluation_Choice{Choice: "continue"}}, nil
+						Judge: func(jevapi.Claim) (*decision.Evaluation, error) {
+							return &decision.Evaluation{Value: &decision.Evaluation_Choice{Choice: "continue"}}, nil
 						},
 						Execute: func(NativeCall) (map[string]any, error) {
 							return map[string]any{"data": map[string]any{"complete": false}}, nil

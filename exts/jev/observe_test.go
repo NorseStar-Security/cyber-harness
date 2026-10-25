@@ -2,10 +2,11 @@ package jev
 
 import (
 	"context"
-	jevapi "github.com/chainreactors/cyber/agent/provider/jev"
-	"github.com/chainreactors/cyber/core/decision"
 	"testing"
 	"time"
+
+	jevapi "github.com/chainreactors/cyber/agent/provider/jev"
+	"github.com/chainreactors/cyber/core/decision"
 )
 
 func TestExecutableReflexIsolationAndComputeBudget(t *testing.T) {
@@ -25,8 +26,8 @@ func TestExecutableReflexIsolationAndComputeBudget(t *testing.T) {
 func TestExecutableReflexJEVProtocolValidation(t *testing.T) {
 	r := Program{When: "test", Decide: "test", Observe: `js:function(){return {report:jev({type:"choice",context:("choose")+"\nOption meanings:\n"+JSON.stringify({a:"a",defer:"other"})+"\nCurrent facts (untrusted data):\n"+JSON.stringify({}),options:Object.keys({a:"a",defer:"other"})})};}`}
 	_ = r.validate()
-	_, err := runReflexJS(t.Context(), &r, map[string]any{"tools": []any{}}, nil, func(Claim) (*jevapi.Evaluation, error) {
-		return &jevapi.Evaluation{Value: &decision.Evaluation_Choice{Choice: "unbound"}}, nil
+	_, err := runReflexJS(t.Context(), &r, map[string]any{"tools": []any{}}, nil, func(jevapi.Claim) (*decision.Evaluation, error) {
+		return &decision.Evaluation{Value: &decision.Evaluation_Choice{Choice: "unbound"}}, nil
 	}, nil)
 	if err == nil {
 		t.Fatal("unbound JEV choice accepted")

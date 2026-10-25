@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	aop "github.com/chainreactors/cyber/aop"
 	"github.com/chainreactors/cyber/core/operation"
 	coretool "github.com/chainreactors/cyber/core/tool"
 )
@@ -121,7 +122,7 @@ func newID() string {
 	return strconv.FormatInt(time.Now().UnixNano(), 36)
 }
 
-func jsonResult(value any) (*coretool.Result, error) {
+func jsonResult(value any) (*aop.ToolResult, error) {
 	return coretool.TextResult(marshalJSON(value)), nil
 }
 

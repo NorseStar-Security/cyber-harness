@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	provider "github.com/chainreactors/cyber/agent/provider"
 	"github.com/chainreactors/cyber/core/extension"
 	"github.com/chainreactors/cyber/core/telemetry"
 	types "github.com/chainreactors/cyber/core/types"
@@ -146,7 +147,7 @@ func initWebProfile(ctx context.Context, baseOption *cfg.Option, logger telemetr
 		option.Resolved = resolved
 		option.Extensions = resolved.Values()
 	}
-	config, err := configFromOption(&option, profile.ProviderOptional, nil, logger)
+	config, err := configFromOption(&option, provider.StartupOptional, nil, logger)
 	if err != nil {
 		return nil, err
 	}

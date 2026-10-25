@@ -11,6 +11,7 @@ import (
 	"github.com/chainreactors/cyber/agent"
 	"github.com/chainreactors/cyber/agent/hooks"
 	"github.com/chainreactors/cyber/agent/provider"
+	jev "github.com/chainreactors/cyber/agent/provider/jev"
 	"github.com/chainreactors/cyber/aop"
 	coretool "github.com/chainreactors/cyber/core/tool"
 )
@@ -46,13 +47,13 @@ func (e *Extension) runLibraryCommand(ctx context.Context, ex *coretool.Executio
 		if len(ex.Args) != 2 || len(ex.Args[1]) > 16<<10 {
 			return nil, errors.New("usage: jev claim <Claim JSON>")
 		}
-		var claim Claim
+		var claim jev.Claim
 		if err := json.Unmarshal([]byte(ex.Args[1]), &claim); err != nil {
 			return nil, err
 		}
 		cfg, _ := agent.ToolAgentConfig(ctx)
 		_, task := taskIdentity(hooks.ContextEvent{SessionID: cfg.SessionID, TurnID: cfg.TurnID})
-		ids, err := e.publishClaims(ctx, []Claim{claim}, task)
+		ids, err := e.publishClaims(ctx, []jev.Claim{claim}, task)
 		if err != nil {
 			return nil, err
 		}
@@ -122,7 +123,7 @@ func (e *Extension) runLibraryCommand(ctx context.Context, ex *coretool.Executio
 	return nil, err
 }
 
-func (e *Extension) publishClaims(ctx context.Context, claims []Claim, task string) ([]string, error) {
+func (e *Extension) publishClaims(ctx context.Context, claims []jev.Claim, task string) ([]string, error) {
 	ids := make([]string, 0, len(claims))
 	for _, c := range claims {
 		if err := c.Validate(); err != nil {

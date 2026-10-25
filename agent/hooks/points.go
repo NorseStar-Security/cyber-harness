@@ -2,21 +2,15 @@ package hooks
 
 import (
 	"context"
+
 	"github.com/chainreactors/cyber/agent/inbox"
 	aop "github.com/chainreactors/cyber/aop"
 	corehooks "github.com/chainreactors/cyber/core/hooks"
 	"github.com/chainreactors/cyber/core/types"
 )
 
-// Aliases keep event definitions readable without pulling agent in (that
-// would be an import cycle).
-type (
-	Msg   = aop.Message
-	Usage = aop.TokenUsage
-)
-
 // StopReason lives here rather than in agent because run_end events carry
-// it; agent aliases these back.
+// it.
 type StopReason string
 
 const (
@@ -44,7 +38,7 @@ type RunStartEvent struct {
 // to the turn.
 type RunStartResult struct {
 	SystemPrompt *string
-	Prepend      []*Msg
+	Prepend      []*aop.Message
 }
 
 var BeforeRun = corehooks.NewPoint[RunStartEvent, RunStartResult]("before_run").WithReducer(
@@ -62,14 +56,14 @@ type ContextEvent struct {
 	SessionID string
 	TurnID    string
 	Turn      int
-	Messages  []*Msg
+	Messages  []*aop.Message
 }
 
 // BeforeModel runs once at a decision boundary, outside model retry and request
 // serialization. Its result can only append messages to the durable transcript.
 // The input is an isolated snapshot; handlers cannot edit the existing prefix.
-var BeforeModel = corehooks.NewPoint[ContextEvent, []*Msg]("before_model").WithReducer(
-	corehooks.Fold(func(acc *[]*Msg, _ *ContextEvent, out []*Msg) {
+var BeforeModel = corehooks.NewPoint[ContextEvent, []*aop.Message]("before_model").WithReducer(
+	corehooks.Fold(func(acc *[]*aop.Message, _ *ContextEvent, out []*aop.Message) {
 		*acc = append(*acc, out...)
 	}),
 )
@@ -104,18 +98,13 @@ var ModelRequestPolicy = corehooks.NewPoint[ModelRequestEvent, ModelPolicy]("mod
 	}),
 )
 
-// ContextResult replaces the whole message list; nil means unchanged.
-type ContextResult struct {
-	Messages []*Msg
-}
-
-var Context = corehooks.NewPoint[ContextEvent, ContextResult]("context").WithReducer(
-	corehooks.Fold(func(acc *ContextResult, ev *ContextEvent, out ContextResult) {
-		if out.Messages == nil {
-			return
+// Context replaces the whole message list; nil means unchanged.
+var Context = corehooks.NewPoint[ContextEvent, []*aop.Message]("context").WithReducer(
+	corehooks.Fold(func(acc *[]*aop.Message, ev *ContextEvent, out []*aop.Message) {
+		if out != nil {
+			ev.Messages = out
+			*acc = out
 		}
-		ev.Messages = out.Messages
-		acc.Messages = out.Messages
 	}),
 )
 
@@ -124,9 +113,9 @@ type RunEndEvent struct {
 	TurnID         string
 	Stop           StopReason
 	Output         string
-	Messages       []*Msg
+	Messages       []*aop.Message
 	MessageCounter int64
-	Usage          *Usage
+	Usage          *aop.TokenUsage
 	Err            error
 }
 

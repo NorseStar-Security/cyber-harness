@@ -132,7 +132,7 @@ func (e *Extension) libraryView() *GetLibraryResponse {
 	return out
 }
 
-func traceClaims(claims map[string]Claim) map[string]*decision.Claim {
+func traceClaims(claims map[string]jevapi.Claim) map[string]*decision.Claim {
 	out := map[string]*decision.Claim{}
 	for id, c := range claims {
 		out[id] = c.Proto()

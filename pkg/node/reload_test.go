@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"google.golang.org/protobuf/types/known/structpb"
 	"net/http"
 	"net/http/httptest"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/chainreactors/cyber/agent/provider"
 	aop "github.com/chainreactors/cyber/aop"
@@ -108,7 +109,7 @@ func (*reloadWaitTool) Description() string { return "wait for profile cancellat
 func (w *reloadWaitTool) Definition() *aop.ToolDefinition {
 	return coretool.Def(w.Name(), w.Description(), struct{}{})
 }
-func (w *reloadWaitTool) Execute(ctx context.Context, _ string) (*coretool.Result, error) {
+func (w *reloadWaitTool) Execute(ctx context.Context, _ string) (*aop.ToolResult, error) {
 	close(w.started)
 	<-ctx.Done()
 	w.drained.Store(true)
@@ -131,7 +132,7 @@ func TestRemoteReloadKeepsFailedProfileAndDrainsSuccessfulSwitch(t *testing.T) {
 	var mu sync.Mutex
 	var built []*reloadTestProfile
 	build := func(request profile.Request) (profile.Profile, error) {
-		if request.ProviderMode != profile.ProviderDisabled {
+		if request.ProviderMode != provider.StartupDisabled {
 			return nil, fmt.Errorf("empty server LLM must disable the node provider")
 		}
 		h, err := harness.New(harness.Config{Base: harness.BaseConfig{Directory: directory, Provider: provider.StartupConfig{Mode: provider.StartupDisabled}}, Session: request.Session,

@@ -22,6 +22,7 @@ type Command struct {
 	toolargs.Base
 	engines       *engine.Set
 	worker        Worker
+	crawler       Crawler
 	verifyDefault string
 	hasModel      func(context.Context) bool
 }
@@ -130,6 +131,7 @@ func (c *Command) execute(ctx context.Context, args []string, stream io.Writer) 
 	if err != nil {
 		return "", fmt.Errorf("scan: %w", err)
 	}
+	c.extendKatanaProfile(flags.Mode, &profile)
 	if parser.FindOptionByLongName("verify").IsSet() && flags.Verify == "" {
 		return "", fmt.Errorf("scan: --verify requires on or off")
 	}

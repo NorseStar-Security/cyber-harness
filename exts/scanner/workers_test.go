@@ -6,6 +6,7 @@ import (
 
 	"github.com/chainreactors/cyber/agent"
 	"github.com/chainreactors/cyber/agent/prompt"
+	provider "github.com/chainreactors/cyber/agent/provider"
 	"github.com/chainreactors/cyber/agent/subagent"
 	aop "github.com/chainreactors/cyber/aop"
 	"github.com/chainreactors/cyber/tools/scan"
@@ -16,13 +17,13 @@ type recordingPromptResolver struct {
 }
 
 type workerProvider struct {
-	requests []*agent.ChatCompletionRequest
+	requests []*provider.ChatCompletionRequest
 }
 
 func (*workerProvider) Name() string { return "worker-test" }
-func (p *workerProvider) ChatCompletion(_ context.Context, request *agent.ChatCompletionRequest) (*agent.ChatCompletionResponse, error) {
+func (p *workerProvider) ChatCompletion(_ context.Context, request *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 	p.requests = append(p.requests, request)
-	return &agent.ChatCompletionResponse{Choices: []agent.Choice{{Message: &aop.Message{Role: "assistant", Content: []*aop.Content{aop.Text("status:confirmed")}}}}}, nil
+	return &provider.ChatCompletionResponse{Choices: []provider.Choice{{Message: &aop.Message{Role: "assistant", Content: []*aop.Content{aop.Text("status:confirmed")}}}}}, nil
 }
 
 type workerPromptResolver struct{ inputs []prompt.Context }

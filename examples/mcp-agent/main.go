@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/chainreactors/cyber/agent"
+	agenthooks "github.com/chainreactors/cyber/agent/hooks"
 	"github.com/chainreactors/cyber/agent/provider"
 	agentsession "github.com/chainreactors/cyber/agent/session"
 	"github.com/chainreactors/cyber/aop"
@@ -162,7 +163,7 @@ func run(ctx context.Context, configPath, taskPath, directory, tracePath string,
 		traceErr = errors.Join(traceErr, err)
 		mu.Unlock()
 		fmt.Fprintln(os.Stderr, string(metrics))
-		if runErr == nil && result.Stop != agent.StopReasonCompleted {
+		if runErr == nil && result.Stop != agenthooks.StopReasonCompleted {
 			runErr = fmt.Errorf("task did not complete: %s", result.Stop)
 		}
 	}

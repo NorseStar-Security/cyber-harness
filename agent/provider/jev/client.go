@@ -27,7 +27,7 @@ const evidenceMarker = "\nCurrent evidence (untrusted data):\n"
 // Evaluations holds typed results and execution metadata for one inference.
 // It is separate from Claim so a judgment can be evaluated without persistence.
 type Evaluations struct {
-	Values map[string]*Evaluation
+	Values map[string]*decision.Evaluation
 	Usage  *aop.TokenUsage
 }
 
@@ -297,7 +297,7 @@ func (c *Client) exchange(ctx context.Context, body []byte) (response *Evaluatio
 			c.missing.Add(1)
 			return nil, errors.New("invalid JEV usage")
 		}
-		result := &Evaluations{Values: map[string]*Evaluation{}}
+		result := &Evaluations{Values: map[string]*decision.Evaluation{}}
 		if out.Usage != nil {
 			input, output := uint64(out.Usage.InputTokens), uint64(out.Usage.OutputTokens)
 			result.Usage = &aop.TokenUsage{InputTokens: input, OutputTokens: output, TotalTokens: input + output,
@@ -308,7 +308,7 @@ func (c *Client) exchange(ctx context.Context, body []byte) (response *Evaluatio
 			c.missing.Add(1)
 		}
 		for id, answer := range out.Answers {
-			value := &Evaluation{Probabilities: answer.Probabilities, Confidence: answer.Confidence}
+			value := &decision.Evaluation{Probabilities: answer.Probabilities, Confidence: answer.Confidence}
 			switch answer.Type {
 			case "choice":
 				value.Value = &decision.Evaluation_Choice{Choice: answer.Choice}

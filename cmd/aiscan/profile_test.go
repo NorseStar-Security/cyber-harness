@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/chainreactors/cyber/agent"
+	agenthooks "github.com/chainreactors/cyber/agent/hooks"
 	"github.com/chainreactors/cyber/agent/provider"
 	agentsession "github.com/chainreactors/cyber/agent/session"
 	"github.com/chainreactors/cyber/aop"
@@ -69,7 +70,7 @@ func TestProfileOwnsAgentLifecycleAndRetainsResourcesDuringClose(t *testing.T) {
 		}
 		loops <- managed
 		if config.SessionID == "second" {
-			return &agent.Result{Stop: agent.StopReasonCompleted}, nil
+			return &agent.Result{Stop: agenthooks.StopReasonCompleted}, nil
 		}
 		close(started)
 		<-ctx.Done()
@@ -77,7 +78,7 @@ func TestProfileOwnsAgentLifecycleAndRetainsResourcesDuringClose(t *testing.T) {
 		<-release
 		return nil, ctx.Err()
 	})
-	config.Base.Provider = provider.StartupConfig{Mode: provider.StartupOptional, Config: agent.ProviderConfig{Provider: "openai", Model: "test", APIKey: "test", BaseURL: "http://127.0.0.1:1/v1"}}
+	config.Base.Provider = provider.StartupConfig{Mode: provider.StartupOptional, Config: provider.ProviderConfig{Provider: "openai", Model: "test", APIKey: "test", BaseURL: "http://127.0.0.1:1/v1"}}
 	p, err := buildAIScanProfile(config)
 	if err != nil {
 		t.Fatal(err)
@@ -156,7 +157,7 @@ func TestProfileOwnsAgentLifecycleAndRetainsResourcesDuringClose(t *testing.T) {
 func TestSessionProfileCanOmitAgentLifecycle(t *testing.T) {
 	config := minimalConfig(nil)
 	config.Session = &agentsession.Config{} // Sessions are selected, reasoning is not.
-	config.Base.Provider = provider.StartupConfig{Mode: provider.StartupOptional, Config: agent.ProviderConfig{Provider: "openai", Model: "test", APIKey: "test", BaseURL: "http://127.0.0.1:1/v1"}}
+	config.Base.Provider = provider.StartupConfig{Mode: provider.StartupOptional, Config: provider.ProviderConfig{Provider: "openai", Model: "test", APIKey: "test", BaseURL: "http://127.0.0.1:1/v1"}}
 	p, err := buildAIScanProfile(config)
 	if err != nil {
 		t.Fatal(err)
@@ -251,7 +252,7 @@ func TestRuntimeUsesProfileApplicationWithoutOwningIt(t *testing.T) {
 	// The runtime has no accessor handing the application out. What matters is
 	// that both read one provider state, so setting it on one is visible on the
 	// other.
-	application.Set(inertProvider{}, agent.ProviderConfig{Model: "shared"})
+	application.Set(inertProvider{}, provider.ProviderConfig{Model: "shared"})
 	if _, providerConfig := run.ProviderState(); providerConfig.Model != "shared" {
 		t.Fatal("Runtime did not use the profile application")
 	}
@@ -318,7 +319,7 @@ func TestFromOptionOwnsEventOutputSelection(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			config, err := configFromOption(test.option, profilepkg.ProviderDisabled, nil, telemetry.NopLogger())
+			config, err := configFromOption(test.option, provider.StartupDisabled, nil, telemetry.NopLogger())
 			if err != nil {
 				t.Fatal(err)
 			}

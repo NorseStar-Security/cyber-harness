@@ -7,8 +7,10 @@ import (
 	"testing"
 	"time"
 
+	agenthooks "github.com/chainreactors/cyber/agent/hooks"
 	"github.com/chainreactors/cyber/agent/inbox"
 	"github.com/chainreactors/cyber/agent/provider"
+	aop "github.com/chainreactors/cyber/aop"
 	coretool "github.com/chainreactors/cyber/core/tool"
 )
 
@@ -18,7 +20,7 @@ func TestInboxInterruptContinuesSameRun(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 	defer cancel()
 	calls := 0
-	llm := &callbackProvider{fn: func(requestCtx context.Context, req *ChatCompletionRequest) (*ChatCompletionResponse, error) {
+	llm := &callbackProvider{fn: func(requestCtx context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 		calls++
 		if calls == 1 {
 			m := inbox.NewUserMessage("new direction")
@@ -43,7 +45,7 @@ func TestInboxInterruptContinuesSameRun(t *testing.T) {
 	}}
 	ag := NewAgent(Config{Loop: StandardLoop{}, Provider: llm, Model: "test", Inbox: ib})
 	result, err := ag.Run(ctx, TextInput("original"))
-	if err != nil || result.Stop != StopReasonCompleted || result.Output != "continued" || calls != 2 || ib.Closed() {
+	if err != nil || result.Stop != agenthooks.StopReasonCompleted || result.Output != "continued" || calls != 2 || ib.Closed() {
 		t.Fatalf("result=%+v calls=%d closed=%v err=%v", result, calls, ib.Closed(), err)
 	}
 }
@@ -102,7 +104,7 @@ func TestInboxInterruptSkipsUnstartedTool(t *testing.T) {
 	defer ib.Close()
 	first := &inboxInterruptTool{ib: ib}
 	second := &recordingTool{name: "later", output: "must not execute"}
-	llm := &scriptedProvider{responses: []*ChatCompletionResponse{
+	llm := &scriptedProvider{responses: []*provider.ChatCompletionResponse{
 		chatResponse(ChatMessage{Role: "assistant", ToolCalls: []ToolCall{
 			{ID: "one", Type: "function", Function: FunctionCall{Name: "interrupt_test", Arguments: `{}`}},
 			{ID: "two", Type: "function", Function: FunctionCall{Name: "later", Arguments: `{}`}},
@@ -133,10 +135,10 @@ type inboxInterruptTool struct{ ib inbox.Inbox }
 
 func (*inboxInterruptTool) Name() string        { return "interrupt_test" }
 func (*inboxInterruptTool) Description() string { return "test" }
-func (t *inboxInterruptTool) Definition() *coretool.Definition {
+func (t *inboxInterruptTool) Definition() *aop.ToolDefinition {
 	return coretool.Def(t.Name(), t.Description(), struct{}{})
 }
-func (t *inboxInterruptTool) Execute(context.Context, string) (*coretool.Result, error) {
+func (t *inboxInterruptTool) Execute(context.Context, string) (*aop.ToolResult, error) {
 	m := inbox.NewUserMessage("stop old tools")
 	m.Interrupt = true
 	return coretool.TextResult("first completed"), t.ib.Push(m)
@@ -144,10 +146,10 @@ func (t *inboxInterruptTool) Execute(context.Context, string) (*coretool.Result,
 
 type inboxStreamProvider struct {
 	scriptedProvider
-	stream func(context.Context, *ChatCompletionRequest) (<-chan ChatCompletionStreamEvent, error)
+	stream func(context.Context, *provider.ChatCompletionRequest) (<-chan provider.ChatCompletionStreamEvent, error)
 }
 
-func (p *inboxStreamProvider) ChatCompletionStream(ctx context.Context, req *ChatCompletionRequest) (<-chan ChatCompletionStreamEvent, error) {
+func (p *inboxStreamProvider) ChatCompletionStream(ctx context.Context, req *provider.ChatCompletionRequest) (<-chan provider.ChatCompletionStreamEvent, error) {
 	return p.stream(ctx, req)
 }
 
@@ -157,13 +159,13 @@ func TestInboxInterruptStreamingPreservesUsageWithoutPartialCalls(t *testing.T) 
 	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 	defer cancel()
 	calls := 0
-	llm := &inboxStreamProvider{stream: func(requestCtx context.Context, req *ChatCompletionRequest) (<-chan ChatCompletionStreamEvent, error) {
+	llm := &inboxStreamProvider{stream: func(requestCtx context.Context, req *provider.ChatCompletionRequest) (<-chan provider.ChatCompletionStreamEvent, error) {
 		calls++
-		ch := make(chan ChatCompletionStreamEvent)
+		ch := make(chan provider.ChatCompletionStreamEvent)
 		if calls == 1 {
 			go func() {
 				defer close(ch)
-				for _, event := range []ChatCompletionStreamEvent{
+				for _, event := range []provider.ChatCompletionStreamEvent{
 					{Usage: provider.TokenUsage(10, 2, 12, 0, 0)},
 					textDelta("unfinished response"),
 					toolCallDelta(0, "partial-call", "later", `{"incomplete":`),
@@ -187,7 +189,7 @@ func TestInboxInterruptStreamingPreservesUsageWithoutPartialCalls(t *testing.T) 
 			}
 			go func() {
 				defer close(ch)
-				for _, event := range []ChatCompletionStreamEvent{textDelta("done"), {Usage: provider.TokenUsage(15, 3, 18, 0, 0)}, {Done: true}} {
+				for _, event := range []provider.ChatCompletionStreamEvent{textDelta("done"), {Usage: provider.TokenUsage(15, 3, 18, 0, 0)}, {Done: true}} {
 					select {
 					case ch <- event:
 					case <-requestCtx.Done():

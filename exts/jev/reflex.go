@@ -17,9 +17,6 @@ const (
 	maxLibraryBytes = 2 << 20
 )
 
-// Claim describes a semantic judgment; evidence and execution belong to its consumers.
-type Claim = jevapi.Claim
-
 // Program is the executable definition and qualification of a Reflex. Its JSON
 // determines its content identity; provenance and retirement never enter that identity.
 type Program struct {
@@ -35,8 +32,8 @@ type Program struct {
 }
 
 type claimRecord struct {
-	Claim Claim  `json:"claim"`
-	Task  string `json:"task"`
+	Claim jevapi.Claim `json:"claim"`
+	Task  string       `json:"task"`
 }
 
 type Reflex struct {

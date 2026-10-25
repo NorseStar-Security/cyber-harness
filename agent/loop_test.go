@@ -34,7 +34,7 @@ func TestSystemPromptResolvesOnceBeforeRunHooks(t *testing.T) {
 		updated := event.SystemPrompt + "\nhook"
 		return agenthooks.RunStartResult{SystemPrompt: &updated}, nil
 	})
-	llm := &scriptedProvider{responses: []*ChatCompletionResponse{
+	llm := &scriptedProvider{responses: []*provider.ChatCompletionResponse{
 		chatResponse(ChatMessage{Role: "assistant", ToolCalls: []ToolCall{{
 			ID: "call_1", Type: "function", Function: FunctionCall{Name: "echo", Arguments: "{}"},
 		}}}),
@@ -63,7 +63,7 @@ func TestSystemPromptResolvesOnceBeforeRunHooks(t *testing.T) {
 }
 
 func TestSystemPromptResolutionFailureEndsRun(t *testing.T) {
-	llm := &callbackProvider{fn: func(context.Context, *ChatCompletionRequest) (*ChatCompletionResponse, error) {
+	llm := &callbackProvider{fn: func(context.Context, *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 		t.Fatal("provider should not be called")
 		return nil, nil
 	}}
@@ -77,7 +77,7 @@ func TestSystemPromptResolutionFailureEndsRun(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "resolve system prompt: prompt failed") {
 		t.Fatalf("error = %v", err)
 	}
-	if result == nil || result.Stop != StopReasonError || result.Err == nil {
+	if result == nil || result.Stop != agenthooks.StopReasonError || result.Err == nil {
 		t.Fatalf("result = %#v", result)
 	}
 }
@@ -190,8 +190,8 @@ func (invalidUTF8Tool) Description() string { return "returns raw text" }
 func (invalidUTF8Tool) Definition() *aop.ToolDefinition {
 	return coretool.Def("echo", "returns raw text", struct{}{})
 }
-func (invalidUTF8Tool) Execute(context.Context, string) (*coretool.Result, error) {
-	return &coretool.Result{Output: []*aop.Content{{
+func (invalidUTF8Tool) Execute(context.Context, string) (*aop.ToolResult, error) {
+	return &aop.ToolResult{Output: []*aop.Content{{
 		Value: &aop.Content_Text{Text: &aop.TextContent{Text: string([]byte{'o', 'k', ':', 0xe7})}},
 	}}}, nil
 }
@@ -199,7 +199,7 @@ func (invalidUTF8Tool) Execute(context.Context, string) (*coretool.Result, error
 func TestRunEmitsTurnEndAfterToolResults(t *testing.T) {
 	tools := newTestTools(t, &recordingTool{name: "echo", output: "tool output"})
 	llm := &scriptedProvider{
-		responses: []*ChatCompletionResponse{
+		responses: []*provider.ChatCompletionResponse{
 			chatResponse(ChatMessage{
 				Role: "assistant",
 				ToolCalls: []ToolCall{{
@@ -250,7 +250,7 @@ func TestRunEmitsTurnEndAfterToolResults(t *testing.T) {
 func TestTransformContextAppliesOnlyToProviderRequest(t *testing.T) {
 	tools := newTestTools(t)
 	llm := &scriptedProvider{
-		responses: []*ChatCompletionResponse{
+		responses: []*provider.ChatCompletionResponse{
 			chatResponse(NewTextMessage("assistant", "one")),
 			chatResponse(NewTextMessage("assistant", "two")),
 		},
@@ -284,7 +284,7 @@ func TestTransformContextAppliesOnlyToProviderRequest(t *testing.T) {
 func TestMaxTurnsStopsBeforeNextModelCall(t *testing.T) {
 	tools := newTestTools(t, &recordingTool{name: "echo", output: "tool output"})
 	llm := &scriptedProvider{
-		responses: []*ChatCompletionResponse{
+		responses: []*provider.ChatCompletionResponse{
 			chatResponse(ChatMessage{
 				Role: "assistant",
 				ToolCalls: []ToolCall{{
@@ -320,7 +320,7 @@ func TestMaxTurnsStopsBeforeNextModelCall(t *testing.T) {
 func TestStreamingProviderEmitsMessageUpdates(t *testing.T) {
 	tools := newTestTools(t)
 	llm := &scriptedProvider{
-		streamEvents: []ChatCompletionStreamEvent{
+		streamEvents: []provider.ChatCompletionStreamEvent{
 			roleDelta("assistant"),
 			textDelta("hel"),
 			textDelta("lo"),
@@ -365,7 +365,7 @@ func TestStreamingProviderEmitsMessageUpdates(t *testing.T) {
 func TestStreamingMessageUpdateCarriesUsage(t *testing.T) {
 	tools := newTestTools(t)
 	llm := &scriptedProvider{
-		streamEvents: []ChatCompletionStreamEvent{
+		streamEvents: []provider.ChatCompletionStreamEvent{
 			roleDelta("assistant"),
 			textDelta("done"),
 			{Done: true, Usage: provider.TokenUsage(10, 2, 12, 0, 0)},
@@ -402,7 +402,7 @@ func TestStreamingMessageUpdateCarriesUsage(t *testing.T) {
 func TestStatefulAgentTracksStreamingMessage(t *testing.T) {
 	tools := newTestTools(t)
 	llm := &scriptedProvider{
-		streamEvents: []ChatCompletionStreamEvent{
+		streamEvents: []provider.ChatCompletionStreamEvent{
 			roleDelta("assistant"),
 			textDelta("hel"),
 			textDelta("lo"),
@@ -438,7 +438,7 @@ func TestStreamingToolCallDeltasAreAggregated(t *testing.T) {
 	echo := &recordingTool{name: "echo", output: "ok"}
 	tools := newTestTools(t, echo)
 	llm := &scriptedProvider{
-		streamEventBatches: [][]ChatCompletionStreamEvent{
+		streamEventBatches: [][]provider.ChatCompletionStreamEvent{
 			{
 				roleDelta("assistant"),
 				toolCallDelta(0, "call-1", "echo", `{"value":`),
@@ -483,8 +483,8 @@ func TestOutputLimitToolCallIsRejectedAndRetried(t *testing.T) {
 		afterCalled = true
 		return struct{}{}, nil
 	})
-	llm := &scriptedProvider{responses: []*ChatCompletionResponse{
-		{Choices: []Choice{{
+	llm := &scriptedProvider{responses: []*provider.ChatCompletionResponse{
+		{Choices: []provider.Choice{{
 			Message: ChatMessage{
 				Role: "assistant",
 				ToolCalls: []ToolCall{{
@@ -545,7 +545,7 @@ func TestOutputLimitToolCallIsRejectedAndRetried(t *testing.T) {
 
 func TestStreamedEmptyReasoningSurvivesToolContinuation(t *testing.T) {
 	echo := &recordingTool{name: "echo", output: "observed"}
-	llm := &scriptedProvider{streamEventBatches: [][]ChatCompletionStreamEvent{
+	llm := &scriptedProvider{streamEventBatches: [][]provider.ChatCompletionStreamEvent{
 		{roleDelta("assistant"), {MessageDelta: &aop.MessageDelta{Value: &aop.MessageDelta_Reasoning{Reasoning: ""}}}, toolCallDelta(0, "c1", "echo", `{}`), {FinishReason: "tool_calls"}, {Done: true}},
 		{roleDelta("assistant"), textDelta("done"), {FinishReason: "stop"}, {Done: true}},
 	}}
@@ -567,7 +567,7 @@ func TestStreamedEmptyReasoningSurvivesToolContinuation(t *testing.T) {
 func TestStreamingOutputLimitToolCallPreservesFinishReason(t *testing.T) {
 	echo := &recordingTool{name: "echo", output: "must not run"}
 	tools := newTestTools(t, echo)
-	llm := &scriptedProvider{streamEventBatches: [][]ChatCompletionStreamEvent{
+	llm := &scriptedProvider{streamEventBatches: [][]provider.ChatCompletionStreamEvent{
 		{
 			roleDelta("assistant"),
 			toolCallDelta(0, "stream-truncated", "echo", `{"value":"partial`),
@@ -618,7 +618,7 @@ func TestStreamingOutputLimitToolCallPreservesFinishReason(t *testing.T) {
 func TestStreamingMalformedToolCallIsRejectedAfterNormalTerminalMarker(t *testing.T) {
 	echo := &recordingTool{name: "echo", output: "must not run"}
 	tools := newTestTools(t, echo)
-	llm := &scriptedProvider{streamEventBatches: [][]ChatCompletionStreamEvent{
+	llm := &scriptedProvider{streamEventBatches: [][]provider.ChatCompletionStreamEvent{
 		{
 			roleDelta("assistant"),
 			toolCallDelta(0, "stream-malformed", "echo", `{"value":"partial`),
@@ -676,7 +676,7 @@ func TestStreamingMalformedToolCallIsRejectedAfterNormalTerminalMarker(t *testin
 func TestToolHookRewritesFullResultAndTerminates(t *testing.T) {
 	echo := &recordingTool{name: "echo", output: "raw"}
 	llm := &scriptedProvider{
-		responses: []*ChatCompletionResponse{
+		responses: []*provider.ChatCompletionResponse{
 			chatResponse(ChatMessage{
 				Role: "assistant",
 				ToolCalls: []ToolCall{{
@@ -723,7 +723,7 @@ func TestFinishToolTerminatesLoop(t *testing.T) {
 	tools := newTestTools(t, NewFinishTool())
 
 	llm := &scriptedProvider{
-		responses: []*ChatCompletionResponse{
+		responses: []*provider.ChatCompletionResponse{
 			chatResponse(ChatMessage{
 				Role: "assistant",
 				ToolCalls: []ToolCall{{
@@ -743,17 +743,17 @@ func TestFinishToolTerminatesLoop(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
-	if result.Stop != StopReasonTerminated {
-		t.Fatalf("stop = %q, want %q", result.Stop, StopReasonTerminated)
+	if result.Stop != agenthooks.StopReasonTerminated {
+		t.Fatalf("stop = %q, want %q", result.Stop, agenthooks.StopReasonTerminated)
 	}
 }
 
 func TestTokenBudgetWarning(t *testing.T) {
 	tools := newTestTools(t)
 	llm := &callbackProvider{
-		fn: func(_ context.Context, req *ChatCompletionRequest) (*ChatCompletionResponse, error) {
-			return &ChatCompletionResponse{
-				Choices: []Choice{{Message: NewTextMessage("assistant", "done").toAOP()}},
+		fn: func(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
+			return &provider.ChatCompletionResponse{
+				Choices: []provider.Choice{{Message: NewTextMessage("assistant", "done").toAOP()}},
 				Usage:   provider.TokenUsage(700, 200, 900, 0, 0),
 			}, nil
 		},
@@ -786,11 +786,11 @@ func TestTokenBudgetWarning(t *testing.T) {
 func TestTokenBudgetExceeded(t *testing.T) {
 	turn := 0
 	llm := &callbackProvider{
-		fn: func(_ context.Context, req *ChatCompletionRequest) (*ChatCompletionResponse, error) {
+		fn: func(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 			turn++
 			if turn == 1 {
-				return &ChatCompletionResponse{
-					Choices: []Choice{{Message: ChatMessage{
+				return &provider.ChatCompletionResponse{
+					Choices: []provider.Choice{{Message: ChatMessage{
 						Role: "assistant",
 						ToolCalls: []ToolCall{{
 							ID:       "call-1",
@@ -801,8 +801,8 @@ func TestTokenBudgetExceeded(t *testing.T) {
 					Usage: provider.TokenUsage(0, 0, 600, 0, 0),
 				}, nil
 			}
-			return &ChatCompletionResponse{
-				Choices: []Choice{{Message: NewTextMessage("assistant", "done").toAOP()}},
+			return &provider.ChatCompletionResponse{
+				Choices: []provider.Choice{{Message: NewTextMessage("assistant", "done").toAOP()}},
 				Usage:   provider.TokenUsage(0, 0, 500, 0, 0),
 			}, nil
 		},
@@ -829,8 +829,8 @@ func TestTokenBudgetExceeded(t *testing.T) {
 func TestBudgetExhaustionDoesNotKeepUnpairedToolCall(t *testing.T) {
 	echo := &recordingTool{name: "echo", output: "must not run"}
 	tools := newTestTools(t, echo)
-	llm := &scriptedProvider{responses: []*ChatCompletionResponse{{
-		Choices: []Choice{{Message: ChatMessage{
+	llm := &scriptedProvider{responses: []*provider.ChatCompletionResponse{{
+		Choices: []provider.Choice{{Message: ChatMessage{
 			Role: "assistant",
 			ToolCalls: []ToolCall{{ID: "cut-off", Type: "function", Function: FunctionCall{
 				Name: "echo", Arguments: `{"value":"partial`},
@@ -842,7 +842,7 @@ func TestBudgetExhaustionDoesNotKeepUnpairedToolCall(t *testing.T) {
 	result, err := NewAgent(Config{Loop: StandardLoop{},
 		Provider: llm, Tools: tools, Model: "test", TokenBudget: 1000,
 	}).Run(context.Background(), TextInput("use a tool"))
-	if err == nil || result == nil || result.Stop != StopReasonBudget {
+	if err == nil || result == nil || result.Stop != agenthooks.StopReasonBudget {
 		t.Fatalf("Run() result=%#v error=%v, want budget stop", result, err)
 	}
 	if len(result.Messages) != 1 || len(echo.callsSnapshot()) != 0 {
@@ -866,9 +866,9 @@ func TestTruncateResultIncludesSize(t *testing.T) {
 func TestResultIncludesTotalUsage(t *testing.T) {
 	tools := newTestTools(t)
 	llm := &callbackProvider{
-		fn: func(_ context.Context, req *ChatCompletionRequest) (*ChatCompletionResponse, error) {
-			return &ChatCompletionResponse{
-				Choices: []Choice{{Message: NewTextMessage("assistant", "done").toAOP()}},
+		fn: func(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
+			return &provider.ChatCompletionResponse{
+				Choices: []provider.Choice{{Message: NewTextMessage("assistant", "done").toAOP()}},
 				Usage:   provider.TokenUsage(100, 50, 150, 0, 0),
 			}, nil
 		},
@@ -892,11 +892,11 @@ func TestResultIncludesPerTurnUsageAndContextTokens(t *testing.T) {
 
 	turn := 0
 	llm := &callbackProvider{
-		fn: func(_ context.Context, req *ChatCompletionRequest) (*ChatCompletionResponse, error) {
+		fn: func(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 			turn++
 			if turn == 1 {
-				return &ChatCompletionResponse{
-					Choices: []Choice{{Message: ChatMessage{
+				return &provider.ChatCompletionResponse{
+					Choices: []provider.Choice{{Message: ChatMessage{
 						Role: "assistant",
 						ToolCalls: []ToolCall{{
 							ID: "call-1", Type: "function",
@@ -906,8 +906,8 @@ func TestResultIncludesPerTurnUsageAndContextTokens(t *testing.T) {
 					Usage: provider.TokenUsage(200, 30, 230, 0, 0),
 				}, nil
 			}
-			return &ChatCompletionResponse{
-				Choices: []Choice{{Message: NewTextMessage("assistant", "done").toAOP()}},
+			return &provider.ChatCompletionResponse{
+				Choices: []provider.Choice{{Message: NewTextMessage("assistant", "done").toAOP()}},
 				Usage:   provider.TokenUsage(280, 20, 300, 0, 0),
 			}, nil
 		},
@@ -945,9 +945,9 @@ func TestResultIncludesPerTurnUsageAndContextTokens(t *testing.T) {
 func TestTurnEndEventCarriesUsage(t *testing.T) {
 	tools := newTestTools(t)
 	llm := &callbackProvider{
-		fn: func(_ context.Context, req *ChatCompletionRequest) (*ChatCompletionResponse, error) {
-			return &ChatCompletionResponse{
-				Choices: []Choice{{Message: NewTextMessage("assistant", "done").toAOP()}},
+		fn: func(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
+			return &provider.ChatCompletionResponse{
+				Choices: []provider.Choice{{Message: NewTextMessage("assistant", "done").toAOP()}},
 				Usage:   provider.TokenUsage(500, 40, 540, 0, 0),
 			}, nil
 		},
@@ -979,9 +979,9 @@ func TestTurnEndEventCarriesUsage(t *testing.T) {
 }
 
 func TestSanitizeMessagesFiltersStaleEmptyAssistant(t *testing.T) {
-	var captured []*ChatCompletionRequest
+	var captured []*provider.ChatCompletionRequest
 	llm := &callbackProvider{
-		fn: func(_ context.Context, req *ChatCompletionRequest) (*ChatCompletionResponse, error) {
+		fn: func(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 			captured = append(captured, cloneRequest(req))
 			return chatResponse(NewTextMessage("assistant", "ok")), nil
 		},
@@ -1023,7 +1023,7 @@ func TestSanitizeMessagesFiltersStaleEmptyAssistant(t *testing.T) {
 func TestInboxDrainedBeforeFirstTurnLLMCall(t *testing.T) {
 	tools := newTestTools(t)
 	llm := &scriptedProvider{
-		responses: []*ChatCompletionResponse{
+		responses: []*provider.ChatCompletionResponse{
 			chatResponse(NewTextMessage("assistant", "ack")),
 		},
 	}
@@ -1070,7 +1070,7 @@ func TestInboxDrainedBeforeFirstTurnLLMCall(t *testing.T) {
 func TestInboxClosedDoesNotBlock(t *testing.T) {
 	tools := newTestTools(t)
 	llm := &scriptedProvider{
-		responses: []*ChatCompletionResponse{
+		responses: []*provider.ChatCompletionResponse{
 			chatResponse(NewTextMessage("assistant", "done")),
 		},
 	}
@@ -1093,7 +1093,7 @@ func TestInboxDrainedBetweenTurns(t *testing.T) {
 	tools := newTestTools(t, &recordingTool{name: "echo", output: "tool output"})
 
 	scripted := &scriptedProvider{
-		responses: []*ChatCompletionResponse{
+		responses: []*provider.ChatCompletionResponse{
 			chatResponse(ChatMessage{
 				Role: "assistant",
 				ToolCalls: []ToolCall{{
@@ -1155,7 +1155,7 @@ func TestInboxDrainedBetweenTurns(t *testing.T) {
 func TestRunWaitsWhenKeepAliveIsTrue(t *testing.T) {
 	tools := newTestTools(t)
 	llm := &scriptedProvider{
-		responses: []*ChatCompletionResponse{
+		responses: []*provider.ChatCompletionResponse{
 			chatResponse(NewTextMessage("assistant", "waiting")),
 			chatResponse(NewTextMessage("assistant", "final")),
 		},
@@ -1227,7 +1227,7 @@ func TestSessionCompletionInjectedIntoAgentLoop(t *testing.T) {
 	}
 
 	scripted := &scriptedProvider{
-		responses: []*ChatCompletionResponse{
+		responses: []*provider.ChatCompletionResponse{
 			chatResponse(ChatMessage{
 				Role: "assistant",
 				ToolCalls: []ToolCall{{
@@ -1338,8 +1338,8 @@ func TestTurnUsageCacheAccumulation(t *testing.T) {
 	usage2 := provider.TokenUsage(150, 15, 165, 80, 0)
 
 	llm := &scriptedProvider{
-		responses: []*ChatCompletionResponse{
-			{Choices: []Choice{{
+		responses: []*provider.ChatCompletionResponse{
+			{Choices: []provider.Choice{{
 				Message: ChatMessage{
 					Role: "assistant",
 					ToolCalls: []ToolCall{{
@@ -1348,7 +1348,7 @@ func TestTurnUsageCacheAccumulation(t *testing.T) {
 					}},
 				}.toAOP(),
 			}}, Usage: usage1},
-			{Choices: []Choice{{
+			{Choices: []provider.Choice{{
 				Message: NewTextMessage("assistant", "done").toAOP(),
 			}}, Usage: usage2},
 		},
@@ -1361,7 +1361,7 @@ func TestTurnUsageCacheAccumulation(t *testing.T) {
 		Tools:          tools,
 		Model:          "test",
 		SystemPrompt:   "sys",
-		CacheRetention: CacheShort,
+		CacheRetention: provider.CacheShort,
 		Logger:         telemetry.NopLogger(),
 	})).Run(context.Background(), TextInput("read something"))
 	if err != nil {
@@ -1396,8 +1396,8 @@ func TestEventCarriesCacheUsage(t *testing.T) {
 	usage := provider.TokenUsage(100, 10, 110, 60, 20)
 
 	llm := &scriptedProvider{
-		responses: []*ChatCompletionResponse{
-			{Choices: []Choice{{
+		responses: []*provider.ChatCompletionResponse{
+			{Choices: []provider.Choice{{
 				Message: NewTextMessage("assistant", "hi").toAOP(),
 			}}, Usage: usage},
 		},

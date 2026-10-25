@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	agenthooks "github.com/chainreactors/cyber/agent/hooks"
 	"github.com/chainreactors/cyber/core/operation"
 	types "github.com/chainreactors/cyber/core/types"
 	"google.golang.org/protobuf/proto"
@@ -67,14 +68,14 @@ func RunTask(ctx context.Context, cfg Config, detail *types.DelegationDetail) (r
 		if failure := recover(); failure != nil {
 			err = fmt.Errorf("task %q panicked: %v", detail.AgentName, failure)
 		}
-		stop := StopReasonCompleted
+		stop := agenthooks.StopReasonCompleted
 		if result != nil && result.Stop != "" {
 			stop = result.Stop
 		}
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-			stop = StopReasonCanceled
+			stop = agenthooks.StopReasonCanceled
 		} else if err != nil {
-			stop = StopReasonError
+			stop = agenthooks.StopReasonError
 		}
 		if result == nil {
 			em.turnEnd(stop, nil, 0, err)

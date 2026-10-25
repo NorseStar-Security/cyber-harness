@@ -114,3 +114,64 @@ func repositoryRoot(t *testing.T) string {
 		current = parent
 	}
 }
+
+func TestOptionalCapabilitiesFollowCompositionImports(t *testing.T) {
+	root := repositoryRoot(t)
+	for _, test := range []struct {
+		path         string
+		want, forbid []string
+	}{
+		{"./tools/search", nil, []string{"/tools/scan", "/sdk/", "/fingers/", "/neutron/"}},
+		{"./tools/passive", nil, []string{"/tools/scan", "/tools/katana", "/tools/playwright"}},
+		{"./tools/scan", nil, []string{"/tools/katana", "/tools/headless", "/projectdiscovery/katana"}},
+		{"./examples/browser", []string{"/exts/browser"}, []string{"/exts/scanner", "/tools/passive", "/tools/katana"}},
+		{"./examples/passive", []string{"/exts/passive"}, []string{"/exts/scanner", "/tools/playwright", "/tools/katana"}},
+		{"./examples/crawl", []string{"/exts/katana"}, []string{"/exts/scanner", "/tools/passive", "/tools/playwright"}},
+	} {
+		t.Run(test.path, func(t *testing.T) {
+			cmd := exec.Command("go", "list", "-deps", test.path)
+			cmd.Dir = root
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("%v: %s", err, output)
+			}
+			for _, want := range test.want {
+				if !strings.Contains(string(output), want) {
+					t.Errorf("missing %s", want)
+				}
+			}
+			for _, forbid := range test.forbid {
+				if strings.Contains(string(output), forbid) {
+					t.Errorf("unexpected dependency %s", forbid)
+				}
+			}
+		})
+	}
+	tags := ""
+	want := len(discoveryNames()) > 0
+	if want {
+		tags = "full"
+	}
+	cmd := exec.Command("go", "list", "-deps", "-tags", tags, "./cmd/aiscan")
+	cmd.Dir = root
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("%v: %s", err, output)
+	}
+	for _, capability := range []string{"/exts/browser", "/exts/passive", "/exts/katana"} {
+		if strings.Contains(string(output), "github.com/chainreactors/cyber"+capability+"\n") != want {
+			t.Errorf("capability %s membership does not match composition", capability)
+		}
+	}
+	cmd = exec.Command("go", "list", "-deps", ".")
+	cmd.Dir = filepath.Join(root, "cmd", "audit")
+	output, err = cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("audit dependencies: %v: %s", err, output)
+	}
+	for _, capability := range []string{"/exts/scanner", "/tools/scan", "/tools/passive", "/tools/playwright", "/tools/katana"} {
+		if strings.Contains(string(output), capability) {
+			t.Errorf("audit links %s", capability)
+		}
+	}
+}

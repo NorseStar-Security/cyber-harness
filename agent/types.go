@@ -18,57 +18,6 @@ import (
 	types "github.com/chainreactors/cyber/core/types"
 )
 
-// The agent loop operates on AOP protos directly. Vendored JSON shapes live
-// only inside the provider adapters.
-
-type ToolDefinition = aop.ToolDefinition
-type Provider = provider.Provider
-type StreamingProvider = provider.StreamingProvider
-type ProviderConfig = provider.ProviderConfig
-type ChatCompletionRequest = provider.ChatCompletionRequest
-type ChatCompletionResponse = provider.ChatCompletionResponse
-type ChatCompletionStreamEvent = provider.ChatCompletionStreamEvent
-type ProviderRawFrame = provider.RawFrame
-type Choice = provider.Choice
-type APIError = provider.APIError
-type CacheRetention = provider.CacheRetention
-
-const (
-	CacheNone  = provider.CacheNone
-	CacheShort = provider.CacheShort
-	CacheLong  = provider.CacheLong
-)
-
-var (
-	TextMessage = provider.TextMessage
-
-	NewProvider              = provider.NewProvider
-	NewProviderFromResolved  = provider.NewProviderFromResolved
-	ResolveProvider          = provider.Resolve
-	InferProviderFromBaseURL = provider.InferFromBaseURL
-	NormalizeProvider        = provider.NormalizeProvider
-	IsSupportedProvider      = provider.IsSupportedProvider
-
-	ErrCallTimeout      = provider.ErrCallTimeout
-	ErrStreamStalled    = provider.ErrStreamStalled
-	ErrStreamIncomplete = provider.ErrStreamIncomplete
-)
-
-// Agent-specific types.
-
-// StopReason is owned by agent/hooks so lifecycle events can carry it without
-// introducing an import cycle back to the root agent package.
-type StopReason = hooks.StopReason
-
-const (
-	StopReasonCompleted  = hooks.StopReasonCompleted
-	StopReasonTerminated = hooks.StopReasonTerminated
-	StopReasonStopped    = hooks.StopReasonStopped
-	StopReasonBudget     = hooks.StopReasonBudget
-	StopReasonError      = hooks.StopReasonError
-	StopReasonCanceled   = hooks.StopReasonCanceled
-)
-
 type TransformContextFunc func([]*aop.Message) []*aop.Message
 
 // Loop is the replaceable reasoning algorithm used by an Agent. Config is the
@@ -100,7 +49,7 @@ type CompactionSettings struct {
 
 type Config struct {
 	Loop             Loop
-	Provider         Provider
+	Provider         provider.Provider
 	Tools            coretool.Executor
 	Model            string
 	SystemPrompt     string
@@ -128,7 +77,7 @@ type Config struct {
 	Expander         *inbox.Expander
 	MaxResultSize    int
 	MaxParallelTools int
-	CacheRetention   CacheRetention
+	CacheRetention   provider.CacheRetention
 	SessionID        string
 	TurnID           string
 	ParentSessionID  string
@@ -148,10 +97,10 @@ type Config struct {
 
 // Builder methods — each returns a modified copy (Config is a value type).
 
-func (c Config) WithProvider(p Provider) Config       { c.Provider = p; return c }
-func (c Config) WithLoop(loop Loop) Config            { c.Loop = loop; return c }
-func (c Config) WithTools(t coretool.Executor) Config { c.Tools = t; return c }
-func (c Config) WithModel(m string) Config            { c.Model = m; return c }
+func (c Config) WithProvider(p provider.Provider) Config { c.Provider = p; return c }
+func (c Config) WithLoop(loop Loop) Config               { c.Loop = loop; return c }
+func (c Config) WithTools(t coretool.Executor) Config    { c.Tools = t; return c }
+func (c Config) WithModel(m string) Config               { c.Model = m; return c }
 func (c Config) WithSystemPrompt(s string) Config {
 	c.SystemPrompt, c.SystemPromptFn = s, nil
 	return c
@@ -175,11 +124,11 @@ func (c Config) WithTransformContext(fn TransformContextFunc) Config {
 	c.TransformContext = fn
 	return c
 }
-func (c Config) WithCacheRetention(r CacheRetention) Config { c.CacheRetention = r; return c }
-func (c Config) WithSessionID(id string) Config             { c.SessionID = id; return c }
-func (c Config) WithTurnID(id string) Config                { c.TurnID = id; return c }
-func (c Config) WithAgentName(name string) Config           { c.AgentName = name; return c }
-func (c Config) WithHooks(r *corehooks.Registry) Config     { c.Hooks = r; return c }
+func (c Config) WithCacheRetention(r provider.CacheRetention) Config { c.CacheRetention = r; return c }
+func (c Config) WithSessionID(id string) Config                      { c.SessionID = id; return c }
+func (c Config) WithTurnID(id string) Config                         { c.TurnID = id; return c }
+func (c Config) WithAgentName(name string) Config                    { c.AgentName = name; return c }
+func (c Config) WithHooks(r *corehooks.Registry) Config              { c.Hooks = r; return c }
 func (c Config) WithLoopScheduler(s *LoopScheduler) Config {
 	c.LoopScheduler = s
 	return c
@@ -255,7 +204,7 @@ type Result struct {
 	// TurnUsages holds per-turn usage; the turn number is the slice index + 1.
 	TurnUsages     []*aop.TokenUsage
 	ContextTokens  int
-	Stop           StopReason
+	Stop           hooks.StopReason
 	Err            error
 	MessageCounter int64
 }

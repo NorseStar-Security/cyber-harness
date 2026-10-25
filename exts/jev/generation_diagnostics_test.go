@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/chainreactors/cyber/agent/provider"
+	jev "github.com/chainreactors/cyber/agent/provider/jev"
 	aop "github.com/chainreactors/cyber/aop"
 )
 
@@ -26,7 +27,7 @@ func TestClaimGenerationPreservesTheDeclaredArtifact(t *testing.T) {
 		}
 		return reply(provider.TextMessage("assistant", source)), nil
 	})
-	var artifact []Claim
+	var artifact []jev.Claim
 	ctx := traceContext(t.Context(), declaration{session: "s", turn: "t", task: "task"}.trace())
 	if err := e.generateClaims(ctx, cfg, map[string]string{}, &artifact); err != nil {
 		t.Fatal(err)
@@ -43,7 +44,7 @@ func TestClaimGenerationRequiresOneCompleteArtifact(t *testing.T) {
 			cfg.Provider = testProvider(func(context.Context, *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 				return reply(provider.TextMessage("assistant", invalid)), nil
 			})
-			var claims []Claim
+			var claims []jev.Claim
 			if err := e.generateClaims(t.Context(), cfg, nil, &claims); err == nil || claims != nil {
 				t.Fatalf("accepted invalid artifact %s: %v", invalid, err)
 			}
@@ -77,7 +78,7 @@ func TestGenerationFailureRetainsEvidenceWithoutPublishingPartialArtifact(t *tes
 				}
 			})
 			defer sub.Close(t.Context())
-			var artifact []Claim
+			var artifact []jev.Claim
 			err := e.generateClaims(traceContext(t.Context(), declaration{session: "session", turn: "turn", task: "task"}.trace()), cfg, map[string]string{"evidence": "recorded task"}, &artifact)
 			if err == nil || !strings.Contains(err.Error(), tc.diagnostic) || artifact != nil {
 				t.Fatalf("artifact=%v error=%v", artifact, err)

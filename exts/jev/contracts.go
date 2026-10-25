@@ -58,7 +58,7 @@ func reflexContracts(capabilities map[string]any, witnesses []map[string]any) ma
 				}
 			}
 		}
-		for _, candidate := range witness["candidates"].(map[string]binding) {
+		for _, candidate := range witness["candidates"].(map[string]NativeCall) {
 			selected["tool:"+candidate.Name] = catalog["tool:"+candidate.Name]
 			var arguments any
 			_ = json.Unmarshal(candidate.Arguments, &arguments)

@@ -5,12 +5,13 @@ import (
 	"errors"
 	"testing"
 
+	provider "github.com/chainreactors/cyber/agent/provider"
 	aop "github.com/chainreactors/cyber/aop"
 )
 
 func TestRetryRetainsBilledUsageAndLastContextSize(t *testing.T) {
 	calls := 0
-	p := &callbackProvider{fn: func(context.Context, *ChatCompletionRequest) (*ChatCompletionResponse, error) {
+	p := &callbackProvider{fn: func(context.Context, *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 		calls++
 		r := chatResponse(NewTextMessage("assistant", "done"))
 		r.Usage = &aop.TokenUsage{InputTokens: 100, OutputTokens: 20, TotalTokens: 120, Detail: map[string]uint64{"reasoning": 10, "cache_read": 60}}

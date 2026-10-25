@@ -62,3 +62,8 @@ func ValidateVerify(value string) error {
 
 // WithExecutionOnly rejects modes requiring inference rather than silently ignoring them.
 func WithExecutionOnly() Option { return func(c *Command) { c.executionOnly = true } }
+
+// Crawler reports discovered URLs; scan owns scope filtering and pipeline events.
+type Crawler func(ctx context.Context, seedURL, hostHeader string, depth int, javaScript bool, proxy string, emit func(string)) error
+
+func WithCrawler(crawler Crawler) Option { return func(c *Command) { c.crawler = crawler } }

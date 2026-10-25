@@ -71,7 +71,9 @@ func buildSetting(t *testing.T, key string) string {
 //
 // Two spellings are legitimate: the manifest's full tag set, and the
 // capability-only set the CI suites use, which omits the base policy tags.
-func assertManifestTags(t *testing.T, manifest string) {
+// Explicit extra tags describe a custom composition without changing the
+// official edition manifest or accepting arbitrary tags.
+func assertManifestTags(t *testing.T, manifest string, extraTags ...string) {
 	t.Helper()
 	values := readBuildManifest(t)
 	got := sortedTags(strings.ReplaceAll(buildSetting(t, "-tags"), ",", " "))
@@ -79,7 +81,7 @@ func assertManifestTags(t *testing.T, manifest string) {
 	var declared []string
 	for _, suffix := range []string{"_TAGS", "_CAPS_TAGS"} {
 		key := manifest + suffix
-		want := sortedTags(manifestValue(t, values, key))
+		want := sortedTags(manifestValue(t, values, key) + " " + strings.Join(extraTags, " "))
 		if slices.Equal(got, want) {
 			return
 		}

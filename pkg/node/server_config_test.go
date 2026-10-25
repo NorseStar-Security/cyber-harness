@@ -125,7 +125,7 @@ func testRemoteNodeUsesServerLLM(t *testing.T, localOverrides bool) {
 	directory := t.TempDir()
 	builds := 0
 	build := func(request profile.Request) (profile.Profile, error) {
-		if builds == 0 && request.ProviderMode != profile.ProviderDisabled {
+		if builds == 0 && request.ProviderMode != provider.StartupDisabled {
 			return nil, fmt.Errorf("node initialized a model before receiving server configuration")
 		}
 		builds++

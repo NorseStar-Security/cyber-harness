@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/chainreactors/cyber/agent"
 	"github.com/chainreactors/cyber/agent/provider"
 	aop "github.com/chainreactors/cyber/aop"
 	types "github.com/chainreactors/cyber/core/types"
@@ -291,7 +290,7 @@ func lastUserText(messages []*aop.Message) string {
 	return ""
 }
 
-func newStdioTestSession(t *testing.T, h *stdioHost, output *bytes.Buffer, id string, prov agent.Provider) {
+func newStdioTestSession(t *testing.T, h *stdioHost, output *bytes.Buffer, id string, prov provider.Provider) {
 	t.Helper()
 	if h.rt == nil || h.rt.ctx == nil {
 		initRuntimeStdioHost(t, h, prov)
@@ -299,14 +298,14 @@ func newStdioTestSession(t *testing.T, h *stdioHost, output *bytes.Buffer, id st
 	h.accept(openSessionLine(t, id))
 }
 
-func newRuntimeStdioHost(t *testing.T, output *bytes.Buffer, prov agent.Provider) *stdioHost {
+func newRuntimeStdioHost(t *testing.T, output *bytes.Buffer, prov provider.Provider) *stdioHost {
 	t.Helper()
 	h := newStdioHost(context.Background(), output)
 	initRuntimeStdioHost(t, h, prov)
 	return h
 }
 
-func initRuntimeStdioHost(t *testing.T, h *stdioHost, prov agent.Provider) {
+func initRuntimeStdioHost(t *testing.T, h *stdioHost, prov provider.Provider) {
 	t.Helper()
 	h.rt = newBareRuntime(t, nil, prov)
 	mux := aop.NewNamespaceMux(h.ctx)
@@ -315,7 +314,7 @@ func initRuntimeStdioHost(t *testing.T, h *stdioHost, prov agent.Provider) {
 	}
 	h.host = host.New(mux)
 	t.Cleanup(h.host.Close)
-	h.rt.providers.Set(prov, agent.ProviderConfig{Model: "test"})
+	h.rt.providers.Set(prov, provider.ProviderConfig{Model: "test"})
 	h.rt.agentConfig.MaxTurns = 4
 	unsubscribe := h.rt.Observe(func(event *aop.Event) {
 		_ = h.emit(aop.MustWrap(aop.EnvelopeID(), "", &aop.ProtocolMessage{Message: &aop.ProtocolMessage_Event{Event: event}}))

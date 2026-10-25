@@ -8,6 +8,7 @@ import (
 	"testing/synctest"
 	"time"
 
+	aop "github.com/chainreactors/cyber/aop"
 	"github.com/chainreactors/cyber/core/extension"
 	"github.com/chainreactors/cyber/core/hooks"
 	"github.com/chainreactors/cyber/core/operation"
@@ -16,17 +17,17 @@ import (
 )
 
 type registryTool struct {
-	def *coretool.Definition
-	run func(context.Context, string) (*coretool.Result, error)
+	def *aop.ToolDefinition
+	run func(context.Context, string) (*aop.ToolResult, error)
 }
 
 func echoTool(name string) *registryTool {
 	return &registryTool{def: coretool.Def(name, "echo", struct{}{})}
 }
-func (t *registryTool) Name() string                     { return t.def.Name }
-func (t *registryTool) Description() string              { return t.def.Description }
-func (t *registryTool) Definition() *coretool.Definition { return t.def }
-func (t *registryTool) Execute(ctx context.Context, args string) (*coretool.Result, error) {
+func (t *registryTool) Name() string                    { return t.def.Name }
+func (t *registryTool) Description() string             { return t.def.Description }
+func (t *registryTool) Definition() *aop.ToolDefinition { return t.def }
+func (t *registryTool) Execute(ctx context.Context, args string) (*aop.ToolResult, error) {
 	if t.run != nil {
 		return t.run(ctx, args)
 	}
@@ -106,7 +107,7 @@ func TestRegistryUsesSharedHookBoundary(t *testing.T) {
 	registry := coretool.NewToolRegistry()
 	runs, decisions, completions := 0, 0, 0
 	value := echoTool("echo")
-	value.run = func(_ context.Context, args string) (*coretool.Result, error) {
+	value.run = func(_ context.Context, args string) (*aop.ToolResult, error) {
 		runs++
 		return coretool.TextResult(args), nil
 	}
@@ -210,7 +211,7 @@ func TestRegistryDrainProtectsContributorResources(t *testing.T) {
 		started, canceled, release := make(chan struct{}), make(chan struct{}), make(chan struct{})
 		closed := false
 		value := echoTool("blocked")
-		value.run = func(ctx context.Context, _ string) (*coretool.Result, error) {
+		value.run = func(ctx context.Context, _ string) (*aop.ToolResult, error) {
 			close(started)
 			<-ctx.Done()
 			close(canceled)
@@ -257,7 +258,7 @@ func TestRegistryDrainProtectsContributorResources(t *testing.T) {
 
 func TestRegistryPanicReleasesAdmission(t *testing.T) {
 	value := echoTool("panic")
-	value.run = func(context.Context, string) (*coretool.Result, error) { panic("private data") }
+	value.run = func(context.Context, string) (*aop.ToolResult, error) { panic("private data") }
 	registry, set := registrySet(t, &contributor{values: []coretool.Tool{value}})
 	if err := set.Load(t.Context()); err != nil {
 		t.Fatal(err)

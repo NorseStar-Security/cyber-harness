@@ -1,16 +1,17 @@
-package search
+package cyberhub
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"strings"
+	"testing"
+
 	coretool "github.com/chainreactors/cyber/core/tool"
 	"github.com/chainreactors/fingers/common"
 	fingerslib "github.com/chainreactors/fingers/fingers"
 	"github.com/chainreactors/neutron/templates"
 	"github.com/chainreactors/sdk/pkg/association"
-	"strings"
-	"testing"
 )
 
 func runCyberhub(t *testing.T, cmd *CyberhubSearch, args ...string) string {

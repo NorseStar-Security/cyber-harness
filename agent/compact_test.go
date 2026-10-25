@@ -151,7 +151,7 @@ func TestFindCutPoint(t *testing.T) {
 
 func TestCompactHistorySummarizesOversizedTurnPrefix(t *testing.T) {
 	long := strings.Repeat("x", 100000)
-	llm := &scriptedProvider{responses: []*ChatCompletionResponse{
+	llm := &scriptedProvider{responses: []*provider.ChatCompletionResponse{
 		chatResponse(NewTextMessage("assistant", "prefix checkpoint")),
 	}}
 	toolCall := ChatMessage{Role: "assistant", ToolCalls: []ToolCall{{
@@ -235,7 +235,7 @@ func TestEffectiveCompactionLimitsFitSmallContext(t *testing.T) {
 
 func TestRunAutomaticallyCompactsBeforeThresholdRequest(t *testing.T) {
 	long := strings.Repeat("x", 9000)
-	llm := &scriptedProvider{responses: []*ChatCompletionResponse{
+	llm := &scriptedProvider{responses: []*provider.ChatCompletionResponse{
 		chatResponse(NewTextMessage("assistant", "history checkpoint")),
 		chatResponse(NewTextMessage("assistant", "turn-prefix checkpoint")),
 		chatResponse(NewTextMessage("assistant", "final answer")),
@@ -288,7 +288,7 @@ func TestRunAutomaticallyCompactsBeforeThresholdRequest(t *testing.T) {
 func TestRunRecoversFromContextOverflowOnce(t *testing.T) {
 	long := strings.Repeat("x", 240)
 	calls := 0
-	llm := &callbackProvider{fn: func(_ context.Context, _ *ChatCompletionRequest) (*ChatCompletionResponse, error) {
+	llm := &callbackProvider{fn: func(_ context.Context, _ *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 		calls++
 		switch calls {
 		case 1:
@@ -328,8 +328,8 @@ func TestRunRecoversFromContextOverflowOnce(t *testing.T) {
 
 func TestCompactHistoryRejectsTruncatedSummary(t *testing.T) {
 	long := strings.Repeat("x", 240)
-	llm := &scriptedProvider{responses: []*ChatCompletionResponse{{
-		Choices: []Choice{{
+	llm := &scriptedProvider{responses: []*provider.ChatCompletionResponse{{
+		Choices: []provider.Choice{{
 			Message:      NewTextMessage("assistant", "incomplete checkpoint").toAOP(),
 			FinishReason: "max_tokens",
 		}},

@@ -12,7 +12,7 @@ import (
 	"github.com/chainreactors/cyber/pkg/testutil/hosttest"
 
 	"github.com/chainreactors/cyber/agent"
-	"github.com/chainreactors/cyber/agent/provider"
+	providerapi "github.com/chainreactors/cyber/agent/provider"
 	agentsession "github.com/chainreactors/cyber/agent/session"
 	aop "github.com/chainreactors/cyber/aop"
 	coreevents "github.com/chainreactors/cyber/core/events"
@@ -43,19 +43,19 @@ func TestListSavedSessionsOnlyReadsJSONL(t *testing.T) {
 type consoleProvider struct{ usage *aop.TokenUsage }
 
 func (*consoleProvider) Name() string { return "console-test" }
-func (p *consoleProvider) ChatCompletion(context.Context, *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
-	return &provider.ChatCompletionResponse{
-		Choices: []provider.Choice{{Message: provider.TextMessage("assistant", "done")}}, Usage: p.usage,
+func (p *consoleProvider) ChatCompletion(context.Context, *providerapi.ChatCompletionRequest) (*providerapi.ChatCompletionResponse, error) {
+	return &providerapi.ChatCompletionResponse{
+		Choices: []providerapi.Choice{{Message: providerapi.TextMessage("assistant", "done")}}, Usage: p.usage,
 	}, nil
 }
 
-func newConsoleRuntime(t *testing.T, provider agent.Provider, configs ...agent.ProviderConfig) (*agentsession.Runtime, *apptest.Fixture) {
+func newConsoleRuntime(t *testing.T, provider providerapi.Provider, configs ...providerapi.ProviderConfig) (*agentsession.Runtime, *apptest.Fixture) {
 	t.Helper()
 	a := apptest.NewFixture(t, telemetry.NopLogger(), nil)
 	// The runtime reads provider state while loading, so the provider is set
 	// first. One graph: the session extension borrows the same capabilities a
 	// profile publishes, so the test publishes them once and mounts it alongside.
-	config := agent.ProviderConfig{Model: "test"}
+	config := providerapi.ProviderConfig{Model: "test"}
 	if len(configs) > 0 {
 		config = configs[0]
 	}
@@ -96,7 +96,7 @@ func writeSessionEvents(t *testing.T, path string, events []*aop.Event) {
 }
 
 func TestConsoleRuntimeAdapterPreservesTotalContextTokens(t *testing.T) {
-	provider := &consoleProvider{usage: provider.TokenUsage(8192, 0, 8200, 0, 0)}
+	provider := &consoleProvider{usage: providerapi.TokenUsage(8192, 0, 8200, 0, 0)}
 	rt, _ := newConsoleRuntime(t, provider)
 	session, err := rt.OpenSession(context.Background(), agentsession.SessionOptions{ID: "session-1"})
 	if err != nil {

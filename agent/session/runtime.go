@@ -171,7 +171,7 @@ func (rt *Runtime) start(ctx, lifetime context.Context) error {
 		rt.primarySessionID = "task"
 	}
 	rt.heartbeat = rc.Heartbeat
-	provider, providerConfig := rt.providers.Current()
+	modelProvider, providerConfig := rt.providers.Current()
 	var resumeCounter int64
 	if rc.Resume != "" {
 		if rt.history == nil {
@@ -209,13 +209,13 @@ func (rt *Runtime) start(ctx, lifetime context.Context) error {
 
 	rt.agentConfig = agent.Config{
 		Loop:                  rc.Loop,
-		Provider:              provider,
+		Provider:              modelProvider,
 		Tools:                 rt.tools,
 		Model:                 providerConfig.Model,
 		MaxTokens:             providerConfig.MaxTokens,
 		ContextWindow:         providerConfig.ContextWindow,
 		Logger:                logger,
-		CacheRetention:        agent.CacheShort,
+		CacheRetention:        provider.CacheShort,
 		Bus:                   rt.events,
 		Hooks:                 rt.hooks,
 		CaptureProviderFrames: rc.CaptureProviderFrames,
@@ -367,9 +367,9 @@ func (rt *Runtime) Active() bool {
 }
 
 // ProviderState is the model this runtime reasons with, and its configuration.
-func (rt *Runtime) ProviderState() (agent.Provider, agent.ProviderConfig) {
+func (rt *Runtime) ProviderState() (provider.Provider, provider.ProviderConfig) {
 	if rt == nil || rt.providers == nil {
-		return nil, agent.ProviderConfig{}
+		return nil, provider.ProviderConfig{}
 	}
 	return rt.providers.Current()
 }

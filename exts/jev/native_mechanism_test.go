@@ -21,15 +21,15 @@ import (
 )
 
 func TestReflexReplayLiteralShellEncoding(t *testing.T) {
-	call := func(command any, timeout int) binding {
-		return binding{Name: "bash", Arguments: json.RawMessage(jsonText(map[string]any{"command": command, "timeout": timeout}))}
+	call := func(command any, timeout int) NativeCall {
+		return NativeCall{Name: "bash", Arguments: json.RawMessage(jsonText(map[string]any{"command": command, "timeout": timeout}))}
 	}
 	recorded := call(`experiment append "actor with spaces"`, 30)
 	generated := call(map[string]any{"name": "experiment", "argv": []string{"append", "actor with spaces"}}, 30)
 	if recorded.replayKey() != generated.replayKey() {
 		t.Fatal("equivalent literal argv did not replay")
 	}
-	for _, other := range []binding{
+	for _, other := range []NativeCall{
 		call(`experiment append "another actor"`, 30),
 		call(`experiment append "actor with spaces"`, 31),
 		call(`experiment append "actor with spaces" && experiment summary "actor with spaces"`, 30),
@@ -103,10 +103,10 @@ func TestReflexCompilerFailureKeepsDiagnosticsWithoutPersistingDraft(t *testing.
 		}
 		return reply(&aop.Message{Role: "assistant", Content: []*aop.Content{{Value: &aop.Content_ToolCall{ToolCall: &aop.ToolCall{Id: "draft", Name: "validate_reflex", Arguments: &aop.EncodedValue{Data: []byte(jsonText(map[string]any{"artifact": json.RawMessage(artifact)})), MediaType: aop.JSONMediaType}}}}}}), nil
 	})}
-	claim := Claim{Type: jevapi.ClaimNoul, Context: "Add entries for current actor."}
+	claim := jevapi.Claim{Type: jevapi.ClaimNoul, Context: "Add entries for current actor."}
 	id := "c" + digest(claim)[:16]
 	e.library.Claims[id] = claimRecord{Claim: claim}
-	plan := &compilation{job: declaration{cfg: cfg}, claims: map[string]Claim{id: claim}, ids: []string{id}, capabilities: observationCapabilities("bash"), state: json.RawMessage(`{"messages":[{"role":"user","text":"Add entries for current actor"}]}`), input: map[string]any{}}
+	plan := &compilation{job: declaration{cfg: cfg}, claims: map[string]jevapi.Claim{id: claim}, ids: []string{id}, capabilities: observationCapabilities("bash"), state: json.RawMessage(`{"messages":[{"role":"user","text":"Add entries for current actor"}]}`), input: map[string]any{}}
 	if _, err := e.generateReflex(t.Context(), plan); err == nil {
 		t.Fatal("compiler failure disappeared")
 	}

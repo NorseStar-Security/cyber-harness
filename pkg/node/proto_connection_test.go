@@ -61,7 +61,7 @@ func (singleDeliveryProbeTool) Definition() *aop.ToolDefinition {
 	return coretool.Def("single_delivery_probe", "test tool", struct{}{})
 }
 
-func (singleDeliveryProbeTool) Execute(context.Context, string) (*coretool.Result, error) {
+func (singleDeliveryProbeTool) Execute(context.Context, string) (*aop.ToolResult, error) {
 	return coretool.TextResult("probe result"), nil
 }
 

@@ -18,7 +18,6 @@ type StepDefinition struct {
 	Count         int    `json:"count,omitempty"`
 	CountArgument string `json:"count_argument,omitempty"`
 }
-type Access = coretool.NativeAccess
 
 const (
 	ReadAccess        = coretool.NativeRead

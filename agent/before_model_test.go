@@ -22,7 +22,7 @@ func TestBeforeModelAppendOnlyAndOnceAcrossRetry(t *testing.T) {
 	})
 	var first []*aop.Message
 	requests := 0
-	llm := &callbackProvider{fn: func(_ context.Context, req *ChatCompletionRequest) (*ChatCompletionResponse, error) {
+	llm := &callbackProvider{fn: func(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 		requests++
 		if len(req.Messages) != 2 || provider.MessageText(req.Messages[0]) != "ordinary task" || provider.MessageText(req.Messages[1]) != "controller observation" {
 			t.Fatalf("invalid history: %v", req.Messages)
@@ -57,7 +57,7 @@ func TestBeforeModelFailureReturnsToModel(t *testing.T) {
 	hooks.BeforeModel.On(registry, "failed-controller", func(context.Context, hooks.ContextEvent) ([]*aop.Message, error) {
 		return nil, errors.New("unavailable")
 	})
-	llm := &callbackProvider{fn: func(_ context.Context, req *ChatCompletionRequest) (*ChatCompletionResponse, error) {
+	llm := &callbackProvider{fn: func(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 		if len(req.Messages) != 1 {
 			t.Fatal("failed hook mutated history")
 		}
@@ -72,7 +72,7 @@ func TestBeforeModelFailureReturnsToModel(t *testing.T) {
 func TestAfterModelObservesCompleteOutputAndCannotRewriteTranscript(t *testing.T) {
 	registry := corehooks.New()
 	echo := &recordingTool{name: "echo", output: "ok"}
-	llm := &scriptedProvider{streamEventBatches: [][]ChatCompletionStreamEvent{
+	llm := &scriptedProvider{streamEventBatches: [][]provider.ChatCompletionStreamEvent{
 		{roleDelta("assistant"), toolCallDelta(0, "one", "echo", `{"value":`), toolCallDelta(0, "", "", `"x"}`), toolCallDelta(1, "two", "echo", `{"value":"y"}`), {Done: true}},
 		{roleDelta("assistant"), textDelta("fi"), textDelta("nal"), {Done: true}},
 	}}
@@ -103,7 +103,7 @@ func TestAfterModelDoesNotObserveFailedStreamRetry(t *testing.T) {
 	registry := corehooks.New()
 	calls := 0
 	hooks.AfterModel.On(registry, "observe", func(context.Context, hooks.ContextEvent) (struct{}, error) { calls++; return struct{}{}, nil })
-	llm := &flakyStreamProvider{events: []ChatCompletionStreamEvent{roleDelta("assistant"), textDelta("done"), {Done: true}}}
+	llm := &flakyStreamProvider{events: []provider.ChatCompletionStreamEvent{roleDelta("assistant"), textDelta("done"), {Done: true}}}
 	_, err := NewAgent(Config{Loop: StandardLoop{}, Provider: llm, Hooks: registry, Stream: true, MaxRetries: 1}).Run(t.Context(), TextInput("task"))
 	if err != nil || calls != 1 || llm.calls.Load() != 2 {
 		t.Fatalf("err=%v hooks=%d requests=%d", err, calls, llm.calls.Load())

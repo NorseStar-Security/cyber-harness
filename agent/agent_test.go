@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	agenthooks "github.com/chainreactors/cyber/agent/hooks"
 	"github.com/chainreactors/cyber/agent/inbox"
 	"github.com/chainreactors/cyber/agent/provider"
 	"github.com/chainreactors/cyber/agent/skills"
@@ -29,7 +30,7 @@ import (
 func TestRunWithoutToolsReturnsFinalText(t *testing.T) {
 	tools := newTestTools(t)
 	llm := &scriptedProvider{
-		responses: []*ChatCompletionResponse{
+		responses: []*provider.ChatCompletionResponse{
 			chatResponse(NewTextMessage("assistant", "done")),
 		},
 	}
@@ -59,7 +60,7 @@ func TestRunExecutesToolLoop(t *testing.T) {
 	echo := &recordingTool{name: "echo", output: "tool output"}
 	tools := newTestTools(t, echo)
 	llm := &scriptedProvider{
-		responses: []*ChatCompletionResponse{
+		responses: []*provider.ChatCompletionResponse{
 			chatResponse(ChatMessage{
 				Role: "assistant",
 				ToolCalls: []ToolCall{{
@@ -145,7 +146,7 @@ func TestContinueRequiresNonAssistantLastMessage(t *testing.T) {
 func TestAgentReusesConversationAcrossPrompts(t *testing.T) {
 	tools := newTestTools(t)
 	llm := &scriptedProvider{
-		responses: []*ChatCompletionResponse{
+		responses: []*provider.ChatCompletionResponse{
 			chatResponse(NewTextMessage("assistant", "first")),
 			chatResponse(NewTextMessage("assistant", "second")),
 		},
@@ -172,7 +173,7 @@ func TestAgentReusesConversationAcrossPrompts(t *testing.T) {
 func TestAgentPromptReturnsRunScopedNewMessages(t *testing.T) {
 	tools := newTestTools(t)
 	llm := &scriptedProvider{
-		responses: []*ChatCompletionResponse{
+		responses: []*provider.ChatCompletionResponse{
 			chatResponse(NewTextMessage("assistant", "next")),
 		},
 	}
@@ -267,7 +268,7 @@ func TestResetDoesNotAllowConcurrentPrompt(t *testing.T) {
 func TestSessionContinuesAfterLLMError(t *testing.T) {
 	callCount := 0
 	llm := &callbackProvider{
-		fn: func(_ context.Context, req *ChatCompletionRequest) (*ChatCompletionResponse, error) {
+		fn: func(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 			callCount++
 			if callCount == 1 {
 				return nil, fmt.Errorf("API error (400): server returned bad request")
@@ -300,7 +301,7 @@ func TestSessionContinuesAfterLLMError(t *testing.T) {
 func TestNoEmptyAssistantMessageInStateAfterError(t *testing.T) {
 	callCount := 0
 	llm := &callbackProvider{
-		fn: func(_ context.Context, req *ChatCompletionRequest) (*ChatCompletionResponse, error) {
+		fn: func(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 			callCount++
 			if callCount == 1 {
 				return nil, fmt.Errorf("boom")
@@ -356,7 +357,7 @@ func TestAgentAutomaticWorkflowUsesScan(t *testing.T) {
 	tools := newTestTools(t, bash)
 
 	llm := &scriptedProvider{
-		responses: []*ChatCompletionResponse{
+		responses: []*provider.ChatCompletionResponse{
 			chatResponse(ChatMessage{
 				Role: "assistant",
 				ToolCalls: []ToolCall{
@@ -416,7 +417,7 @@ func TestAgentUsesConfiguredPromptAndExpandsSkillCommand(t *testing.T) {
 	registry := newTestTools(t, &recordingTool{name: "read", output: "skill content"})
 
 	llm := &scriptedProvider{
-		responses: []*ChatCompletionResponse{
+		responses: []*provider.ChatCompletionResponse{
 			chatResponse(NewTextMessage("assistant", "done")),
 		},
 	}
@@ -466,7 +467,7 @@ func TestAgentTmuxMultiRoundInteraction(t *testing.T) {
 
 	turnIndex := 0
 	llm := &callbackProvider{
-		fn: func(_ context.Context, req *ChatCompletionRequest) (*ChatCompletionResponse, error) {
+		fn: func(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 			turnIndex++
 
 			switch turnIndex {
@@ -598,7 +599,7 @@ func TestAgentTmuxMultiRoundInteraction(t *testing.T) {
 	if !strings.Contains(result.Output, "Interactive session completed") {
 		t.Fatalf("unexpected final output: %q", result.Output)
 	}
-	if result.Stop != StopReasonTerminated || turnIndex != 9 {
+	if result.Stop != agenthooks.StopReasonTerminated || turnIndex != 9 {
 		t.Fatalf("scripted task stop = %q after %d provider calls", result.Stop, turnIndex)
 	}
 	t.Logf("Agent completed %d turns of tmux interaction successfully", turnIndex)
@@ -619,7 +620,7 @@ func TestAgentTmuxCtrlCInterrupt(t *testing.T) {
 
 	turnIndex := 0
 	llm := &callbackProvider{
-		fn: func(_ context.Context, req *ChatCompletionRequest) (*ChatCompletionResponse, error) {
+		fn: func(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 			turnIndex++
 			switch turnIndex {
 			case 1:
@@ -704,7 +705,7 @@ func TestAgentTmuxCtrlCInterrupt(t *testing.T) {
 	if !strings.Contains(result.Output, "Ctrl-C interrupt") {
 		t.Fatalf("unexpected output: %q", result.Output)
 	}
-	if result.Stop != StopReasonTerminated || turnIndex != 6 {
+	if result.Stop != agenthooks.StopReasonTerminated || turnIndex != 6 {
 		t.Fatalf("scripted task stop = %q after %d turns", result.Stop, turnIndex)
 	}
 	t.Logf("Ctrl-C interrupt test passed in %d turns", turnIndex)
@@ -728,7 +729,7 @@ func TestAgentTmuxInteractiveProgram(t *testing.T) {
 
 	turnIndex := 0
 	llm := &callbackProvider{
-		fn: func(_ context.Context, req *ChatCompletionRequest) (*ChatCompletionResponse, error) {
+		fn: func(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 			turnIndex++
 			switch turnIndex {
 			case 1:
@@ -824,7 +825,7 @@ func TestAgentTmuxInteractiveProgram(t *testing.T) {
 	if !strings.Contains(result.Output, "Python REPL") {
 		t.Fatalf("unexpected output: %q", result.Output)
 	}
-	if result.Stop != StopReasonTerminated || turnIndex != 7 {
+	if result.Stop != agenthooks.StopReasonTerminated || turnIndex != 7 {
 		t.Fatalf("scripted task stop = %q after %d turns", result.Stop, turnIndex)
 	}
 	t.Logf("Python REPL interaction test passed in %d turns", turnIndex)
@@ -843,7 +844,7 @@ func TestLiveLLMTmuxInteraction(t *testing.T) {
 		t.Skip("no LIVE_TEST_API_KEY set; skipping live LLM test")
 	}
 
-	llm, err := NewProvider(&ProviderConfig{
+	llm, err := provider.NewProvider(&provider.ProviderConfig{
 		BaseURL: baseURL,
 		APIKey:  apiKey,
 		Model:   model,
@@ -944,7 +945,7 @@ Report what you observed at each step. Confirm the test passed or report failure
 
 func TestCacheConfigInheritance(t *testing.T) {
 	llm := &scriptedProvider{
-		responses: []*ChatCompletionResponse{
+		responses: []*provider.ChatCompletionResponse{
 			chatResponse(NewTextMessage("assistant", "done")),
 		},
 	}
@@ -955,14 +956,14 @@ func TestCacheConfigInheritance(t *testing.T) {
 		Tools:          newTestTools(t),
 		Model:          "test",
 		SystemPrompt:   "sys",
-		CacheRetention: CacheShort,
+		CacheRetention: provider.CacheShort,
 		SessionID:      "parent-session-123",
 	}
 
 	child := NewAgent(parentCfg.ForTask("child", "", nil))
 
-	if child.Cfg.CacheRetention != CacheShort {
-		t.Errorf("child CacheRetention = %q, want %q", child.Cfg.CacheRetention, CacheShort)
+	if child.Cfg.CacheRetention != provider.CacheShort {
+		t.Errorf("child CacheRetention = %q, want %q", child.Cfg.CacheRetention, provider.CacheShort)
 	}
 	if child.Cfg.SessionID == "" {
 		t.Error("child SessionID should be auto-generated, got empty")
@@ -980,8 +981,8 @@ func TestCacheConfigInheritance(t *testing.T) {
 	if len(reqs) != 1 {
 		t.Fatalf("expected 1 request, got %d", len(reqs))
 	}
-	if reqs[0].CacheRetention != CacheShort {
-		t.Errorf("request CacheRetention = %q, want %q", reqs[0].CacheRetention, CacheShort)
+	if reqs[0].CacheRetention != provider.CacheShort {
+		t.Errorf("request CacheRetention = %q, want %q", reqs[0].CacheRetention, provider.CacheShort)
 	}
 	if reqs[0].SessionID != child.Cfg.SessionID {
 		t.Errorf("request SessionID = %q, want child SessionID %q", reqs[0].SessionID, child.Cfg.SessionID)
@@ -990,7 +991,7 @@ func TestCacheConfigInheritance(t *testing.T) {
 
 func TestSessionIDAutoGeneration(t *testing.T) {
 	cfg := Config{
-		CacheRetention: CacheShort,
+		CacheRetention: provider.CacheShort,
 	}
 	initialized := cfg.init()
 
@@ -1001,7 +1002,7 @@ func TestSessionIDAutoGeneration(t *testing.T) {
 		t.Errorf("SessionID length = %d, want 16 hex chars, got %q", len(initialized.SessionID), initialized.SessionID)
 	}
 
-	cfg2 := Config{CacheRetention: CacheNone}
+	cfg2 := Config{CacheRetention: provider.CacheNone}
 	initialized2 := cfg2.init()
 	if initialized2.SessionID == "" {
 		t.Error("CacheNone should still generate SessionID for event tracking")
@@ -1028,7 +1029,7 @@ func TestMultiTurnContextInheritanceAndCache(t *testing.T) {
 		Tools:          tools,
 		Model:          cfg.Model,
 		SystemPrompt:   systemPrompt,
-		CacheRetention: CacheShort,
+		CacheRetention: provider.CacheShort,
 		Bus:            testBus(func(e *aop.Event) { handler(e) }),
 		Logger:         telemetry.NopLogger(),
 		MaxRetries:     1,
@@ -1118,7 +1119,7 @@ func TestMultiTurnStreamingCache(t *testing.T) {
 		Model:          cfg.Model,
 		SystemPrompt:   systemPrompt,
 		Stream:         true,
-		CacheRetention: CacheShort,
+		CacheRetention: provider.CacheShort,
 		Logger:         telemetry.NopLogger(),
 		MaxRetries:     1,
 	}
@@ -1177,7 +1178,7 @@ func TestMultiTurnWithToolCallsCache(t *testing.T) {
 		Tools:          tools,
 		Model:          cfg.Model,
 		SystemPrompt:   systemPrompt,
-		CacheRetention: CacheShort,
+		CacheRetention: provider.CacheShort,
 		Bus:            testBus(func(e *aop.Event) { handler(e) }),
 		Logger:         telemetry.NopLogger(),
 		MaxRetries:     1,
@@ -1232,10 +1233,10 @@ func TestMultiTurnWithToolCallsCache(t *testing.T) {
 // TestSetProviderHotSwapsNextRun verifies a mid-conversation provider swap takes
 // effect on the next run (an in-flight run keeps its snapshotted provider).
 func TestSetProviderHotSwapsNextRun(t *testing.T) {
-	provA := &callbackProvider{fn: func(_ context.Context, _ *ChatCompletionRequest) (*ChatCompletionResponse, error) {
+	provA := &callbackProvider{fn: func(_ context.Context, _ *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 		return chatResponse(NewTextMessage("assistant", "from-A")), nil
 	}}
-	provB := &callbackProvider{fn: func(_ context.Context, _ *ChatCompletionRequest) (*ChatCompletionResponse, error) {
+	provB := &callbackProvider{fn: func(_ context.Context, _ *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 		return chatResponse(NewTextMessage("assistant", "from-B")), nil
 	}}
 
@@ -1270,13 +1271,13 @@ func TestSetProviderHotSwapsNextRun(t *testing.T) {
 }
 
 func TestSetProviderConfigHotSwapsModelLimits(t *testing.T) {
-	provider := &scriptedProvider{}
+	modelProvider := &scriptedProvider{}
 	ag := NewAgent(Config{Loop: StandardLoop{}, MaxTokens: 1024, ContextWindow: 8192})
-	ag.SetProviderConfig(provider, ProviderConfig{
+	ag.SetProviderConfig(modelProvider, provider.ProviderConfig{
 		Model: "glm-5.2[1m]", MaxTokens: 32768, ContextWindow: 1000000,
 	})
 	cfg := ag.ConfigSnapshot()
-	if cfg.Provider != provider || cfg.Model != "glm-5.2[1m]" || cfg.MaxTokens != 32768 || cfg.ContextWindow != 1000000 {
+	if cfg.Provider != modelProvider || cfg.Model != "glm-5.2[1m]" || cfg.MaxTokens != 32768 || cfg.ContextWindow != 1000000 {
 		t.Fatalf("hot-swapped config = %+v", cfg)
 	}
 }
@@ -1284,7 +1285,7 @@ func TestSetProviderConfigHotSwapsModelLimits(t *testing.T) {
 // TestSetProviderRaceWithRun exercises a config push swapping the provider while
 // runs execute; run under -race it proves the Cfg read/write are serialized.
 func TestSetProviderRaceWithRun(t *testing.T) {
-	prov := &callbackProvider{fn: func(_ context.Context, _ *ChatCompletionRequest) (*ChatCompletionResponse, error) {
+	prov := &callbackProvider{fn: func(_ context.Context, _ *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 		return chatResponse(NewTextMessage("assistant", "ok")), nil
 	}}
 	ag := NewAgent(Config{Loop: StandardLoop{}, Provider: prov, Model: "m"})
@@ -1366,24 +1367,24 @@ func imageMessage(role string, parts ...*aop.Content) *aop.Message {
 
 // --- Streaming event shims --------------------------------------------------
 
-func roleDelta(role string) ChatCompletionStreamEvent {
-	return ChatCompletionStreamEvent{Role: role}
+func roleDelta(role string) provider.ChatCompletionStreamEvent {
+	return provider.ChatCompletionStreamEvent{Role: role}
 }
 
-func textDelta(s string) ChatCompletionStreamEvent {
-	return ChatCompletionStreamEvent{MessageDelta: &aop.MessageDelta{
+func textDelta(s string) provider.ChatCompletionStreamEvent {
+	return provider.ChatCompletionStreamEvent{MessageDelta: &aop.MessageDelta{
 		Value: &aop.MessageDelta_Text{Text: s},
 	}}
 }
 
-func reasoningDelta(s string) ChatCompletionStreamEvent {
-	return ChatCompletionStreamEvent{MessageDelta: &aop.MessageDelta{
+func reasoningDelta(s string) provider.ChatCompletionStreamEvent {
+	return provider.ChatCompletionStreamEvent{MessageDelta: &aop.MessageDelta{
 		Value: &aop.MessageDelta_Reasoning{Reasoning: s},
 	}}
 }
 
-func toolCallDelta(index uint32, id, name, args string) ChatCompletionStreamEvent {
-	return ChatCompletionStreamEvent{ToolDeltas: []*aop.ToolCallDelta{{
+func toolCallDelta(index uint32, id, name, args string) provider.ChatCompletionStreamEvent {
+	return provider.ChatCompletionStreamEvent{ToolDeltas: []*aop.ToolCallDelta{{
 		Index:     index,
 		CallId:    id,
 		Name:      name,
@@ -1415,7 +1416,7 @@ func (t *recordingTool) Definition() *aop.ToolDefinition {
 	return coretool.Def(t.name, t.Description(), struct{}{})
 }
 
-func (t *recordingTool) Execute(_ context.Context, arguments string) (*coretool.Result, error) {
+func (t *recordingTool) Execute(_ context.Context, arguments string) (*aop.ToolResult, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.calls = append(t.calls, arguments)
@@ -1433,16 +1434,16 @@ func (t *recordingTool) callsSnapshot() []string {
 
 type scriptedProvider struct {
 	mu                 sync.Mutex
-	responses          []*ChatCompletionResponse
+	responses          []*provider.ChatCompletionResponse
 	err                error
-	streamEvents       []ChatCompletionStreamEvent
-	streamEventBatches [][]ChatCompletionStreamEvent
-	requests           []*ChatCompletionRequest
+	streamEvents       []provider.ChatCompletionStreamEvent
+	streamEventBatches [][]provider.ChatCompletionStreamEvent
+	requests           []*provider.ChatCompletionRequest
 }
 
 func (p *scriptedProvider) Name() string { return "scripted" }
 
-func (p *scriptedProvider) ChatCompletion(_ context.Context, req *ChatCompletionRequest) (*ChatCompletionResponse, error) {
+func (p *scriptedProvider) ChatCompletion(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.requests = append(p.requests, cloneRequest(req))
@@ -1457,17 +1458,17 @@ func (p *scriptedProvider) ChatCompletion(_ context.Context, req *ChatCompletion
 	return resp, nil
 }
 
-func (p *scriptedProvider) ChatCompletionStream(ctx context.Context, req *ChatCompletionRequest) (<-chan ChatCompletionStreamEvent, error) {
+func (p *scriptedProvider) ChatCompletionStream(ctx context.Context, req *provider.ChatCompletionRequest) (<-chan provider.ChatCompletionStreamEvent, error) {
 	p.mu.Lock()
 	p.requests = append(p.requests, cloneRequest(req))
-	events := append([]ChatCompletionStreamEvent(nil), p.streamEvents...)
+	events := append([]provider.ChatCompletionStreamEvent(nil), p.streamEvents...)
 	if len(p.streamEventBatches) > 0 {
-		events = append([]ChatCompletionStreamEvent(nil), p.streamEventBatches[0]...)
+		events = append([]provider.ChatCompletionStreamEvent(nil), p.streamEventBatches[0]...)
 		p.streamEventBatches = p.streamEventBatches[1:]
 	}
 	p.mu.Unlock()
 
-	ch := make(chan ChatCompletionStreamEvent)
+	ch := make(chan provider.ChatCompletionStreamEvent)
 	go func() {
 		defer close(ch)
 		for _, event := range events {
@@ -1481,10 +1482,10 @@ func (p *scriptedProvider) ChatCompletionStream(ctx context.Context, req *ChatCo
 	return ch, nil
 }
 
-func (p *scriptedProvider) requestsSnapshot() []*ChatCompletionRequest {
+func (p *scriptedProvider) requestsSnapshot() []*provider.ChatCompletionRequest {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	out := make([]*ChatCompletionRequest, 0, len(p.requests))
+	out := make([]*provider.ChatCompletionRequest, 0, len(p.requests))
 	for _, req := range p.requests {
 		out = append(out, cloneRequest(req))
 	}
@@ -1497,12 +1498,12 @@ type blockingProvider struct {
 	once    sync.Once
 
 	mu       sync.Mutex
-	requests []*ChatCompletionRequest
+	requests []*provider.ChatCompletionRequest
 }
 
 func (p *blockingProvider) Name() string { return "blocking" }
 
-func (p *blockingProvider) ChatCompletion(ctx context.Context, req *ChatCompletionRequest) (*ChatCompletionResponse, error) {
+func (p *blockingProvider) ChatCompletion(ctx context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 	p.mu.Lock()
 	p.requests = append(p.requests, cloneRequest(req))
 	p.mu.Unlock()
@@ -1516,12 +1517,12 @@ func (p *blockingProvider) ChatCompletion(ctx context.Context, req *ChatCompleti
 }
 
 type callbackProvider struct {
-	fn func(context.Context, *ChatCompletionRequest) (*ChatCompletionResponse, error)
+	fn func(context.Context, *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error)
 }
 
 func (p *callbackProvider) Name() string { return "callback" }
 
-func (p *callbackProvider) ChatCompletion(ctx context.Context, req *ChatCompletionRequest) (*ChatCompletionResponse, error) {
+func (p *callbackProvider) ChatCompletion(ctx context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 	return p.fn(ctx, req)
 }
 
@@ -1542,12 +1543,12 @@ func (p *imageErrorProvider) DisableImages() {
 	p.imagesDisabled.Store(true)
 }
 
-func (p *imageErrorProvider) ChatCompletion(_ context.Context, req *ChatCompletionRequest) (*ChatCompletionResponse, error) {
+func (p *imageErrorProvider) ChatCompletion(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 	p.callCount.Add(1)
 	if p.imagesDisabled.Load() || !messagesContainImages(req.Messages) {
 		return chatResponse(NewTextMessage("assistant", "success without images")), nil
 	}
-	return nil, &APIError{StatusCode: 400, Message: "Invalid parameter: messages[5].content[1].type is not supported, unknown type: image_url"}
+	return nil, &provider.APIError{StatusCode: 400, Message: "Invalid parameter: messages[5].content[1].type is not supported, unknown type: image_url"}
 }
 
 func messagesContainImages(msgs []*aop.Message) bool {
@@ -1569,7 +1570,7 @@ func messagesContainImages(msgs []*aop.Message) bool {
 }
 
 type pushingProvider struct {
-	inner  Provider
+	inner  provider.Provider
 	inbox  *inbox.Buffered
 	pushed bool
 	push   inbox.Message
@@ -1577,7 +1578,7 @@ type pushingProvider struct {
 
 func (p *pushingProvider) Name() string { return "pushing" }
 
-func (p *pushingProvider) ChatCompletion(ctx context.Context, req *ChatCompletionRequest) (*ChatCompletionResponse, error) {
+func (p *pushingProvider) ChatCompletion(ctx context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 	if !p.pushed {
 		p.pushed = true
 		p.inbox.Push(p.push)
@@ -1597,13 +1598,13 @@ func (c *stubPseudoCommand) Run(_ context.Context, execution *coretool.Execution
 	return nil, nil
 }
 
-func chatResponse(msg ChatMessage) *ChatCompletionResponse {
-	return &ChatCompletionResponse{
-		Choices: []Choice{{Message: msg.toAOP()}},
+func chatResponse(msg ChatMessage) *provider.ChatCompletionResponse {
+	return &provider.ChatCompletionResponse{
+		Choices: []provider.Choice{{Message: msg.toAOP()}},
 	}
 }
 
-func cloneRequest(req *ChatCompletionRequest) *ChatCompletionRequest {
+func cloneRequest(req *provider.ChatCompletionRequest) *provider.ChatCompletionRequest {
 	cloned := *req
 	cloned.Messages = append([]*aop.Message(nil), req.Messages...)
 	cloned.Tools = append([]*aop.ToolDefinition(nil), req.Tools...)
@@ -1677,7 +1678,7 @@ func scannerBashArgs(cmd string) string {
 	return string(data)
 }
 
-func assertToolResult(t *testing.T, req *ChatCompletionRequest, toolCallID, contains string) {
+func assertToolResult(t *testing.T, req *provider.ChatCompletionRequest, toolCallID, contains string) {
 	t.Helper()
 	if !hasToolMessage(req.Messages, toolCallID, contains) {
 		var actual string
@@ -1709,7 +1710,7 @@ func buildTmuxTestPrompt(tools coretool.Executor, commandRegistry *coretool.Comm
 	return sb.String()
 }
 
-func skipUnlessLive(t *testing.T) (*ProviderConfig, Provider) {
+func skipUnlessLive(t *testing.T) (*provider.ProviderConfig, provider.Provider) {
 	t.Helper()
 	apiKey := os.Getenv("TEST_API_KEY")
 	baseURL := os.Getenv("TEST_BASE_URL")
@@ -1717,17 +1718,17 @@ func skipUnlessLive(t *testing.T) (*ProviderConfig, Provider) {
 	if apiKey == "" || baseURL == "" || model == "" {
 		t.Skip("set TEST_API_KEY, TEST_BASE_URL, TEST_MODEL to run live tests")
 	}
-	cfg := &ProviderConfig{
+	cfg := &provider.ProviderConfig{
 		BaseURL: baseURL,
 		APIKey:  apiKey,
 		Model:   model,
 		Timeout: 60,
 	}
-	cfg, err := ResolveProvider(cfg)
+	cfg, err := provider.Resolve(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
-	prov, err := NewProviderFromResolved(cfg)
+	prov, err := provider.NewProviderFromResolved(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1750,5 +1751,5 @@ func TestRootAgentPublicImport(t *testing.T) {
 	if config.Model != "example-model" || config.MaxTokens != 256 || config.ContextWindow != 4096 {
 		t.Fatalf("root agent config aliases/builders are not externally usable: %#v", config)
 	}
-	_ = ProviderConfig{Model: "example-model"}
+	_ = provider.ProviderConfig{Model: "example-model"}
 }

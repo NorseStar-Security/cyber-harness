@@ -49,7 +49,6 @@ func profileForMode(mode string) (profile, error) {
 		p.Capabilities[capSprayPlugins] = struct{}{}
 		p.Capabilities[capSprayBrute] = struct{}{}
 	}
-	extendKatanaProfile(mode, &p)
 	return p, nil
 }
 

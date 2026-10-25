@@ -105,7 +105,7 @@ func TestClaimSerializationPreservesOrderedMeaning(t *testing.T) {
 
 func TestEvaluationRejectsWrongHeadsAndUnboundedNumbers(t *testing.T) {
 	choice := Claim{Type: ClaimChoice, Context: "Choose", Options: []string{"read", "defer"}}
-	for _, value := range []*Evaluation{nil, {}, {Value: &decision.Evaluation_Noul{Noul: 1}}, {Value: &decision.Evaluation_Choice{Choice: "invented"}}} {
+	for _, value := range []*decision.Evaluation{nil, {}, {Value: &decision.Evaluation_Noul{Noul: 1}}, {Value: &decision.Evaluation_Choice{Choice: "invented"}}} {
 		if _, err := choice.Choice(value); err == nil {
 			t.Fatal("invalid choice authorized a binding")
 		}
@@ -113,20 +113,20 @@ func TestEvaluationRejectsWrongHeadsAndUnboundedNumbers(t *testing.T) {
 	score := Claim{Type: ClaimScore, Context: "Severity", Options: []string{"low", "medium", "high"}}
 	noul := Claim{Type: ClaimNoul, Context: "Complete"}
 	for _, number := range []float64{-0.1, 2.1, math.NaN(), math.Inf(1), math.Inf(-1)} {
-		if _, err := score.Score(&Evaluation{Value: &decision.Evaluation_Score{Score: number}}); err == nil {
+		if _, err := score.Score(&decision.Evaluation{Value: &decision.Evaluation_Score{Score: number}}); err == nil {
 			t.Fatal("invalid score accepted", number)
 		}
 	}
 	for _, number := range []float64{-0.1, 1.1, math.NaN(), math.Inf(1)} {
-		if _, err := noul.Noul(&Evaluation{Value: &decision.Evaluation_Noul{Noul: number}}); err == nil {
+		if _, err := noul.Noul(&decision.Evaluation{Value: &decision.Evaluation_Noul{Noul: number}}); err == nil {
 			t.Fatal("invalid noul accepted", number)
 		}
 	}
-	if _, err := score.Score(&Evaluation{Value: &decision.Evaluation_Noul{Noul: 0.5}}); err == nil {
+	if _, err := score.Score(&decision.Evaluation{Value: &decision.Evaluation_Noul{Noul: 0.5}}); err == nil {
 		t.Fatal("noul used as score")
 	}
 	for _, number := range []float64{0, 2} {
-		if got, err := score.Score(&Evaluation{Value: &decision.Evaluation_Score{Score: number}}); got != number || err != nil {
+		if got, err := score.Score(&decision.Evaluation{Value: &decision.Evaluation_Score{Score: number}}); got != number || err != nil {
 			t.Fatal("valid score boundary rejected", number, err)
 		}
 	}

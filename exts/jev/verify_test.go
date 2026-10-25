@@ -110,7 +110,7 @@ func TestReviewRetainsBoundaryRejectionWithGlobalDefer(t *testing.T) {
 	})
 	e, _, _ := testInstallation(t, Config{Mode: "auto"}, client)
 	r := observationReflex(t, `js:function(){return{defer:'missing next operation'};}`)
-	boundary := map[string]any{"boundary": 2, "state": map[string]any{"current": "actual"}, "candidates": map[string]binding{}, "next_calls": []any{map[string]any{"name": "native", "arguments": map[string]any{"operation": "required"}}}}
+	boundary := map[string]any{"boundary": 2, "state": map[string]any{"current": "actual"}, "candidates": map[string]NativeCall{}, "next_calls": []any{map[string]any{"name": "native", "arguments": map[string]any{"operation": "required"}}}}
 	err := e.reviewReflex(t.Context(), &r, &compilation{state: json.RawMessage(`{"messages":[]}`)}, []map[string]any{boundary})
 	if err == nil {
 		t.Fatal("rejected boundary accepted")
@@ -132,7 +132,7 @@ func TestResultReviewDistinguishesCompletionFromReadClassification(t *testing.T)
 	})
 	e, _, _ := testInstallation(t, Config{Mode: "auto"}, client)
 	r := observationReflex(t, `js:function(){const r=execute({name:'native',arguments:{},read:true});return{report:'done'};}`)
-	witness := map[string]any{"boundary": 1, "report": "done", "candidates": map[string]binding{"read": {Name: "native", Arguments: json.RawMessage(`{}`), Read: true}}}
+	witness := map[string]any{"boundary": 1, "report": "done", "candidates": map[string]NativeCall{"read": {Name: "native", Arguments: json.RawMessage(`{}`), Read: true}}}
 	err := e.reviewReflex(t.Context(), &r, &compilation{capabilities: observationCapabilities("native"), state: json.RawMessage(`{"messages":[]}`)}, []map[string]any{witness})
 	diagnostic := compilerDiagnostic(err)
 	if requests != 1 || diagnostic.Code != "semantic_validation_failed" || diagnostic.Stage != "completion" || !strings.Contains(jsonText(diagnostic.Actual), "done") {
@@ -142,10 +142,10 @@ func TestResultReviewDistinguishesCompletionFromReadClassification(t *testing.T)
 
 func TestReviewSharesBindingsWithoutLosingActualBoundaryEvidence(t *testing.T) {
 	args, _ := json.Marshal(map[string]any{"program": strings.Repeat("native program ", 1000), "version": json.Number("9007199254740993")})
-	candidate := binding{Name: "ordinary", Arguments: args, Read: true}
+	candidate := NativeCall{Name: "ordinary", Arguments: args, Read: true}
 	var witnesses []map[string]any
 	for i := 0; i < 8; i++ {
-		witnesses = append(witnesses, map[string]any{"boundary": i, "latest": fmt.Sprintf("actual result %d", i), "candidates": map[string]binding{"current": candidate}, "next_calls": []string{fmt.Sprintf("next %d", i)}})
+		witnesses = append(witnesses, map[string]any{"boundary": i, "latest": fmt.Sprintf("actual result %d", i), "candidates": map[string]NativeCall{"current": candidate}, "next_calls": []string{fmt.Sprintf("next %d", i)}})
 	}
 	raw, _ := json.Marshal(witnesses)
 	rows, bindings := compactWitnesses(witnesses)
@@ -158,7 +158,7 @@ func TestReviewSharesBindingsWithoutLosingActualBoundaryEvidence(t *testing.T) {
 		if canonicalBinding := bindings[ref]; canonicalBinding.Name != candidate.Name || string(canonicalBinding.Arguments) != string(args) || !canonicalBinding.Read || row["latest"] != witnesses[i]["latest"] || row["next_calls"] == nil {
 			t.Fatal("compaction changed an actual binding or its boundary evidence")
 		}
-		if _, ok := witnesses[i]["candidates"].(map[string]binding); !ok {
+		if _, ok := witnesses[i]["candidates"].(map[string]NativeCall); !ok {
 			t.Fatal("compaction mutated original evidence")
 		}
 	}

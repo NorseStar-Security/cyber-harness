@@ -14,8 +14,9 @@ import (
 	"time"
 
 	"github.com/chainreactors/cyber/agent"
+	agenthooks "github.com/chainreactors/cyber/agent/hooks"
 	"github.com/chainreactors/cyber/agent/inbox"
-	"github.com/chainreactors/cyber/agent/provider"
+	providerapi "github.com/chainreactors/cyber/agent/provider"
 	aop "github.com/chainreactors/cyber/aop"
 	"github.com/chainreactors/cyber/core/extension"
 	"github.com/chainreactors/cyber/core/telemetry"
@@ -40,7 +41,7 @@ type runtimeSemanticProvider struct {
 
 func (p *runtimeSemanticProvider) Name() string { return "runtime-semantic" }
 
-func (p *runtimeSemanticProvider) ChatCompletion(ctx context.Context, _ *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
+func (p *runtimeSemanticProvider) ChatCompletion(ctx context.Context, _ *providerapi.ChatCompletionRequest) (*providerapi.ChatCompletionResponse, error) {
 	p.mu.Lock()
 	p.calls++
 	call := p.calls
@@ -53,8 +54,8 @@ func (p *runtimeSemanticProvider) ChatCompletion(ctx context.Context, _ *provide
 			return nil, ctx.Err()
 		}
 	}
-	return &provider.ChatCompletionResponse{
-		Choices: []provider.Choice{{Message: provider.TextMessage("assistant", "done")}},
+	return &providerapi.ChatCompletionResponse{
+		Choices: []providerapi.Choice{{Message: providerapi.TextMessage("assistant", "done")}},
 		Usage:   p.usage,
 	}, nil
 }
@@ -275,7 +276,7 @@ func TestSessionRunHasOneReliableTurnLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result == nil || result.Output != "done" || result.Stop != agent.StopReasonCompleted {
+	if result == nil || result.Output != "done" || result.Stop != agenthooks.StopReasonCompleted {
 		t.Fatalf("completed result = %+v", result)
 	}
 	if again, err := run.Wait(); again != result || err != nil {
@@ -382,7 +383,7 @@ func TestSessionContextCancellationStopsActiveRun(t *testing.T) {
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("run error = %v, want context canceled", err)
 	}
-	if result == nil || result.Stop != agent.StopReasonCanceled || !errors.Is(result.Err, context.Canceled) {
+	if result == nil || result.Stop != agenthooks.StopReasonCanceled || !errors.Is(result.Err, context.Canceled) {
 		t.Fatalf("canceled result = %+v", result)
 	}
 }
@@ -458,7 +459,7 @@ func TestStatusReportsLLMAndToolHealth(t *testing.T) {
 		_, _ = w.Write([]byte(`{"choices":[{"message":{"role":"assistant","content":"pong"},"finish_reason":"stop"}]}`))
 	}))
 	defer srv.Close()
-	if _, _, err := rt.providers.Reload(context.Background(), agent.ProviderConfig{
+	if _, _, err := rt.providers.Reload(context.Background(), providerapi.ProviderConfig{
 		Provider: "openai", Model: "gpt-test", BaseURL: srv.URL + "/v1", APIKey: "test",
 		ContextWindow: 128000, MaxTokens: 8192, Timeout: 45,
 	}, nil); err != nil {
@@ -587,7 +588,7 @@ func TestNilProviderRunDoesNotAutoRetry(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "provider is nil") {
 		t.Fatalf("Wait() error = %v, want provider is nil", err)
 	}
-	if result == nil || result.Stop != agent.StopReasonError || result.Err != err {
+	if result == nil || result.Stop != agenthooks.StopReasonError || result.Err != err {
 		t.Fatalf("failed result = %+v, want error %v", result, err)
 	}
 	time.Sleep(50 * time.Millisecond)
@@ -651,7 +652,7 @@ func countSessionTurnLifecycle(mu *sync.Mutex, events *[]*aop.Event, sessionID s
 	return starts, ends
 }
 
-func newBareRuntime(t *testing.T, values []coretool.Command, provider agent.Provider) *Runtime {
+func newBareRuntime(t *testing.T, values []coretool.Command, provider providerapi.Provider) *Runtime {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	reg := coretool.NewCommandRegistry()
@@ -675,7 +676,7 @@ func newBareRuntime(t *testing.T, values []coretool.Command, provider agent.Prov
 		t.Fatal(err)
 	}
 	application := apptest.NewFixture(t, nil, nil)
-	application.Providers.Set(provider, agent.ProviderConfig{})
+	application.Providers.Set(provider, providerapi.ProviderConfig{})
 	rt := &Runtime{
 		history: JSONLHistory{}, primarySessionID: "main-repl", providers: application.Providers, events: application.Stream, Logger: application.Logger, ctx: ctx, cancel: cancel,
 		commandRegistry: reg, tools: tools, shell: bash,
@@ -793,7 +794,7 @@ func TestCompactWithoutEnoughContextPublishesItsResult(t *testing.T) {
 	if err != nil {
 		t.Fatalf("/compact: %v", err)
 	}
-	if text := provider.MessageText(&aop.Message{Content: result.Content}); !strings.Contains(text, "Nothing to compact") {
+	if text := providerapi.MessageText(&aop.Message{Content: result.Content}); !strings.Contains(text, "Nothing to compact") {
 		t.Fatalf("compact result = %#v", result)
 	}
 	if session.ID() != originalID {
@@ -801,7 +802,7 @@ func TestCompactWithoutEnoughContextPublishesItsResult(t *testing.T) {
 	}
 	published := false
 	for _, event := range events {
-		if message := event.GetMessage(); message != nil && strings.Contains(provider.MessageText(message), "Nothing to compact") {
+		if message := event.GetMessage(); message != nil && strings.Contains(providerapi.MessageText(message), "Nothing to compact") {
 			published = true
 		}
 	}

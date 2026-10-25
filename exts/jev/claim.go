@@ -9,7 +9,7 @@ import (
 
 // Catalog keys are stable choice values. Their meanings are ordinary context,
 // not another decision schema. Sorting makes identical catalogs deterministic.
-func choiceClaim(context string, labels map[string]string) Claim {
+func choiceClaim(context string, labels map[string]string) jevapi.Claim {
 	options := make([]string, 0, len(labels))
 	for id := range labels {
 		options = append(options, id)
@@ -19,5 +19,5 @@ func choiceClaim(context string, labels map[string]string) Claim {
 	for _, id := range options {
 		meanings.WriteString("\n" + id + ": " + labels[id])
 	}
-	return Claim{Type: jevapi.ClaimChoice, Context: context + meanings.String(), Options: options}
+	return jevapi.Claim{Type: jevapi.ClaimChoice, Context: context + meanings.String(), Options: options}
 }

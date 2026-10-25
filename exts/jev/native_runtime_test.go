@@ -195,6 +195,9 @@ func TestReflexAgentExecutorAndHandoff(t *testing.T) {
 						return toolhooks.Admission{Deny: errors.New("blocked")}, nil
 					})
 				}
+				if condition == "tool_error" {
+					cfg.Tools = unprojectedExecutor{cfg.Tools}
+				}
 				finals := 0
 				cfg.Provider = testProvider(func(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 					if provider.MessageText(req.Messages[0]) == claimPrompt {
@@ -235,7 +238,19 @@ func TestReflexAgentExecutorAndHandoff(t *testing.T) {
 					t.Fatalf("effects=%d expected=%d", effects, wantEffects)
 				}
 				found := false
+				foundFailure := false
 				for _, ev := range events {
+					var feedback RuntimeEvent
+					if ev.GetExtension() != nil && ev.GetExtension().UnmarshalTo(&feedback) == nil && feedback.GetResult() != nil {
+						r := feedback.GetResult().Result
+						if r.IsError && strings.Contains(coretool.ResultText(r), "response lost") {
+							foundFailure = true
+							if r.Terminate || strings.Count(coretool.ResultText(r), "response lost") != 1 || !strings.Contains(coretool.ResultText(r), "503") {
+								t.Errorf("invalid native error feedback: %v", r)
+							}
+						}
+					}
+
 					var runtime RuntimeEvent
 					if ev.GetExtension() != nil && ev.GetExtension().UnmarshalTo(&runtime) == nil && runtime.GetHandoff() != nil {
 						h := runtime.GetHandoff()
@@ -248,6 +263,10 @@ func TestReflexAgentExecutorAndHandoff(t *testing.T) {
 				if !found {
 					t.Fatal("handoff event missing")
 				}
+				if condition == "tool_error" && !foundFailure {
+					t.Fatal("native failure did not retain partial output and cause")
+				}
+
 			})
 		}
 	}
@@ -321,7 +340,7 @@ func TestReflexRuntimeJudgmentsReceiveEachCurrentResult(t *testing.T) {
 func TestReflexCompilerAgentToolFeedback(t *testing.T) {
 	e := testLaboratory(t)
 	e.client = fakeJEV(t, func(req inferenceRequest) map[string]inferenceAnswer { return declarationAnswers(req, true) })
-	claims := map[string]Claim{"a": {Type: jevapi.ClaimNoul, Context: "Add requested items exactly once per occurrence."}, "b": {Type: jevapi.ClaimNoul, Context: "After an uncertain submission, query current completion or defer."}}
+	claims := map[string]jevapi.Claim{"a": {Type: jevapi.ClaimNoul, Context: "Add requested items exactly once per occurrence."}, "b": {Type: jevapi.ClaimNoul, Context: "After an uncertain submission, query current completion or defer."}}
 	r := laboratoryReflex()
 	r.arguments = laboratorySuite().Cases(nil)[0].Arguments
 	artifact := func(source string) string {
@@ -387,11 +406,11 @@ func TestReflexGroupingFailureAndBackgroundIsolation(t *testing.T) {
 		return out
 	})
 	e, cfg, _ := testInstallation(t, Config{Mode: "auto"}, client)
-	a := Claim{Type: jevapi.ClaimNoul, Context: "Create a queued operation."}
-	b := Claim{Type: jevapi.ClaimNoul, Context: "Inspect uncertain completion of the queued operation."}
-	unrelated := Claim{Type: jevapi.ClaimNoul, Context: "Translate prose."}
+	a := jevapi.Claim{Type: jevapi.ClaimNoul, Context: "Create a queued operation."}
+	b := jevapi.Claim{Type: jevapi.ClaimNoul, Context: "Inspect uncertain completion of the queued operation."}
+	unrelated := jevapi.Claim{Type: jevapi.ClaimNoul, Context: "Translate prose."}
 	ids := []string{}
-	for _, c := range []Claim{a, b, unrelated} {
+	for _, c := range []jevapi.Claim{a, b, unrelated} {
 		id := "c" + digest(c)[:16]
 		ids = append(ids, id)
 		e.library.Claims[id] = claimRecord{Claim: c, Task: "old"}
@@ -464,4 +483,19 @@ func TestReflexGroupingFailureAndBackgroundIsolation(t *testing.T) {
 	if e.beginCompilation(digest([]any{ids[1], nativeContracts(plan.capabilities)})) {
 		t.Fatal("another group member bypassed failure cooldown")
 	}
+}
+
+// Simulate an external executor that returns its partial result and error without
+// the local registry's model projection. JEV must apply the same boundary.
+type unprojectedExecutor struct{ coretool.Executor }
+
+func (e unprojectedExecutor) ExecuteTool(ctx context.Context, name, args string) (*aop.ToolResult, error) {
+	r, err := e.Executor.ExecuteTool(ctx, name, args)
+	if err != nil && r != nil {
+		r.IsError = false
+		if len(r.Output) > 1 {
+			r.Output = r.Output[:len(r.Output)-1]
+		}
+	}
+	return r, err
 }

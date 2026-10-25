@@ -3,12 +3,14 @@ package node
 import (
 	"context"
 	"fmt"
-	"google.golang.org/protobuf/proto"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"google.golang.org/protobuf/proto"
+
 	"github.com/chainreactors/cyber/agent"
+	provider "github.com/chainreactors/cyber/agent/provider"
 	agentsession "github.com/chainreactors/cyber/agent/session"
 	aop "github.com/chainreactors/cyber/aop"
 	filepb "github.com/chainreactors/cyber/aop/file"
@@ -40,7 +42,7 @@ func RunWebSocketWithCapabilities(ctx context.Context, newProfile func(profile.R
 	if logger == nil {
 		logger = telemetry.NopLogger()
 	}
-	build := func(options *cfg.Option, mode profile.ProviderMode) (profile.Profile, error) {
+	build := func(options *cfg.Option, mode provider.StartupMode) (profile.Profile, error) {
 		p, err := newProfile(profile.Request{Option: options, ProviderMode: mode, Logger: logger, Session: &agentsession.Config{PrimarySessionID: console.MainREPLName, Loop: agent.StandardLoop{}}})
 		if err == nil && p == nil {
 			err = fmt.Errorf("profile constructor returned nil")
@@ -64,7 +66,7 @@ func RunWebSocketWithCapabilities(ctx context.Context, newProfile func(profile.R
 	}
 	// Enroll without initializing or probing a local model. Only a server
 	// configuration can enable the provider and release the startup task.
-	current, err := build(option, profile.ProviderDisabled)
+	current, err := build(option, provider.StartupDisabled)
 	if err != nil {
 		return err
 	}
@@ -168,7 +170,7 @@ func RunWebSocketWithCapabilities(ctx context.Context, newProfile func(profile.R
 				// activate their first provider without a rebuild.
 				if !unchanged && proto.Equal(before, after) {
 					if reloader, ok := current.(interface {
-						ReloadProvider(context.Context, agent.ProviderConfig) error
+						ReloadProvider(context.Context, provider.ProviderConfig) error
 					}); ok {
 						if reloadErr := reloader.ReloadProvider(connectionCtx, cfg.ProviderConfig(nextOption)); reloadErr != nil {
 							return &types.ReloadResult{Error: reloadErr.Error()}, nil
@@ -183,9 +185,9 @@ func RunWebSocketWithCapabilities(ctx context.Context, newProfile func(profile.R
 						return &types.ReloadResult{Error: "provider extension does not support live configuration; restart the node to apply it"}, nil
 					}
 				}
-				mode := profile.ProviderOptional
+				mode := provider.StartupOptional
 				if len(distributed.GetLlm().GetProviders()) == 0 {
-					mode = profile.ProviderDisabled
+					mode = provider.StartupDisabled
 				}
 				next, err := build(nextOption, mode)
 				if err != nil {

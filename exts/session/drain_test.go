@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/chainreactors/cyber/agent"
+	provider "github.com/chainreactors/cyber/agent/provider"
 	"github.com/chainreactors/cyber/agent/session"
 	"github.com/chainreactors/cyber/core/extension"
 	loopext "github.com/chainreactors/cyber/exts/agent"
@@ -20,7 +21,7 @@ import (
 
 func TestGraphDrainsSessionBeforeSharedLoopAndTools(t *testing.T) {
 	f := apptest.NewFixture(t, nil, nil)
-	f.Providers.Set(inertProvider{}, agent.ProviderConfig{Model: "test"})
+	f.Providers.Set(inertProvider{}, provider.ProviderConfig{Model: "test"})
 	started, canceled := make(chan string, 2), make(chan string, 2)
 	release := make(chan struct{})
 	var once sync.Once

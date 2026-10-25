@@ -2,6 +2,13 @@
 
 本页保留各版本的用户可见变化与兼容信息，旧命令、配置和包路径仅表示当时的行为。当前操作见[使用者指南](README.md#使用者指南)，构建见[构建与嵌入](../README_CN.md#构建与嵌入)，历史实现请查阅对应 Git tag。
 
+## Unreleased
+
+- 工具返回部分输出时保留失败原因；后台 subagent 仅返回错误时也通知父任务。联网搜索要求实际搜索执行记录，失败时保留后端原因。
+- browser、passive 与 Katana 可由入口直接导入组装，`full` 保留为 aiscan 的全量组合；原生 `record` 可独立于 `full` 构建。
+- Go 源码 API：工具结果与定义直接使用 `aop.ToolResult` / `aop.ToolDefinition`；Provider 类型和构造函数改从 `agent/provider` 引用，停止原因从 `agent/hooks` 引用。Context hook 直接返回 `[]*aop.Message`，nil 表示不替换。删除重复转导出别名，AOP wire 字段保持兼容。
+- passive 的 `recon` 声明与连接检查迁至 `exts/passive/config`，运行实现不再依赖 scanner engine；CyberHub 索引查询迁至 `tools/cyberhub`。原有配置键与 CLI 参数保持兼容。
+
 ## v1.0.0-rc8 — 工作台重构、节点接入与任务复用
 
 rc8 统一 Web 中的工具结果与执行证据，简化模型配置和节点接入，改善长对话与流程回放的交互，并引入可持续学习的 Reflex 任务流程。框架目录与文档也进一步收敛。

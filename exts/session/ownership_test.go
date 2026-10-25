@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/chainreactors/cyber/agent"
+	agenthooks "github.com/chainreactors/cyber/agent/hooks"
 	"github.com/chainreactors/cyber/agent/provider"
 	agentsession "github.com/chainreactors/cyber/agent/session"
 	"github.com/chainreactors/cyber/core/extension"
@@ -63,10 +64,10 @@ func TestLoopPrecedesSessionInCompositionOrder(t *testing.T) {
 			config.Inbox.Drain()
 		}
 		managed <- loop
-		return &agent.Result{Stop: agent.StopReasonCompleted}, nil
+		return &agent.Result{Stop: agenthooks.StopReasonCompleted}, nil
 	})
 	application := apptest.NewFixture(t, nil, nil)
-	application.Providers.Set(inertProvider{}, agent.ProviderConfig{})
+	application.Providers.Set(inertProvider{}, provider.ProviderConfig{})
 	loop := loopext.New(selected)
 	sessions := sessionext.New(agentsession.Config{Providers: application.Providers})
 	set, err := extension.New(append(apptest.Entries(t, application), promptext.New(), loop, sessions)...)

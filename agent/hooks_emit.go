@@ -112,8 +112,8 @@ func transformContextHook(ctx context.Context, cfg Config, messages []*aop.Messa
 		Turn:      turn,
 		Messages:  messages,
 	})
-	if result.Messages != nil {
-		return result.Messages
+	if result != nil {
+		return result
 	}
 	return messages
 }

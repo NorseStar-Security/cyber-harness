@@ -1,5 +1,3 @@
-//go:build full
-
 // Page wraps a go-rod page and executes headless action sequences.
 // Ported from nuclei pkg/protocols/headless/engine/page.go.
 

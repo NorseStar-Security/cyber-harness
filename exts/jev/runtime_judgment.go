@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+
+	jev "github.com/chainreactors/cyber/agent/provider/jev"
 )
 
 type runtimeJudgmentBudgetKey struct{}
@@ -56,7 +58,7 @@ func (e *Extension) judgeRuntime(ctx context.Context, kind string, request json.
 			delete(current, role)
 		}
 	}
-	response, err := e.exchange(ctx, "jev_"+kind, json.RawMessage(jsonText(map[string]any{"context": current, "state": state})), map[string]Claim{kind: q})
+	response, err := e.exchange(ctx, "jev_"+kind, json.RawMessage(jsonText(map[string]any{"context": current, "state": state})), map[string]jev.Claim{kind: q})
 	if err != nil {
 		return handoffError{"JEV " + kind + " judgment unavailable: " + err.Error()}
 	}
