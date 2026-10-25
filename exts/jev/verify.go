@@ -14,9 +14,16 @@ import (
 type replayResult struct {
 	facts      json.RawMessage
 	candidates map[string]binding
+	branches   []replayBranch
+}
+type replayBranch struct {
+	replayed   int
+	stopped    bool
+	complete   bool
+	diagnostic *CompilerDiagnostic
 }
 type observationReplay struct {
-	reflex       *Reflex
+	reflex       *Program
 	capabilities map[string]any
 	messages     []map[string]any
 	omitted      int
@@ -24,7 +31,7 @@ type observationReplay struct {
 	cache        map[string]replayResult
 }
 
-func newObservationReplay(reflex *Reflex, state json.RawMessage, capabilities map[string]any) (*observationReplay, error) {
+func newObservationReplay(reflex *Program, state json.RawMessage, capabilities map[string]any) (*observationReplay, error) {
 	var projection struct {
 		Messages []map[string]any `json:"messages"`
 		Omitted  int              `json:"omitted_evidence"`
@@ -74,14 +81,15 @@ var errProbeStop = errors.New("pure probe reached native dispatch")
 // Explore finite semantic branches, replaying only exact recorded call/result
 // pairs. No provider or native tool is invoked during publication checks.
 // The exact same program and bridges are used in foreground execution.
-func probeReflexArguments(ctx context.Context, reflex *Reflex, input, args map[string]any, results []map[string]any, allowMissing bool) (json.RawMessage, map[string]binding, error) {
+func probeReflexArguments(ctx context.Context, reflex *Program, input, args map[string]any, results []map[string]any, allowMissing bool) (replayResult, error) {
 	candidates := map[string]binding{}
 	states := []any{}
+	branches := []replayBranch{}
 	queue := []map[string]string{{}}
 	visited := map[string]bool{}
 	for len(queue) > 0 {
 		if len(visited) >= 64 {
-			return nil, nil, fmt.Errorf("branch probe exceeds finite budget")
+			return replayResult{}, fmt.Errorf("branch probe exceeds finite budget")
 		}
 		schedule := queue[0]
 		queue = queue[1:]
@@ -187,7 +195,7 @@ func probeReflexArguments(ctx context.Context, reflex *Reflex, input, args map[s
 					}
 					return result, nil
 				}
-				gap = fmt.Sprintf("native call %d differs: generated=%s recorded=%s", cursor, clip(candidate.replayKey(), 512), clip((binding{Name: fmt.Sprint(result["name"]), Arguments: args}).replayKey(), 512))
+				gap = fmt.Sprintf("native call %d differs from the recorded call", cursor)
 				index := cursor
 				diagnostic = &CompilerDiagnostic{Code: "native_call_mismatch", Stage: "replay", Status: "repair", Message: gap, Call: &index, Expected: json.RawMessage((binding{Name: fmt.Sprint(result["name"]), Arguments: args}).replayKey()), Actual: json.RawMessage(candidate.replayKey()), Replayed: cursor, Recorded: len(results), Action: "Compare the decoded argv and every native option. Recover exact current example values with inspect_evidence. Replay can supply only this recorded call's result; a different operation needs its own actual evidence."}
 			} else {
@@ -199,7 +207,7 @@ func probeReflexArguments(ctx context.Context, reflex *Reflex, input, args map[s
 		}
 		output, err := runReflexJS(ctx, reflex, input, args, judge, execute)
 		if err != nil && !errors.Is(interruptedCause(err), errProbeStop) {
-			return nil, nil, err
+			return replayResult{}, err
 		}
 		if gap == "" && cursor < len(results) {
 			gap = fmt.Sprintf("function returned after %d/%d recorded native results", cursor, len(results))
@@ -210,56 +218,61 @@ func probeReflexArguments(ctx context.Context, reflex *Reflex, input, args map[s
 			gap = "function consumed recorded results but handed off without a completed report"
 			diagnostic = &CompilerDiagnostic{Code: "completion_missing", Stage: "completion", Status: "repair", Message: gap, Actual: output, Replayed: cursor, Recorded: len(results), Action: "Use each execute return value to process fresh evidence and finish the promised work within this invocation. context.history is the entry snapshot; it does not gain results during the running function. Returning defer immediately hands control to the main model and cannot qualify as a complete entry replay."}
 		}
-		states = append(states, map[string]any{"replayed": cursor, "stopped": errors.Is(interruptedCause(err), errProbeStop), "complete": err == nil && cursor == len(results) && output != nil && output[report] != nil && output["parameters"] == nil, "gap": gap, "diagnostic": diagnostic})
+		branch := replayBranch{replayed: cursor, stopped: errors.Is(interruptedCause(err), errProbeStop), complete: err == nil && cursor == len(results) && output != nil && output[report] != nil && output["parameters"] == nil, diagnostic: diagnostic}
+		branches = append(branches, branch)
+		// Rich repair diagnostics belong to mechanism validation. Semantic review
+		// gets outcomes plus shared native bindings/results, without repeated
+		// copies of those calls, results and repair instructions at every boundary.
+		states = append(states, map[string]any{"replayed": branch.replayed, "stopped": branch.stopped, "complete": branch.complete, "gap": gap})
 		if output != nil {
 			if output[report] != nil {
-				grounded, err := resolveReport(output[report], evidence)
+				_, err := resolveReport(output[report], evidence)
 				if err != nil {
-					return nil, nil, fmt.Errorf("report provenance: %w", err)
+					return replayResult{}, fmt.Errorf("report provenance: %w", err)
 				}
-				// Semantic review receives the same actual value as runtime
-				// composition, rather than an unresolved evidence pointer.
-				output[report] = grounded
+				// Validate the reference against actual results here. Review shares
+				// the recorded trajectory once, so every boundary keeps the original
+				// reference instead of copying the same potentially large result.
 			}
 			if output["parameters"] != nil && !allowMissing {
-				return nil, nil, fmt.Errorf("compiler requires current example arguments to probe the generated parameterized function")
+				return replayResult{}, fmt.Errorf("compiler requires current example arguments to probe the generated parameterized function")
 			}
 			states = append(states, map[string]any{"output": output})
 		}
 	}
 	data, _ := json.Marshal(map[string]any{"branches": states})
-	return data, candidates, nil
+	return replayResult{facts: data, candidates: candidates, branches: branches}, nil
 }
-func (r *observationReplay) evaluate(ctx context.Context, input json.RawMessage, cache bool) (json.RawMessage, map[string]binding, error) {
+func (r *observationReplay) evaluate(ctx context.Context, input json.RawMessage) (replayResult, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, nil, err
+		return replayResult{}, err
 	}
 	env, err := observeInput(input, r.capabilities)
 	if err != nil {
-		return nil, nil, err
+		return replayResult{}, err
 	}
 	key := digest(env)
-	if value, ok := r.cache[key]; ok && cache {
-		return value.facts, value.candidates, nil
+	if value, ok := r.cache[key]; ok {
+		return value, nil
 	}
 	results, err := r.resultsAfter(input)
 	if err != nil {
-		return nil, nil, err
+		return replayResult{}, err
 	}
-	facts, candidates, err := probeReflexArguments(ctx, r.reflex, env, r.reflex.arguments, results, false)
-	if err == nil && cache {
-		r.cache[key] = replayResult{facts, candidates}
+	result, err := probeReflexArguments(ctx, r.reflex, env, r.reflex.arguments, results, false)
+	if err == nil {
+		r.cache[key] = result
 	}
-	return facts, candidates, err
+	return result, err
 }
-func observationWitnesses(ctx context.Context, reflex *Reflex, state json.RawMessage, capabilities map[string]any) ([]map[string]any, error) {
+func observationWitnesses(ctx context.Context, reflex *Program, state json.RawMessage, capabilities map[string]any) ([]map[string]any, error) {
 	r, err := newObservationReplay(reflex, state, capabilities)
 	if err != nil {
 		return nil, err
 	}
 	return r.witnesses(ctx)
 }
-func verifyObserve(ctx context.Context, reflex *Reflex, state json.RawMessage, capabilities map[string]any) error {
+func verifyObserve(ctx context.Context, reflex *Program, state json.RawMessage, capabilities map[string]any) error {
 	r, err := newObservationReplay(reflex, state, capabilities)
 	if err != nil {
 		return err
@@ -272,11 +285,11 @@ func (r *observationReplay) witnesses(ctx context.Context) ([]map[string]any, er
 		if end == 0 {
 			continue
 		}
-		facts, candidates, err := r.evaluate(ctx, r.input(end, false), true)
+		result, err := r.evaluate(ctx, r.input(end, false))
 		if err != nil {
 			return nil, err
 		}
-		row := map[string]any{"boundary": end, "latest": r.messages[end-1], "state": facts, "candidates": candidates}
+		row := map[string]any{"boundary": end, "state": result.facts, "candidates": result.candidates}
 		for _, next := range r.messages[end:] {
 			if next["calls"] != nil {
 				row["next_calls"] = next["calls"]
@@ -310,7 +323,7 @@ func compactWitnesses(witnesses []map[string]any) ([]map[string]any, map[string]
 func (r *observationReplay) verify(ctx context.Context) error {
 	for _, end := range r.boundaries(true) {
 		raw := r.input(end, true)
-		_, _, err := r.evaluate(ctx, raw, true)
+		_, err := r.evaluate(ctx, raw)
 		if err != nil {
 			return fmt.Errorf("program at boundary %d: %w", end, err)
 		}
@@ -330,7 +343,7 @@ func (r *observationReplay) verify(ctx context.Context) error {
 				if err != nil {
 					return err
 				}
-				_, _, err = probeReflexArguments(ctx, r.reflex, env, nil, results, true)
+				_, err = probeReflexArguments(ctx, r.reflex, env, nil, results, true)
 				if err != nil {
 					return fmt.Errorf("program without arguments at boundary %d: %w", end, err)
 				}

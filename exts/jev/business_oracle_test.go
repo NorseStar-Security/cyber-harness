@@ -111,7 +111,7 @@ func (h testRegistryHandle) Register(s VerificationSuite) error {
 	r, _ := testRegistries.LoadOrStore(h.e, &VerificationRegistry{suites: map[string]*VerificationSuite{}})
 	r.(*VerificationRegistry).suites[s.ID] = &s
 	h.e.contracts = coretool.NewNativeContractRegistry()
-	for _, c := range s.native().Contracts {
+	for _, c := range s.native() {
 		if err := h.e.contracts.Register(c); err != nil {
 			return err
 		}
@@ -132,10 +132,10 @@ func (h testRegistryHandle) suite(id string) *VerificationSuite {
 	}
 	return nil
 }
-func (s *VerificationSuite) native() nativeSnapshot {
-	n := nativeSnapshot{Contracts: map[string]coretool.NativeContract{}}
+func (s *VerificationSuite) native() coretool.NativeContracts {
+	n := coretool.NativeContracts{}
 	for id, c := range s.Contracts {
-		n.Contracts[id] = coretool.NativeContract{ID: c.ID, Version: c.Version, Description: c.Description, Classify: func(call coretool.NativeCall) (coretool.NativeAccess, error) { return c.Classify(NativeCall(call)) }, Outcome: func(call coretool.NativeCall, r map[string]any) string {
+		n[id] = coretool.NativeContract{ID: c.ID, Version: c.Version, Description: c.Description, Classify: func(call coretool.NativeCall) (coretool.NativeAccess, error) { return c.Classify(NativeCall(call)) }, Outcome: func(call coretool.NativeCall, r map[string]any) string {
 			if c.Outcome == nil {
 				return "unknown"
 			}
@@ -174,21 +174,19 @@ func (s *VerificationSuite) access(c NativeCall) (Access, error) {
 	}
 	return result, nil
 }
-func (s *VerificationSuite) validateCall(r *Reflex, c NativeCall, args map[string]any) error {
-	return s.native().validateCall(r, c, args)
-}
-func qualifyIndependent(e *Extension, ctx context.Context, r *Reflex, caps map[string]any) error {
+func qualifyIndependent(e *Extension, ctx context.Context, r *Program, caps map[string]any, suiteIDs ...string) error {
 	if err := r.validate(); err != nil {
 		return err
 	}
 	ctx, cancel := context.WithTimeout(ctx, decisionBudget)
 	defer cancel()
-	if r.APIVersion != reflexABI {
-		return errors.New("qualification requires Reflex API version 2")
+	suiteID := "laboratory"
+	if len(suiteIDs) > 0 {
+		suiteID = suiteIDs[0]
 	}
-	s := testVerification(e).suite(r.LegacySuite)
+	s := testVerification(e).suite(suiteID)
 	if s == nil {
-		return fmt.Errorf("no trusted verification suite %q; source remains a candidate", r.LegacySuite)
+		return fmt.Errorf("no trusted verification suite %q; test oracle unavailable", suiteID)
 	}
 	if len(r.Parameters) > 16<<10 || len(r.Steps) > maxCandidates {
 		return errors.New("Reflex manifest exceeds limits")
@@ -205,12 +203,8 @@ func qualifyIndependent(e *Extension, ctx context.Context, r *Reflex, caps map[s
 	if len(cases) == 0 || len(cases) > 256 {
 		return errors.New("verification suite needs 1-256 independent cases")
 	}
-	proof := &VerificationRecord{Contracts: map[string]string{}}
 	var trajectory []map[string]any
 	var example map[string]any
-	for id, c := range s.Contracts {
-		proof.Contracts[id] = c.Version
-	}
 	seen := map[string]bool{}
 	for _, c := range cases {
 		if c.ID == "" || seen[c.ID] || c.Execute == nil || c.Check == nil {
@@ -232,7 +226,7 @@ func qualifyIndependent(e *Extension, ctx context.Context, r *Reflex, caps map[s
 			if len(run.Calls) >= maxCandidates {
 				return nil, handoffError{"native call budget reached"}
 			}
-			if err := s.validateCall(r, call, c.Arguments); err != nil {
+			if err := r.validateCall(s.native(), call, c.Arguments); err != nil {
 				return nil, err
 			}
 			if err := s.CheckCall(VerificationCall{Input: input, Arguments: c.Arguments, Call: call, Effects: ledger.summary(), Evidence: cloneEvidence(run.Evidence)}); err != nil {
@@ -305,10 +299,8 @@ func qualifyIndependent(e *Extension, ctx context.Context, r *Reflex, caps map[s
 			example = c.Arguments
 		}
 	}
-	_ = proof
 	original := r.arguments
 	r.arguments = example
-	r.LegacySuite = ""
 	state, _ := json.Marshal(map[string]any{"messages": trajectory})
 	testTrajectories.Store(e, state)
 	err := e.qualify(ctx, r, caps, state)

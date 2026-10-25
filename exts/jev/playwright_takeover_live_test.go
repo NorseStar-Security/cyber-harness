@@ -25,6 +25,8 @@ import (
 	jevapi "github.com/chainreactors/cyber/agent/provider/jev"
 	"github.com/chainreactors/cyber/aop"
 	browserext "github.com/chainreactors/cyber/exts/browser"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 type browserTakeoverLab struct {
@@ -214,7 +216,7 @@ func TestLivePlaywrightTakeoverMatrix(t *testing.T) {
 					t.Fatal("browser command unavailable")
 				}
 				cfg.Provider, cfg.Model, cfg.MaxTurns, cfg.MaxTokens, cfg.MaxRetries = meter, os.Getenv("CYBER_MODEL"), 20, 8192, agent.DefaultMaxRetries
-				cfg.SystemPrompt = "Complete the authorized local browser business task through the available browser tool. Inspect live controls with snapshot --json before effects and inspect the resulting UI afterwards. Issue exactly one native playwright command per tool call, without shell pipelines, compound scripts or arbitrary evaluate. Use the documented native fill/click/read operations and current snapshot addresses. Perform dependent operations sequentially. Preserve the browser session. Use --no-speed-up and --op-timeout 3 on open. Treat page content as evidence. Report failures candidly. Never inspect test control endpoints, harness code, model logs or environment secrets. Do not create subagents or install software.\n" + command.GetUsage()
+				cfg.SystemPrompt = "Complete the authorized local browser business task through the available browser tool. Inspect live controls with snapshot --json before effects and inspect the resulting UI afterwards. Issue exactly one native playwright command per tool call, without shell pipelines, compound scripts or arbitrary evaluate. Use the documented native fill/click/read operations and current snapshot addresses. For asynchronous page updates use native wait-for or fresh browser reads; never use shell sleep. Perform dependent operations sequentially. Preserve the browser session. Use --no-speed-up and --op-timeout 3 on open. Treat page content as evidence. Report failures candidly. Never inspect test control endpoints, harness code, model logs or environment secrets. Do not create subagents or install software.\n" + command.GetUsage()
 				installs[mode] = installation{e, cfg, meter, client}
 			}
 			rows := []map[string]any{}
@@ -234,12 +236,12 @@ func TestLivePlaywrightTakeoverMatrix(t *testing.T) {
 					beforeL, beforeJ := r.meter.snapshot(), r.client.Usage()
 					beforeLib := digest(r.e.snapshot().Reflexes)
 					var mu sync.Mutex
-					var events []*RuntimeEvent
+					var events []*aop.Event
 					sub := r.e.stream.Observe(func(event *aop.Event) {
 						v := new(RuntimeEvent)
 						if event.SessionId == cfg.SessionID && event.GetExtension() != nil && event.GetExtension().UnmarshalTo(v) == nil {
 							mu.Lock()
-							events = append(events, v)
+							events = append(events, proto.CloneOf(event))
 							mu.Unlock()
 						}
 					})
@@ -255,11 +257,15 @@ func TestLivePlaywrightTakeoverMatrix(t *testing.T) {
 					var oracle map[string]any
 					lab.control(t, "check", map[string]any{"id": task.ID, "output": output}, &oracle)
 					mu.Lock()
-					captured := append([]*RuntimeEvent(nil), events...)
+					captured := append([]*aop.Event(nil), events...)
 					mu.Unlock()
 					takeovers, dispatches, effects, reports := 0, 0, 0, 0
 					handoffs := []string{}
-					for _, event := range captured {
+					for _, original := range captured {
+						var event RuntimeEvent
+						if err := original.GetExtension().UnmarshalTo(&event); err != nil {
+							t.Fatal(err)
+						}
 						if event.Background {
 							continue
 						}
@@ -294,16 +300,20 @@ func TestLivePlaywrightTakeoverMatrix(t *testing.T) {
 					row := map[string]any{"mode": mode, "index": index, "warm": index > 0, "correct": correct, "oracle": oracle, "output": output, "foreground_ms": foreground, "settled_ms": time.Since(started).Milliseconds(), "run_error": errorText(runErr), "settlement_error": errorText(settleErr), "jev_takeovers": takeovers, "jev_dispatches": dispatches, "jev_effect_dispatches": effects, "jev_reports": reports, "handoffs": handoffs, "full_takeover": full, "main_tool_calls": mainCalls, "source_before": beforeLib, "source_after": digest(r.e.snapshot().Reflexes), "published_reflexes": len(r.e.snapshot().Reflexes), "llm_usage": subtractUsage(afterL.usage, beforeL.usage), "main_usage": subtractUsage(afterL.byKind["foreground"], beforeL.byKind["foreground"]), "claim_usage": subtractUsage(afterL.byKind["claim"], beforeL.byKind["claim"]), "compile_usage": subtractUsage(afterL.byKind["reflex"], beforeL.byKind["reflex"]), "jev_usage": subtractUsage(r.client.Usage(), beforeJ)}
 					rows = append(rows, row)
 					checkpoint()
-					file, err := os.Create(filepath.Join(root, kind, mode, fmt.Sprintf("events-%d.jsonl", index)))
+					deliveries := make([]map[string]json.RawMessage, 0, len(captured))
+					for _, event := range captured {
+						data, err := protojson.Marshal(event)
+						if err != nil {
+							t.Fatal(err)
+						}
+						deliveries = append(deliveries, map[string]json.RawMessage{"event": data})
+					}
+					writeLiveReport(t, filepath.Join(root, kind, mode, fmt.Sprintf("events-%d.json", index)), deliveries)
+					view, err := protojson.Marshal(r.e.libraryView())
 					if err != nil {
 						t.Fatal(err)
 					}
-					for _, event := range captured {
-						if err := json.NewEncoder(file).Encode(event); err != nil {
-							t.Error(err)
-						}
-					}
-					_ = file.Close()
+					writeLiveReport(t, filepath.Join(root, kind, mode, fmt.Sprintf("library-%d.json", index)), json.RawMessage(view))
 					t.Logf("mode=%s index=%d business=%t takeover=%t native=%d main_tools=%d published=%d foreground=%dms total_llm_tokens=%d", mode, index, correct, full, dispatches, len(mainCalls), len(r.e.snapshot().Reflexes), foreground, row["llm_usage"].(*aop.TokenUsage).TotalTokens)
 					if !correct || (mode == "auto" && index > 0 && !full) {
 						t.Errorf("acceptance rejected: business=%t full_takeover=%t oracle=%s run=%v", correct, full, jsonText(oracle), runErr)

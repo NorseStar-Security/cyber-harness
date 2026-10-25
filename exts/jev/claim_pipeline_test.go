@@ -25,7 +25,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-// These tests start with no Claim, candidate or Reflex. Only inference is
+// These tests start with no Claim or Reflex. Only inference is
 // scripted in the local variant; the Agent, command executor, native contracts,
 // compiler Agent, replay, semantic review, publication and reload are real.
 func TestClaimToReflexPipeline(t *testing.T) {
@@ -56,16 +56,26 @@ func TestClaimPipelineLiteralEncoding(t *testing.T) {
 	}
 }
 
-func TestClaimPipelineReviewReceivesResolvedReport(t *testing.T) {
+func TestClaimPipelineReviewReceivesSharedReportEvidence(t *testing.T) {
 	var reviewed atomic.Bool
 	e, plan, actor := compilerReadPlan(t, func(req inferenceRequest) map[string]inferenceAnswer {
 		if strings.Contains(string(req.State), `"reflex":`) {
 			reviewed.Store(true)
-			if !strings.Contains(string(req.State), `\"report\":\"current-native-receipt\"`) && !strings.Contains(string(req.State), `"report":"current-native-receipt"`) {
-				t.Error("semantic review did not receive the actual resolved native receipt")
+			var evidence struct {
+				Trajectory struct {
+					History []struct {
+						CallID string `json:"call_id"`
+						Data   struct {
+							Receipt string `json:"receipt"`
+						} `json:"data"`
+					} `json:"history"`
+				} `json:"trajectory"`
 			}
-			if strings.Contains(string(req.State), `"report":{"evidence":`) {
-				t.Error("semantic review retained an unresolved report pointer")
+			if err := json.Unmarshal(req.State, &evidence); err != nil || len(evidence.Trajectory.History) != 1 || evidence.Trajectory.History[0].CallID != "actual-read" || evidence.Trajectory.History[0].Data.Receipt != "current-native-receipt" {
+				t.Error("semantic review lost the shared actual native receipt")
+			}
+			if !strings.Contains(string(req.State), `"report":{"evidence":"actual-read","path":["data","receipt"]}`) || strings.Count(string(req.State), "current-native-receipt") != 1 {
+				t.Error("semantic review duplicated or lost the report evidence reference")
 			}
 		}
 		return declarationAnswers(req, true)
@@ -77,7 +87,7 @@ func TestClaimPipelineReviewReceivesResolvedReport(t *testing.T) {
 	})
 	r, err := e.generateReflex(t.Context(), plan)
 	if err != nil || r == nil || !reviewed.Load() {
-		t.Fatalf("resolved evidence review failed: artifact=%v reviewed=%v err=%v", r != nil, reviewed.Load(), err)
+		t.Fatalf("shared evidence review failed: artifact=%v reviewed=%v err=%v", r != nil, reviewed.Load(), err)
 	}
 }
 
@@ -203,12 +213,13 @@ func (f *pipelineFixture) contribution() extension.Extension {
 
 func pipelineArtifact(target string) string {
 	return jsonText(struct {
-		Version   int                       `json:"api_version"`
+		When      string                    `json:"when"`
+		Decide    string                    `json:"decide"`
 		Steps     map[string]StepDefinition `json:"steps"`
 		Schema    json.RawMessage           `json:"parameters_schema"`
 		Arguments map[string]string         `json:"arguments"`
 		Observe   string                    `json:"observe"`
-	}{2, map[string]StepDefinition{}, json.RawMessage(`{"type":"object","required":["target"],"properties":{"target":{"type":"string"}},"additionalProperties":false}`), map[string]string{"target": target}, `js:function(context,args){if(!args||!args.target)return{defer:"missing current arguments",parameters:"target"};const seen=context.history.filter(function(r){return r.name==="bash"&&r.arguments&&typeof r.arguments.command==="string"&&r.arguments.command.indexOf("claimlab inspect ")===0&&!r.is_error&&r.data&&r.data.target===args.target&&typeof r.data.receipt==="string";});const r=seen.length?seen[seen.length-1]:execute({name:"bash",arguments:{command:command("claimlab",["inspect",args.target])},read:true});return{report:{evidence:r.call_id,path:["data","receipt"]}};}`})
+	}{"Inspect the current requested target", "Report its current native receipt or defer for missing input", map[string]StepDefinition{}, json.RawMessage(`{"type":"object","required":["target"],"properties":{"target":{"type":"string"}},"additionalProperties":false}`), map[string]string{"target": target}, `js:function(context,args){if(!args||!args.target)return{defer:"missing current arguments",parameters:"target"};const seen=context.history.filter(function(r){return r.name==="bash"&&r.arguments&&typeof r.arguments.command==="string"&&r.arguments.command.indexOf("claimlab inspect ")===0&&!r.is_error&&r.data&&r.data.target===args.target&&typeof r.data.receipt==="string";});const r=seen.length?seen[seen.length-1]:execute({name:"bash",arguments:{command:command("claimlab",["inspect",args.target])},read:true});return{report:{evidence:r.call_id,path:["data","receipt"]}};}`})
 }
 
 func pipelineTask(target string) string {
@@ -369,7 +380,7 @@ func runClaimPipeline(t *testing.T, mode string, client *jevapi.Client, real pro
 	}
 	e, cfg, _ := testInstallationWithExtensions(t, Config{Mode: "auto", Directory: dir}, client, f.contribution())
 	observePipeline(t, e)
-	if lib := e.snapshot(); len(lib.Claims)+len(lib.Reflexes)+len(lib.Candidates) != 0 {
+	if lib := e.snapshot(); len(lib.Claims)+len(lib.Reflexes) != 0 {
 		t.Fatal("cold installation is not empty")
 	}
 	coldTarget := "冷启动 'quoted' \\ target"
@@ -395,7 +406,7 @@ func runClaimPipeline(t *testing.T, mode string, client *jevapi.Client, real pro
 	}
 	report.Stage = "publication"
 	lib := e.snapshot()
-	if len(lib.Claims) == 0 || len(lib.Reflexes) != 1 || len(lib.Candidates) != 0 || report.ColdModel.Claims == 0 || report.ColdModel.Compilation == 0 {
+	if len(lib.Claims) == 0 || len(lib.Reflexes) != 1 || report.ColdModel.Claims == 0 || report.ColdModel.Compilation == 0 {
 		t.Fatalf("first task failed to publish learned source: counts=%+v library=%s", report.ColdModel, jsonText(lib))
 	}
 	if real == nil {
@@ -407,7 +418,7 @@ func runClaimPipeline(t *testing.T, mode string, client *jevapi.Client, real pro
 		}
 	}
 	for id, c := range lib.Claims {
-		if c.Task == "" || id != "c"+digest(c.Claim)[:16] || c.Validate() != nil {
+		if c.Task == "" || id != "c"+digest(c.Claim)[:16] || c.Claim.Validate() != nil {
 			t.Fatal("Claim lost content identity or task provenance")
 		}
 		if real == nil && !reflect.DeepEqual(c.Claim, claim) {
@@ -416,7 +427,7 @@ func runClaimPipeline(t *testing.T, mode string, client *jevapi.Client, real pro
 		report.ClaimIDs = append(report.ClaimIDs, id)
 	}
 	for id, r := range lib.Reflexes {
-		if !e.qualified(r) || r.Proof.Replayed != 1 || len(r.Claims) == 0 {
+		if !e.qualified(r.Program) || r.Proof.Replayed != 1 || len(r.Claims) == 0 {
 			t.Fatalf("published source lacks complete qualification or leaked examples: %s", jsonText(r))
 		}
 		for _, cid := range r.Claims {

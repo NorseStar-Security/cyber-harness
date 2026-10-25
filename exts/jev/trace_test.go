@@ -111,7 +111,7 @@ func TestCompilationKeepsHandoffBoundaryWithoutDuplicatingConstraints(t *testing
 		coretool.Command{Name: "catalog", Usage: "catalog [arguments]\n" + strings.Repeat("native documentation ", 1400), Run: func(context.Context, *coretool.Execution) (any, error) { return nil, nil }})
 	c := choiceClaim("Native scene"+". "+"Can it progress?", map[string]string{Defer: "Missing facts", "inspect": "Read state"})
 	e.library.Claims["c"] = claimRecord{Claim: c}
-	e.library.Reflexes["r"] = reflexRecord{Reflex: Reflex{When: c.Context, Decide: "Use current native bindings", Observe: normalizeFixture(`js:({state:{},candidates:{}})`)}, Claims: []string{"c"}}
+	e.library.Reflexes["r"] = Reflex{Program: Program{When: c.Context, Decide: "Use current native bindings", Observe: `js:function(){return {report:{}};}`}, Claims: []string{"c"}}
 	catalog, err := e.capabilities(cfg, state)
 	if err != nil {
 		t.Fatal(err)

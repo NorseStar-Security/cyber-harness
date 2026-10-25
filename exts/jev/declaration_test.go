@@ -29,7 +29,7 @@ func TestClaimOnlyFeedsCompilationAndNeverRunsWithoutReflex(t *testing.T) {
 	var calls atomic.Int64
 	cfg.Provider = testProvider(func(ctx context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 		if provider.MessageText(req.Messages[0]) == claimPrompt {
-			return reply(provider.TextMessage("assistant", fixtureClaim)), nil
+			return reply(provider.TextMessage("assistant", `{"claims":`+fixtureClaim+`}`)), nil
 		}
 		n := calls.Add(1)
 		if n == 1 {
@@ -168,7 +168,7 @@ func TestExistingSceneSkipsPageActionDeclarations(t *testing.T) {
 	if err := qualifyIndependent(e, t.Context(), &r, observationCapabilities("bash")); err != nil {
 		t.Fatal(err)
 	}
-	e.library.Reflexes["r"+digest(r)[:16]] = reflexRecord{Reflex: r}
+	e.library.Reflexes["r"+digest(r)[:16]] = Reflex{Program: r}
 	cfg.Provider = testProvider(func(context.Context, *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 		t.Error("existing scene caused another model generation")
 		return reply(provider.TextMessage("assistant", "[]")), nil

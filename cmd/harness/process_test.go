@@ -215,7 +215,7 @@ func readFile(t *testing.T, path string) []byte {
 }
 
 func redactSecrets(data []byte) []byte {
-	for _, name := range []string{"CYBER_API_KEY", "CYBER_HARNESS_LLM_API_KEY"} {
+	for _, name := range []string{"CYBER_API_KEY", "TYPESAFE_API_KEY"} {
 		key := strings.TrimSpace(os.Getenv(name))
 		if key == "" {
 			continue
@@ -226,17 +226,6 @@ func redactSecrets(data []byte) []byte {
 		data = bytes.ReplaceAll(data, []byte(key), []byte("[REDACTED]"))
 	}
 	return data
-}
-
-// Model settings are shared by every Cyber binary and opt-in live test. Retain
-// the old harness names as fallbacks for existing test deployments.
-func liveLLMEnv(suffix string) string {
-	for _, prefix := range []string{"CYBER_", "CYBER_HARNESS_LLM_"} {
-		if value := strings.TrimSpace(os.Getenv(prefix + suffix)); value != "" {
-			return value
-		}
-	}
-	return ""
 }
 
 // Buffer complete log lines so a credential split across Write calls cannot
@@ -325,7 +314,7 @@ func testEnvironment(includeLLM bool) []string {
 	}
 	if includeLLM {
 		for _, suffix := range []string{"API_KEY", "BASE_URL", "MODEL", "PROVIDER"} {
-			if value := liveLLMEnv(suffix); value != "" {
+			if value := strings.TrimSpace(os.Getenv("CYBER_" + suffix)); value != "" {
 				env = append(env, "CYBER_"+suffix+"="+value)
 			}
 		}

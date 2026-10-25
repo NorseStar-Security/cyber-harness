@@ -11,8 +11,8 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
-func TestLegacyEventsRequireExplicitOfflineConversion(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "legacy.db")
+func TestIncompatibleEventSchemaIsRejectedWithoutModification(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "incompatible.db")
 	store, err := NewSQLiteStore(path)
 	if err != nil {
 		t.Fatal(err)
@@ -21,8 +21,8 @@ func TestLegacyEventsRequireExplicitOfflineConversion(t *testing.T) {
 		t.Fatal(err)
 	}
 	store.Close()
-	if _, err := NewSQLiteStore(path); err == nil || !strings.Contains(err.Error(), "v1.0.0-rc7") {
-		t.Fatalf("legacy server open = %v", err)
+	if _, err := NewSQLiteStore(path); err == nil || !strings.Contains(err.Error(), "chat_aop_events columns") {
+		t.Fatalf("incompatible server open = %v", err)
 	}
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
@@ -30,7 +30,7 @@ func TestLegacyEventsRequireExplicitOfflineConversion(t *testing.T) {
 	}
 	defer db.Close()
 	if _, err := db.Exec(`SELECT event_json FROM chat_aop_events`); err != nil {
-		t.Fatalf("server changed the legacy schema: %v", err)
+		t.Fatalf("server changed the rejected schema: %v", err)
 	}
 }
 

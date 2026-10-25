@@ -3,7 +3,7 @@ import { ClaimDefinitionSchema } from '../gen/types/jev_pb'
 import { ClaimType, type Claim, type Evaluation } from '../gen/decision/claim_pb'
 export function parseJEVJSON(value: string): unknown { try { return JSON.parse(value) } catch { return value } }
 export function claimDefinitions(output: unknown) {
-  const list = Array.isArray(output) ? output : output && typeof output === 'object' && 'claims' in output ? output.claims : []
+  const list = output && typeof output === 'object' && Object.keys(output).length === 1 && 'claims' in output ? output.claims : []
   if (!Array.isArray(list)) return []
   return list.flatMap(value => {
     if (!value || typeof value !== 'object' || Object.keys(value).some(key => !['type', 'context', 'options'].includes(key)) || typeof value.context !== 'string' || !value.context.trim() || new TextEncoder().encode(value.context).length > 65536) return []

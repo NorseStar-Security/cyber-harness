@@ -1,13 +1,11 @@
 package jev
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/chainreactors/cyber/core/decision"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -22,7 +20,7 @@ import (
 	coretool "github.com/chainreactors/cyber/core/tool"
 )
 
-func qualifiedLaboratory(t *testing.T, e *Extension, caps map[string]any) Reflex {
+func qualifiedLaboratory(t *testing.T, e *Extension, caps map[string]any) Program {
 	t.Helper()
 	r := laboratoryReflex()
 	if err := r.validate(); err != nil {
@@ -34,42 +32,31 @@ func qualifiedLaboratory(t *testing.T, e *Extension, caps map[string]any) Reflex
 	return r
 }
 
-func TestReflexV2LibraryMigrationAndImmutableView(t *testing.T) {
-	for _, condition := range []string{"qualified", "legacy", "changed_source", "changed_suite", "changed_contract", "missing_registry"} {
+func TestReflexLibraryQualificationAndImmutableView(t *testing.T) {
+	for _, condition := range []string{"qualified", "changed_source", "changed_checks", "changed_contract", "missing_registry"} {
 		t.Run(condition, func(t *testing.T) {
 			e := testLaboratory(t)
 			r := qualifiedLaboratory(t, e, observationCapabilities("bash"))
 			c := Claim{Type: jevapi.ClaimNoul, Context: "Add current items and verify their completion."}
 			cid := "c" + digest(c)[:16]
-			if condition == "legacy" {
-				r.APIVersion, r.Proof = 0, nil
-			}
 			if condition == "changed_source" {
 				r.Observe += " "
 			}
-			if condition == "changed_suite" {
-				r.Proof.Format = "obsolete"
+			if condition == "changed_checks" {
+				r.Proof.Checks = nil
 			}
 			rid := "r" + digest(r)[:16]
-			lib := library{Claims: map[string]claimRecord{cid: {Claim: c, Task: "source-task"}}, Reflexes: map[string]reflexRecord{rid: {Reflex: r, Claims: []string{cid}}}}
+			lib := library{Claims: map[string]claimRecord{cid: {Claim: c, Task: "source-task"}}, Reflexes: map[string]Reflex{rid: {Program: r, Claims: []string{cid}}}}
 			if err := e.saveLibrary(lib); err != nil {
-				t.Fatal(err)
-			}
-			original, err := os.ReadFile(filepath.Join(e.config.Directory, "library.json"))
-			if err != nil {
 				t.Fatal(err)
 			}
 			next := New(Config{Directory: e.config.Directory})
 			next.contracts = e.contracts
-			if condition == "changed_suite" || condition == "changed_contract" {
+			if condition == "changed_contract" {
 				suite := laboratorySuite()
-				if condition == "changed_suite" {
-					// Native contracts remain unchanged; the mechanism format was invalidated above.
-				} else {
-					contract := suite.Contracts["lab"]
-					contract.Version = "2"
-					suite.Contracts["lab"] = contract
-				}
+				contract := suite.Contracts["lab"]
+				contract.Version = "changed"
+				suite.Contracts["lab"] = contract
 				if err := testVerification(next).Register(suite); err != nil {
 					t.Fatal(err)
 				}
@@ -81,36 +68,37 @@ func TestReflexV2LibraryMigrationAndImmutableView(t *testing.T) {
 				t.Fatal(err)
 			}
 			loaded := next.snapshot()
-			if loaded.Claims[cid].Context != c.Context || loaded.Claims[cid].Task != "source-task" {
-				t.Fatal("migration lost natural-language Claim metadata")
+			if loaded.Claims[cid].Claim.Context != c.Context || loaded.Claims[cid].Task != "source-task" {
+				t.Fatal("lost Claim provenance")
 			}
 			if condition == "qualified" {
-				if len(loaded.Reflexes) != 1 || loaded.Reflexes[rid].program == nil {
+				if len(loaded.published()) != 1 || loaded.Reflexes[rid].program == nil {
 					t.Fatal("qualified source did not reload")
 				}
 				loaded.Reflexes[rid].Proof.Contracts["lab"] = "altered"
 				loaded.Reflexes[rid].Steps["add"] = StepDefinition{Count: 99}
-				if !next.qualified(next.snapshot().Reflexes[rid]) {
-					t.Fatal("query mutated active proof or manifest")
+				if !next.qualified(next.snapshot().Reflexes[rid].Program) {
+					t.Fatal("query mutated published proof or manifest")
 				}
 				return
 			}
-			if len(loaded.Reflexes) != 0 {
-				t.Fatal("unqualified source remained executable")
+			archived := loaded.Reflexes[rid]
+			if len(loaded.published()) != 0 || !archived.Archived || archived.ArchiveReason == "" || digest(archived.Program) != digest(r) {
+				t.Fatal("invalidated publication was not retained as an archive")
 			}
 			backups, err := filepath.Glob(filepath.Join(e.config.Directory, "library-backup-*.json"))
-			if err != nil || len(backups) != 1 {
-				t.Fatalf("archive missing: %v %v", backups, err)
+			if err != nil || len(backups) != 0 {
+				t.Fatal("reload created a second library", err)
 			}
-			archived, err := os.ReadFile(backups[0])
-			if err != nil || !bytes.Equal(original, archived) {
-				t.Fatal("migration did not preserve original bytes")
+			again := New(Config{Directory: e.config.Directory})
+			if err := again.loadLibrary(); err != nil || digest(again.snapshot()) != digest(loaded) {
+				t.Fatal("archive did not reload unchanged", err)
 			}
 		})
 	}
 }
 
-func TestReflexV2CandidatePromotionAndValidation(t *testing.T) {
+func TestReflexPublicationRequiresQualificationAndOwnsItsSnapshot(t *testing.T) {
 	e := testLaboratory(t)
 	c := Claim{Type: jevapi.ClaimNoul, Context: "Add items with current parameters."}
 	cid := "c" + digest(c)[:16]
@@ -120,11 +108,8 @@ func TestReflexV2CandidatePromotionAndValidation(t *testing.T) {
 	if err := r.validate(); err != nil {
 		t.Fatal(err)
 	}
-	if err := e.storeCandidate(p, &r, errors.New("waiting for verification")); err != nil {
-		t.Fatal(err)
-	}
 	if err := e.publishReflex(p, &r); err == nil {
-		t.Fatal("unqualified candidate published")
+		t.Fatal("unqualified draft published")
 	}
 	if err := qualifyIndependent(e, t.Context(), &r, p.capabilities); err != nil {
 		t.Fatal(err)
@@ -132,58 +117,40 @@ func TestReflexV2CandidatePromotionAndValidation(t *testing.T) {
 	if err := e.publishReflex(p, &r); err != nil {
 		t.Fatal(err)
 	}
-	if len(e.snapshot().Candidates) != 0 || len(e.snapshot().Reflexes) != 1 {
-		t.Fatal("candidate was not promoted")
+	if len(e.snapshot().Reflexes) != 1 {
+		t.Fatal("qualified source was not published")
 	}
 	r.Steps["add"] = StepDefinition{Count: 99}
 	for _, published := range e.snapshot().Reflexes {
-		if !e.qualified(published) {
+		if !e.qualified(published.Program) {
 			t.Fatal("compiler retained mutable published manifest")
+		}
+		if published.arguments != nil {
+			t.Fatal("publication retained compilation example arguments")
 		}
 	}
 	lib := e.snapshot()
-	lib.Candidates = map[string]reflexRecord{"bad-id": {Reflex: laboratoryReflex(), Claims: []string{cid}}}
+	lib.Reflexes = map[string]Reflex{"bad-id": {Program: r, Claims: []string{cid}}}
 	if err := e.saveLibrary(lib); err != nil {
 		t.Fatal(err)
 	}
 	if err := e.loadLibrary(); err == nil {
-		t.Fatal("tampered candidate identity accepted")
+		t.Fatal("tampered program identity accepted")
 	}
 }
 
-func TestReflexV2CandidateCanRebindAfterSuiteRegistration(t *testing.T) {
-	client := fakeJEV(t, func(req inferenceRequest) map[string]inferenceAnswer { return declarationAnswers(req, true) })
-	e, cfg, _ := testInstallation(t, Config{Mode: "auto"}, client)
-	c := Claim{Type: jevapi.ClaimNoul, Context: "Add current items and inspect their completion."}
-	cid := "c" + digest(c)[:16]
-	e.library.Claims[cid] = claimRecord{Claim: c, Task: "previous"}
+func TestReflexMissingNativeEvidenceDoesNotPersistDraft(t *testing.T) {
+	e := testLaboratory(t)
 	r := laboratoryReflex()
-	r.LegacySuite = "not-yet-configured"
-	caps, err := e.capabilities(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	p := &compilation{claims: map[string]Claim{cid: c}, ids: []string{cid}, capabilities: caps}
-	if err := e.storeCandidate(p, &r, errors.New("waiting")); err != nil {
-		t.Fatal(err)
-	}
-	job := declaration{cfg: cfg, task: "current", state: json.RawMessage(`{"messages":[{"role":"user","text":"add current items"}]}`), focus: []string{"add"}}
-	if plan, err := e.prepareCompilation(t.Context(), job, cid); err != nil || plan != nil {
-		t.Fatal("candidate without a registry did not defer")
-	}
-	if err := testVerification(e).Register(laboratorySuite()); err != nil {
-		t.Fatal(err)
-	}
-	plan, err := e.prepareCompilation(t.Context(), job, cid)
-	if err != nil || plan == nil {
-		t.Fatal("new trusted suite did not unblock candidate recompilation")
-	}
-	if candidates, ok := plan.input["candidates"].(map[string]Reflex); !ok || len(candidates) != 1 {
-		t.Fatal("candidate source was not supplied for rebinding")
+	r.Steps["add"] = StepDefinition{Contract: "unavailable", Count: 1}
+	before := digest(e.snapshot())
+	err := e.qualify(t.Context(), &r, observationCapabilities("bash"))
+	if err == nil || !strings.Contains(err.Error(), "contract unavailable") || digest(e.snapshot()) != before {
+		t.Fatalf("missing evidence persisted a draft: %v", err)
 	}
 }
 
-func TestReflexV2KnownFailureAndUnknownResolution(t *testing.T) {
+func TestReflexKnownFailureAndUnknownResolution(t *testing.T) {
 	s := laboratorySuite()
 	c := NativeCall{Name: "bash", Arguments: json.RawMessage(`{"command":"lab add actor"}`), Step: "add"}
 	c, _ = prepareBinding(c)
@@ -219,7 +186,7 @@ func TestReflexV2KnownFailureAndUnknownResolution(t *testing.T) {
 	}
 }
 
-func TestReflexV2OutcomeUsesDeclaredContract(t *testing.T) {
+func TestReflexOutcomeUsesDeclaredContract(t *testing.T) {
 	s := laboratorySuite()
 	other := s.Contracts["lab"]
 	other.ID = "other"
@@ -244,7 +211,7 @@ func TestReflexV2OutcomeUsesDeclaredContract(t *testing.T) {
 	}
 }
 
-func TestReflexV2OrdinaryReadRecoveryAndInputSteering(t *testing.T) {
+func TestReflexOrdinaryReadRecoveryAndInputSteering(t *testing.T) {
 	for _, changeActor := range []bool{false, true} {
 		t.Run(fmt.Sprint(changeActor), func(t *testing.T) {
 			effects := 0
@@ -276,7 +243,7 @@ func TestReflexV2OrdinaryReadRecoveryAndInputSteering(t *testing.T) {
 				t.Fatal(err)
 			}
 			r := qualifiedLaboratory(t, e, caps)
-			e.library.Reflexes["r"+digest(r)[:16]] = reflexRecord{Reflex: r}
+			e.library.Reflexes["r"+digest(r)[:16]] = Reflex{Program: r}
 			parameters := 0
 			cfg.Provider = testProvider(func(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 				if strings.HasPrefix(provider.MessageText(req.Messages[0]), "Supply only the CURRENT") {
@@ -324,7 +291,7 @@ func TestReflexV2OrdinaryReadRecoveryAndInputSteering(t *testing.T) {
 	}
 }
 
-func TestReflexV2EvidencePathsTraverseCurrentArrays(t *testing.T) {
+func TestReflexEvidencePathsTraverseCurrentArrays(t *testing.T) {
 	evidence := map[string]map[string]any{"current": {"data": map[string]any{"elements": []any{map[string]any{"text": "actual receipt"}}}}}
 	for _, index := range []any{0, int64(0), float64(0), json.Number("0")} {
 		value, err := resolveReport(map[string]any{"evidence": "current", "path": []any{"data", "elements", index, "text"}}, evidence)
@@ -344,7 +311,7 @@ func TestReflexV2EvidencePathsTraverseCurrentArrays(t *testing.T) {
 	}
 }
 
-func TestReflexV2ShellAndEvidenceBoundaries(t *testing.T) {
+func TestReflexShellAndEvidenceBoundaries(t *testing.T) {
 	for _, script := range []string{"lab add $ACTOR", "lab add $(whoami)", "lab add actor > file", "lab add actor; lab add actor", "lab add *", "lab add ~", "lab add {a,b}"} {
 		c, err := prepareBinding(NativeCall{Name: "bash", Arguments: json.RawMessage(jsonText(map[string]any{"command": script})), Argv: []string{"lab", "add", "forged"}})
 		if err != nil || len(c.Argv) != 0 {
@@ -371,7 +338,7 @@ func TestReflexV2ShellAndEvidenceBoundaries(t *testing.T) {
 
 func laboratorySuiteAccess(c NativeCall) (Access, error) { s := laboratorySuite(); return s.access(c) }
 
-func TestReflexV2CompilerEffortAndCancellationOwnItsLifetime(t *testing.T) {
+func TestReflexCompilerEffortAndCancellationOwnItsLifetime(t *testing.T) {
 	e := testLaboratory(t)
 	e.config.DeclarationEffort = "none"
 	providerCalls := 0
@@ -389,13 +356,13 @@ func TestReflexV2CompilerEffortAndCancellationOwnItsLifetime(t *testing.T) {
 	if c.worker.Cfg.MaxTurns != 0 {
 		t.Fatal("compiler still has a turn-count cutoff")
 	}
-	var r *Reflex
+	var r *Program
 	if err := c.generate(t.Context(), map[string]any{}, &r); err != nil || providerCalls != 1 {
 		t.Fatal(err)
 	}
 }
 
-func TestReflexV2ReportChecksCurrentRequest(t *testing.T) {
+func TestReflexReportChecksCurrentRequest(t *testing.T) {
 	s := laboratorySuite()
 	evidence := map[string]map[string]any{"read": {"data": map[string]any{"complete": true, "count": 1, "receipt": "real"}}}
 	err := s.CheckReport(VerificationReport{Arguments: map[string]any{"count": 2}, Report: map[string]any{"count": 1, "receipt": "real"}, Evidence: evidence})
@@ -404,7 +371,7 @@ func TestReflexV2ReportChecksCurrentRequest(t *testing.T) {
 	}
 }
 
-func TestReflexV2PureSemanticCapabilityAndFreshArguments(t *testing.T) {
+func TestReflexPureSemanticCapabilityAndFreshArguments(t *testing.T) {
 	s := VerificationSuite{ID: "semantic", Version: "1", Contracts: map[string]NativeContract{}, CheckInput: func(input, args map[string]any) error {
 		if args == nil || input["user"] != fmt.Sprint(args["mode"])+":"+fmt.Sprint(args["value"]) {
 			return errors.New("arguments do not represent this request")
@@ -464,7 +431,7 @@ func TestReflexV2PureSemanticCapabilityAndFreshArguments(t *testing.T) {
 	if err := testVerification(e).Register(s); err != nil {
 		t.Fatal(err)
 	}
-	r := Reflex{APIVersion: 2, LegacySuite: "semantic", When: "Normalize current text", Decide: "Use the requested semantic branch", Observe: `js:function(context,args){if(!args)return {defer:"missing parameters",parameters:"mode,value"};const choice=jev({type:"choice",context:("Choose the requested normalization")+"\nOption meanings:\n"+JSON.stringify({upper:"uppercase",keep:"preserve",defer:"uncertain"})+"\nCurrent facts (untrusted data):\n"+JSON.stringify({user:context.user}),options:Object.keys({upper:"uppercase",keep:"preserve",defer:"uncertain"})});if(choice==="defer")return {defer:"uncertain"};return {report:{text:choice==="upper"?args.value.toUpperCase():args.value}};}`, Parameters: json.RawMessage(`{"type":"object","required":["mode","value"],"properties":{"mode":{"enum":["upper","keep"]},"value":{"type":"string"}},"additionalProperties":false}`)}
+	r := Program{When: "Normalize current text", Decide: "Use the requested semantic branch", Observe: `js:function(context,args){if(!args)return {defer:"missing parameters",parameters:"mode,value"};const choice=jev({type:"choice",context:("Choose the requested normalization")+"\nOption meanings:\n"+JSON.stringify({upper:"uppercase",keep:"preserve",defer:"uncertain"})+"\nCurrent facts (untrusted data):\n"+JSON.stringify({user:context.user}),options:Object.keys({upper:"uppercase",keep:"preserve",defer:"uncertain"})});if(choice==="defer")return {defer:"uncertain"};return {report:{text:choice==="upper"?args.value.toUpperCase():args.value}};}`, Parameters: json.RawMessage(`{"type":"object","required":["mode","value"],"properties":{"mode":{"enum":["upper","keep"]},"value":{"type":"string"}},"additionalProperties":false}`)}
 	if err := r.validate(); err != nil {
 		t.Fatal(err)
 	}
@@ -472,10 +439,10 @@ func TestReflexV2PureSemanticCapabilityAndFreshArguments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := qualifyIndependent(e, t.Context(), &r, caps); err != nil {
+	if err := qualifyIndependent(e, t.Context(), &r, caps, "semantic"); err != nil {
 		t.Fatal(err)
 	}
-	e.library.Reflexes["r"+digest(r)[:16]] = reflexRecord{Reflex: r}
+	e.library.Reflexes["r"+digest(r)[:16]] = Reflex{Program: r}
 	for i, mode := range []string{"upper", "keep"} {
 		value := fmt.Sprintf("Current %d MiXeD", i)
 		want := value

@@ -124,43 +124,21 @@ func (c *Command) injectProxyURL(args []string, proxy string) []string {
 	return append(args, "--proxy", proxy)
 }
 
-// normalizeArgs adapts common agent-generated gogo arguments before handing
-// them to the upstream parser. gogo's -j/--json is an input file, while older
-// agents sometimes used it as a boolean JSON-output flag; treat valueless -j
-// as -o jl only as a compatibility fallback. The canonical prompt contract
-// tells agents to use gogo's native flags explicitly.
+// normalizeArgs resolves native file arguments against the task directory.
+// Flag meanings and output formats belong to the upstream parser.
 func (c *Command) normalizeArgs(args []string) []string {
-	out := make([]string, 0, len(args)+2)
+	out := make([]string, 0, len(args))
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
-		if isGogoValuelessJSONFlag(arg, args, i) {
-			out = append(out, "-o", "jl")
-			continue
-		}
-		if key, value, ok := splitLongFlagValue(arg); ok {
-			switch {
-			case isGogoFileFlag(key):
-				out = append(out, key+"="+c.resolvePathArg(value))
-			case isGogoOutputFormatFlag(key):
-				out = append(out, key+"="+normalizeOutputFormat(value))
-			default:
-				out = append(out, arg)
-			}
+		if key, value, inline := strings.Cut(arg, "="); inline && strings.HasPrefix(key, "--") && isGogoFileFlag(key) {
+			out = append(out, key+"="+c.resolvePathArg(value))
 			continue
 		}
 		if isGogoFileFlag(arg) {
 			out = append(out, arg)
-			if i+1 < len(args) {
+			if i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
 				i++
 				out = append(out, c.resolvePathArg(args[i]))
-			}
-			continue
-		}
-		if isGogoOutputFormatFlag(arg) {
-			out = append(out, arg)
-			if i+1 < len(args) {
-				i++
-				out = append(out, normalizeOutputFormat(args[i]))
 			}
 			continue
 		}
@@ -176,21 +154,6 @@ func (c *Command) resolvePathArg(value string) string {
 	return filepath.Join(c.WorkDir, value)
 }
 
-func isGogoValuelessJSONFlag(arg string, args []string, index int) bool {
-	if arg != "-j" && arg != "--json" {
-		return false
-	}
-	return index+1 >= len(args) || strings.HasPrefix(args[index+1], "-")
-}
-
-func splitLongFlagValue(arg string) (string, string, bool) {
-	if !strings.HasPrefix(arg, "--") {
-		return "", "", false
-	}
-	key, value, ok := strings.Cut(arg, "=")
-	return key, value, ok
-}
-
 func isGogoFileFlag(flag string) bool {
 	switch flag {
 	case "-f", "--file",
@@ -204,23 +167,5 @@ func isGogoFileFlag(flag string) bool {
 		return true
 	default:
 		return false
-	}
-}
-
-func isGogoOutputFormatFlag(flag string) bool {
-	switch flag {
-	case "-o", "--output", "-O", "--file-output":
-		return true
-	default:
-		return false
-	}
-}
-
-func normalizeOutputFormat(value string) string {
-	switch strings.ToLower(strings.TrimSpace(value)) {
-	case "jsonl":
-		return "jl"
-	default:
-		return value
 	}
 }

@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -57,14 +59,14 @@ func compilerReadPlan(t *testing.T, review func(inferenceRequest) map[string]inf
 }
 
 func compilerReadArtifact(actor string) map[string]any {
-	return map[string]any{"api_version": 2, "steps": map[string]any{}, "parameters_schema": json.RawMessage(`{"type":"object","required":["actor"],"properties":{"actor":{"type":"string"}},"additionalProperties":false}`), "arguments": map[string]any{"actor": actor}, "observe": `js:function(context,args){if(!args||!args.actor)return{defer:"missing current arguments",parameters:"actor"};const r=execute({name:"bash",arguments:{command:command("lab",["status",args.actor])},read:true});return{report:{evidence:r.call_id,path:["data","receipt"]}};}`}
+	return map[string]any{"when": "Inspect the current requested native capability", "decide": "Report actual results or hand off missing input", "steps": map[string]any{}, "parameters_schema": json.RawMessage(`{"type":"object","required":["actor"],"properties":{"actor":{"type":"string"}},"additionalProperties":false}`), "arguments": map[string]any{"actor": actor}, "observe": `js:function(context,args){if(!args||!args.actor)return{defer:"missing current arguments",parameters:"actor"};const r=execute({name:"bash",arguments:{command:command("lab",["status",args.actor])},read:true});return{report:{evidence:r.call_id,path:["data","receipt"]}};}`}
 }
 
 func compilerTool(name string, args any) *aop.Message {
 	return &aop.Message{Role: "assistant", Content: []*aop.Content{{Value: &aop.Content_ToolCall{ToolCall: &aop.ToolCall{Id: aop.EnvelopeID(), Name: name, Arguments: &aop.EncodedValue{MediaType: aop.JSONMediaType, Data: []byte(jsonText(args))}}}}}}
 }
 
-func TestReflexV2CompilerRepairsPastOldLimits(t *testing.T) {
+func TestReflexCompilerRepairsPastOldLimits(t *testing.T) {
 	for _, mode := range []string{"tool", "final_text"} {
 		t.Run(mode, func(t *testing.T) {
 			e, plan, actor := compilerReadPlan(t, nil)
@@ -99,7 +101,7 @@ func TestReflexV2CompilerRepairsPastOldLimits(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 			defer cancel()
 			r, err := e.generateReflex(ctx, plan)
-			if err != nil || r == nil || !e.qualified(reflexRecord{Reflex: *r}) || requests != 14 || !sawDiagnostic || !sawExactEvidence {
+			if err != nil || r == nil || !e.qualified(*r) || requests != 14 || !sawDiagnostic || !sawExactEvidence {
 				t.Fatalf("repair failed: requests=%d diagnostic=%v evidence=%v artifact=%v err=%v", requests, sawDiagnostic, sawExactEvidence, r != nil, err)
 			}
 			if len(e.snapshot().Reflexes) != 0 {
@@ -115,7 +117,7 @@ func TestReflexV2CompilerRepairsPastOldLimits(t *testing.T) {
 	}
 }
 
-func TestReflexV2CompilerSemanticRejectionReturnsToAgent(t *testing.T) {
+func TestReflexCompilerSemanticRejectionReturnsToAgent(t *testing.T) {
 	reviews := 0
 	e, plan, actor := compilerReadPlan(t, func(req inferenceRequest) map[string]inferenceAnswer {
 		out := declarationAnswers(req, true)
@@ -144,7 +146,7 @@ func TestReflexV2CompilerSemanticRejectionReturnsToAgent(t *testing.T) {
 	}
 }
 
-func TestReflexV2CompilerCompactsAndContinuesRepair(t *testing.T) {
+func TestReflexCompilerCompactsAndContinuesRepair(t *testing.T) {
 	e, plan, actor := compilerReadPlan(t, nil)
 	plan.job.cfg.ContextWindow = 24000
 	plan.job.cfg.Compaction.ReserveTokens = 8000
@@ -167,12 +169,12 @@ func TestReflexV2CompilerCompactsAndContinuesRepair(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
 	defer cancel()
 	r, err := e.generateReflex(ctx, plan)
-	if err != nil || r == nil || drafts != 21 || summaries == 0 || !e.qualified(reflexRecord{Reflex: *r}) {
+	if err != nil || r == nil || drafts != 21 || summaries == 0 || !e.qualified(*r) {
 		t.Fatalf("context compaction interrupted repair: drafts=%d summaries=%d qualified=%t err=%v", drafts, summaries, r != nil, err)
 	}
 }
 
-func TestReflexV2CompilerRepairsFullyReplayedHandoff(t *testing.T) {
+func TestReflexCompilerRepairsFullyReplayedHandoff(t *testing.T) {
 	e, plan, actor := compilerReadPlan(t, nil)
 	requests := 0
 	plan.job.cfg.Provider = testProvider(func(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
@@ -192,12 +194,12 @@ func TestReflexV2CompilerRepairsFullyReplayedHandoff(t *testing.T) {
 		return reply(compilerTool("validate_reflex", map[string]any{"artifact": artifact})), nil
 	})
 	r, err := e.generateReflex(t.Context(), plan)
-	if err != nil || r == nil || requests != 2 || !e.qualified(reflexRecord{Reflex: *r}) {
+	if err != nil || r == nil || requests != 2 || !e.qualified(*r) {
 		t.Fatalf("handoff repair did not converge: requests=%d err=%v", requests, err)
 	}
 }
 
-func TestReflexV2CompilerCancellationPreservesRejectedDraft(t *testing.T) {
+func TestReflexCompilerCancellationKeepsDiagnosticsWithoutPersistingDraft(t *testing.T) {
 	e, plan, actor := compilerReadPlan(t, nil)
 	ctx, cancel := context.WithCancel(t.Context())
 	requests := 0
@@ -214,17 +216,16 @@ func TestReflexV2CompilerCancellationPreservesRejectedDraft(t *testing.T) {
 		t.Fatalf("artifact=%v err=%v", r, err)
 	}
 	lib := e.snapshot()
-	if len(lib.Reflexes) != 0 || len(lib.Candidates) != 1 {
-		t.Fatal("cancellation published source or discarded repair progress")
+	if len(lib.Reflexes) != 0 {
+		t.Fatal("cancellation persisted a compiler draft")
 	}
-	for _, r := range lib.Candidates {
-		if r.Proof != nil || !strings.Contains(r.Blocker, "differs") {
-			t.Fatal("candidate lost precise failure")
-		}
+	data, readErr := os.ReadFile(filepath.Join(e.config.Directory, "decisions.jsonl"))
+	if readErr != nil || !strings.Contains(string(data), "differs") {
+		t.Fatalf("rejected draft diagnostic missing: %v", readErr)
 	}
 }
 
-func TestReflexV2CompilerFormatFailuresAreRepairable(t *testing.T) {
+func TestReflexCompilerFormatFailuresAreRepairable(t *testing.T) {
 	for _, mode := range []string{"malformed_tool", "null_tool", "malformed_final"} {
 		t.Run(mode, func(t *testing.T) {
 			e, plan, actor := compilerReadPlan(t, nil)
@@ -259,7 +260,7 @@ func TestReflexV2CompilerFormatFailuresAreRepairable(t *testing.T) {
 	}
 }
 
-func TestReflexV2CompilerRetriesTruncatedOutput(t *testing.T) {
+func TestReflexCompilerRetriesTruncatedOutput(t *testing.T) {
 	for _, mode := range []string{"reasoning", "tool", "exhausted"} {
 		t.Run(mode, func(t *testing.T) {
 			e, plan, actor := compilerReadPlan(t, nil)
@@ -287,17 +288,17 @@ func TestReflexV2CompilerRetriesTruncatedOutput(t *testing.T) {
 				t.Fatalf("truncated tool executed or retries failed: requests=%d err=%v", requests, err)
 			}
 			if mode == "exhausted" {
-				if err == nil || !strings.Contains(err.Error(), "exhausted output budget") || r != nil || len(e.snapshot().Candidates) != 0 {
+				if err == nil || !strings.Contains(err.Error(), "exhausted output budget") || r != nil || len(e.snapshot().Reflexes) != 0 {
 					t.Fatalf("output exhaustion accepted an incomplete artifact: artifact=%v err=%v", r != nil, err)
 				}
-			} else if err != nil || r == nil || !e.qualified(reflexRecord{Reflex: *r}) {
+			} else if err != nil || r == nil || !e.qualified(*r) {
 				t.Fatalf("complete output did not qualify: artifact=%v err=%v", r != nil, err)
 			}
 		})
 	}
 }
 
-func TestReflexV2CompilerUsesProviderRetryPolicy(t *testing.T) {
+func TestReflexCompilerUsesProviderRetryPolicy(t *testing.T) {
 	for _, retries := range []int{1, -1} {
 		t.Run(fmt.Sprint(retries), func(t *testing.T) {
 			e, plan, actor := compilerReadPlan(t, nil)
@@ -331,14 +332,14 @@ func TestReflexV2CompilerUsesProviderRetryPolicy(t *testing.T) {
 				if requests != 1 || err == nil || r != nil {
 					t.Fatalf("disabled retries ignored: requests=%d artifact=%v err=%v", requests, r != nil, err)
 				}
-			} else if requests != 2 || err != nil || r == nil || usage.GetTotalTokens() != 18 || !e.qualified(reflexRecord{Reflex: *r}) {
+			} else if requests != 2 || err != nil || r == nil || usage.GetTotalTokens() != 18 || !e.qualified(*r) {
 				t.Fatalf("transient failure lost artifact or usage: requests=%d tokens=%d artifact=%v err=%v", requests, usage.GetTotalTokens(), r != nil, err)
 			}
 		})
 	}
 }
 
-func TestReflexV2CompilerRequiresRuntimeSchema(t *testing.T) {
+func TestReflexCompilerRequiresRuntimeSchema(t *testing.T) {
 	e, plan, actor := compilerReadPlan(t, nil)
 	requests := 0
 	plan.job.cfg.Provider = testProvider(func(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
@@ -352,12 +353,12 @@ func TestReflexV2CompilerRequiresRuntimeSchema(t *testing.T) {
 		return reply(compilerTool("validate_reflex", map[string]any{"artifact": artifact})), nil
 	})
 	r, err := e.generateReflex(t.Context(), plan)
-	if err != nil || r == nil || requests != 2 || !e.qualified(reflexRecord{Reflex: *r}) {
+	if err != nil || r == nil || requests != 2 || !e.qualified(*r) {
 		t.Fatalf("schema repair failed: requests=%d artifact=%v err=%v", requests, r != nil, err)
 	}
 }
 
-func TestReflexV2CompilerRepairsUnavailableEntryArguments(t *testing.T) {
+func TestReflexCompilerRepairsUnavailableEntryArguments(t *testing.T) {
 	reviews := 0
 	e, plan, actor := compilerReadPlan(t, func(req inferenceRequest) map[string]inferenceAnswer {
 		out := declarationAnswers(req, true)
@@ -383,7 +384,7 @@ func TestReflexV2CompilerRepairsUnavailableEntryArguments(t *testing.T) {
 	}
 }
 
-func TestReflexV2CompilerRepairsOversizedSemanticReview(t *testing.T) {
+func TestReflexCompilerRepairsOversizedSemanticReview(t *testing.T) {
 	e, plan, actor := compilerReadPlan(t, nil)
 	requests := 0
 	plan.job.cfg.Provider = testProvider(func(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
@@ -402,12 +403,12 @@ func TestReflexV2CompilerRepairsOversizedSemanticReview(t *testing.T) {
 		return reply(compilerTool("validate_reflex", map[string]any{"artifact": artifact})), nil
 	})
 	r, err := e.generateReflex(t.Context(), plan)
-	if err != nil || requests != 2 || r == nil || !e.qualified(reflexRecord{Reflex: *r}) {
+	if err != nil || requests != 2 || r == nil || !e.qualified(*r) {
 		t.Fatalf("review overflow aborted repair or published prematurely: requests=%d artifact=%v err=%v", requests, r != nil, err)
 	}
 }
 
-func TestReflexV2CompilerRetainsTrajectoryBeyondJudgmentProjection(t *testing.T) {
+func TestReflexCompilerRetainsTrajectoryBeyondJudgmentProjection(t *testing.T) {
 	e, plan, actor := compilerReadPlan(t, nil)
 	messages := []*aop.Message{provider.TextMessage("user", "Inspect twice and report the current receipt for "+actor)}
 	for i := range 2 {
@@ -439,12 +440,12 @@ func TestReflexV2CompilerRetainsTrajectoryBeyondJudgmentProjection(t *testing.T)
 		return reply(compilerTool("validate_reflex", map[string]any{"artifact": artifact})), nil
 	})
 	r, err := e.generateReflex(t.Context(), prepared)
-	if err != nil || r == nil || !e.qualified(reflexRecord{Reflex: *r}) {
+	if err != nil || r == nil || !e.qualified(*r) {
 		t.Fatalf("complete native evidence did not qualify: artifact=%v err=%v", r != nil, err)
 	}
 }
 
-func TestReflexV2CompilerMissingEvidenceWaitsWithoutPublishing(t *testing.T) {
+func TestReflexCompilerMissingEvidenceWaitsWithoutPublishing(t *testing.T) {
 	for _, stage := range []string{"mechanism", "semantic"} {
 		t.Run(stage, func(t *testing.T) {
 			e, plan, actor := compilerReadPlan(t, func(req inferenceRequest) map[string]inferenceAnswer {
@@ -465,14 +466,14 @@ func TestReflexV2CompilerMissingEvidenceWaitsWithoutPublishing(t *testing.T) {
 			})
 			r, err := e.generateReflex(t.Context(), plan)
 			lib := e.snapshot()
-			if err != nil || r != nil || len(lib.Reflexes) != 0 || len(lib.Candidates) != 1 {
-				t.Fatalf("qualified=%d candidates=%d artifact=%v err=%v", len(lib.Reflexes), len(lib.Candidates), r != nil, err)
+			if err != nil || r != nil || len(lib.Reflexes) != 0 {
+				t.Fatalf("published=%d artifact=%v err=%v", len(lib.Reflexes), r != nil, err)
 			}
 		})
 	}
 }
 
-func TestReflexV2CompilerTimeoutIsOptional(t *testing.T) {
+func TestReflexCompilerTimeoutIsOptional(t *testing.T) {
 	if c := defaults(Config{}); c.CompilationTimeout != "0" || c.validate() != nil {
 		t.Fatal("compilation remains subject to an implicit deadline")
 	}
@@ -488,7 +489,7 @@ func TestReflexV2CompilerTimeoutIsOptional(t *testing.T) {
 	}
 }
 
-func TestReflexV2CompilerEvidenceUpdateMatchesRuntimeHistory(t *testing.T) {
+func TestReflexCompilerEvidenceUpdateMatchesRuntimeHistory(t *testing.T) {
 	e, plan, actor := compilerReadPlan(t, nil)
 	latest := plan.state
 	plan.job.task = "repair-current-evidence"

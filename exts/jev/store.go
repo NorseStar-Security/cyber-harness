@@ -1,18 +1,15 @@
 package jev
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"maps"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -137,13 +134,11 @@ func (e *Extension) snapshot() library {
 
 func (lib library) clone() library {
 	out := library{
-		Format:     lib.Format,
-		Claims:     maps.Clone(lib.Claims),
-		Reflexes:   maps.Clone(lib.Reflexes),
-		Candidates: maps.Clone(lib.Candidates),
+		Claims:   maps.Clone(lib.Claims),
+		Reflexes: maps.Clone(lib.Reflexes),
 	}
 	for id, claim := range out.Claims {
-		claim.Options = append([]string(nil), claim.Options...)
+		claim.Claim.Options = append([]string(nil), claim.Claim.Options...)
 		out.Claims[id] = claim
 	}
 	for id, reflex := range out.Reflexes {
@@ -152,22 +147,8 @@ func (lib library) clone() library {
 		reflex.Contracts = maps.Clone(reflex.Contracts)
 		reflex.Steps = maps.Clone(reflex.Steps)
 		reflex.Parameters = append(json.RawMessage(nil), reflex.Parameters...)
-		if reflex.Proof != nil {
-			p := *reflex.Proof
-			p.Contracts = maps.Clone(p.Contracts)
-			p.Checks = append([]string(nil), p.Checks...)
-			p.Gaps = append([]string(nil), p.Gaps...)
-			reflex.Proof = &p
-		}
+		reflex.Proof = proto.CloneOf(reflex.Proof)
 		out.Reflexes[id] = reflex
-	}
-	for id, reflex := range out.Candidates {
-		reflex.Claims = append([]string(nil), reflex.Claims...)
-		reflex.Readers = maps.Clone(reflex.Readers)
-		reflex.Contracts = maps.Clone(reflex.Contracts)
-		reflex.Steps = maps.Clone(reflex.Steps)
-		reflex.Parameters = append(json.RawMessage(nil), reflex.Parameters...)
-		out.Candidates[id] = reflex
 	}
 	return out
 }
@@ -197,112 +178,37 @@ func (e *Extension) loadLibrary() error {
 	if err != nil {
 		return err
 	}
-	if len(data) > 2<<20 {
-		return errors.New("invalid JEV library format")
-	}
-	var header struct {
-		Format   string          `json:"format"`
-		Claims   json.RawMessage `json:"claims"`
-		Reflexes json.RawMessage `json:"reflexes"`
-	}
-	if json.Unmarshal(data, &header) != nil {
-		return errors.New("invalid JEV library format")
-	}
-	if header.Format != libraryFormat {
-		// An old semantic schema cannot preserve current executable proofs.
-		// Archive once and start the current library, using the same durable
-		// publication path. Future formats and malformed files remain errors.
-		if (header.Format != "" && header.Format != "claim/1") ||
-			!bytes.HasPrefix(bytes.TrimSpace(header.Claims), []byte("{")) ||
-			!bytes.HasPrefix(bytes.TrimSpace(header.Reflexes), []byte("{")) {
-			return errors.New("unsupported JEV library format")
-		}
-		if err = e.backupLibrary(data); err != nil {
-			return fmt.Errorf("archive old JEV library: %w", err)
-		}
-		lib := library{Format: libraryFormat, Claims: map[string]claimRecord{}, Reflexes: map[string]reflexRecord{}}
-		if err = e.saveLibrary(lib); err != nil {
-			return fmt.Errorf("initialize current JEV library: %w", err)
-		}
-		e.library = lib
-		return nil
-	}
-	var lib library
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
-	if decoder.Decode(&lib) != nil || lib.Format != libraryFormat || lib.Claims == nil || lib.Reflexes == nil || len(lib.Claims) > maxClaims || len(lib.Reflexes) > maxReflexes || len(lib.Candidates) > maxReflexes {
-		return errors.New("invalid JEV library format")
-	}
-	for id, c := range lib.Claims {
-		if c.Validate() != nil || id != "c"+digest(c.Claim)[:16] {
-			return fmt.Errorf("invalid Claim %s", id)
-		}
+	lib, err := decodeLibrary(data)
+	if err != nil {
+		return err
 	}
 	changed := false
-	for id, r := range lib.Candidates {
-		if r.Proof != nil || r.validate() != nil || id != "r"+digest(r.Reflex)[:16] {
-			return fmt.Errorf("invalid candidate %s", id)
-		}
-		for _, claim := range r.Claims {
-			if _, ok := lib.Claims[claim]; !ok {
-				return errors.New("candidate references missing Claim")
-			}
-		}
-		lib.Candidates[id] = r
-	}
 	for id, r := range lib.Reflexes {
-		for _, claim := range r.Claims {
-			if _, ok := lib.Claims[claim]; !ok {
-				return errors.New("Reflex references missing Claim")
-			}
-		}
-		// Every source uses the same validator. Unsupported sources stay in the
-		// byte-for-byte archive, never in an alternative executable library.
-		if r.validate() != nil || id != "r"+digest(r.Reflex)[:16] || !e.qualified(r) {
-			delete(lib.Reflexes, id)
-			if r.validate() == nil {
-				r.Proof = nil
-				r.LegacySuite = ""
-				r.Blocker = "Previous proof is incompatible; current native mechanism validation and recorded replay are required"
-				if lib.Candidates == nil {
-					lib.Candidates = map[string]reflexRecord{}
-				}
-				if len(lib.Candidates) < maxReflexes {
-					lib.Candidates["r"+digest(r.Reflex)[:16]] = r
-				}
-			}
-			changed = true
+		if r.Archived {
 			continue
+		}
+		if err := r.validate(); err != nil || !e.qualified(r.Program) {
+			r.Archived = true
+			r.ArchiveReason = "Qualification or native contracts changed; current validation is required"
+			changed = true
 		}
 		lib.Reflexes[id] = r
 	}
 	if changed {
-		if err = e.backupLibrary(data); err != nil {
-			return fmt.Errorf("back up unsupported source: %w", err)
-		}
-		if err = e.saveLibrary(lib); err != nil {
+		if err := e.saveLibrary(lib); err != nil {
 			return err
 		}
 	}
 	e.library = lib
 	return nil
 }
-func (e *Extension) backupLibrary(data []byte) error {
-	f, err := os.CreateTemp(e.config.Directory, "library-backup-*.json")
-	if err != nil {
-		return err
-	}
-	if _, err = f.Write(data); err == nil {
-		err = f.Sync()
-	}
-	return errors.Join(err, f.Close())
-}
-
 func (e *Extension) saveLibrary(lib library) error {
-	lib.Format = libraryFormat
 	data, err := json.MarshalIndent(lib, "", "  ")
 	if err != nil {
 		return err
+	}
+	if len(data) > maxLibraryBytes || len(lib.Claims) > maxClaims || len(lib.published()) > maxReflexes {
+		return errors.New("JEV library capacity reached")
 	}
 	f, err := os.CreateTemp(e.config.Directory, ".library-*")
 	if err != nil {
@@ -327,20 +233,15 @@ func (e *Extension) saveLibrary(lib library) error {
 // Preserve Claims and actual execution evidence; later ordinary boundaries can
 // regenerate the scene. Retirement never retries a native action.
 func (e *Extension) retireReflex(ctx context.Context, id string, reason error) bool {
-	var previous reflexRecord
+	var previous Reflex
 	changed, err := e.updateLibrary(func(lib *library) (bool, error) {
 		var exists bool
 		previous, exists = lib.Reflexes[id]
-		if exists {
-			data, err := json.Marshal(lib)
-			if err != nil {
-				return false, err
-			}
-			if err = e.backupLibrary(data); err != nil {
-				return false, err
-			}
+		if !exists || previous.Archived {
+			return false, nil
 		}
-		delete(lib.Reflexes, id)
+		previous.Archived, previous.ArchiveReason = true, errorText(reason)
+		lib.Reflexes[id] = previous
 		return exists, nil
 	})
 	if previous.Observe != "" {
@@ -354,7 +255,7 @@ func (e *Extension) retireReflex(ctx context.Context, id string, reason error) b
 
 func publishedGroups(lib library) map[string]bool {
 	groups := map[string]bool{}
-	for _, r := range lib.Reflexes {
+	for _, r := range lib.published() {
 		members := map[string]Claim{}
 		for _, claim := range r.Claims {
 			members[claim] = lib.Claims[claim].Claim
@@ -364,34 +265,4 @@ func publishedGroups(lib library) map[string]bool {
 		}
 	}
 	return groups
-}
-
-// Archived bytes are compiler evidence only. Unsupported code is never loaded
-// into the executable catalog or passed to the JavaScript runtime.
-func (e *Extension) archivedReflex(id, claim string) (string, reflexRecord, bool) {
-	paths, err := filepath.Glob(filepath.Join(e.config.Directory, "library-backup-*.json"))
-	if err != nil {
-		return "", reflexRecord{}, false
-	}
-	for _, path := range paths {
-		stat, err := os.Stat(path)
-		if err != nil || stat.Size() > 2<<20 {
-			continue
-		}
-		data, err := os.ReadFile(path)
-		if err != nil {
-			continue
-		}
-		var archived library
-		if json.Unmarshal(data, &archived) != nil || archived.Format != libraryFormat {
-			continue
-		}
-		for key, source := range archived.Reflexes {
-			if key == id || (id == "" && slices.Contains(source.Claims, claim)) {
-				source.program = nil
-				return key, source, true
-			}
-		}
-	}
-	return "", reflexRecord{}, false
 }

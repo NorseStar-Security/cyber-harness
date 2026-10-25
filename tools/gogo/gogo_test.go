@@ -86,10 +86,10 @@ func TestNormalizeArgsKeepsOutputFormatsAndResolvesFiles(t *testing.T) {
 	})
 	want := []string{
 		"-i", "127.0.0.1",
-		"-o", "jl",
+		"-o", "jsonl",
 		"-f", filepath.Join(dir, "out.jsonl"),
 		"--json", filepath.Join(dir, "previous.dat"),
-		"--file-output=jl",
+		"--file-output=jsonl",
 		"--exclude-file=" + filepath.Join(dir, "exclude.txt"),
 	}
 	if !reflect.DeepEqual(got, want) {
@@ -97,10 +97,10 @@ func TestNormalizeArgsKeepsOutputFormatsAndResolvesFiles(t *testing.T) {
 	}
 }
 
-func TestNormalizeArgsConvertsValuelessJSONFlag(t *testing.T) {
+func TestNormalizeArgsPreservesMissingNativeFileArgument(t *testing.T) {
 	cmd := New(nil)
 	got := cmd.normalizeArgs([]string{"-i", "127.0.0.1", "-j", "-t", "100"})
-	want := []string{"-i", "127.0.0.1", "-o", "jl", "-t", "100"}
+	want := []string{"-i", "127.0.0.1", "-j", "-t", "100"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("normalizeArgs() = %#v, want %#v", got, want)
 	}

@@ -46,7 +46,7 @@ func compilerDiagnostic(err error) CompilerDiagnostic {
 	case strings.Contains(d.Message, "no recorded trajectory"), strings.Contains(d.Message, "recorded trajectory is truncated"):
 		d.Code, d.Stage, d.Status, d.Action = "recorded_evidence_unavailable", "replay", "waiting", "Obtain a complete actual trajectory before qualification. inspect_evidence returns only real evidence; do not invent results or change the validation criteria."
 	case strings.Contains(d.Message, "contract unavailable"), strings.Contains(d.Message, "native contracts unavailable"):
-		d.Code, d.Stage, d.Action = "native_contract_unavailable", "native_contract", "Use an ID from native_contracts. If the required native capability is absent, retain an honest candidate and explain the missing capability."
+		d.Code, d.Stage, d.Action = "native_contract_unavailable", "native_contract", "Use an ID from native_contracts. If the required native capability is absent, return null and explain the missing capability."
 	case strings.Contains(d.Message, "example arguments"), strings.Contains(d.Message, "example parameters"):
 		d.Code, d.Stage, d.Action = "example_arguments_invalid", "parameters", "Use inspect_evidence to recover the exact current values. Supply every required example argument, preserving decoded Unicode, quotes and backslashes; example values are not executable defaults."
 	case strings.Contains(d.Message, "explicit step and occurrence"), strings.Contains(d.Message, "declared step"), strings.Contains(d.Message, "occurrence"):

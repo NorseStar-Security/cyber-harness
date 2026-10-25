@@ -11,6 +11,7 @@ import (
 	"github.com/chainreactors/cyber/core/decision"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type traceKey struct{}
@@ -86,10 +87,22 @@ func errorText(err error) string {
 }
 
 func claimDefinition(id string, c claimRecord) *ClaimDefinition {
-	return &ClaimDefinition{Id: id, Type: c.Type, Context: c.Context, Options: append([]string(nil), c.Options...), SourceTaskId: c.Task}
+	return &ClaimDefinition{Id: id, Type: c.Claim.Type, Context: c.Claim.Context, Options: append([]string(nil), c.Claim.Options...), SourceTaskId: c.Task}
 }
-func reflexDefinition(id string, r reflexRecord) *ReflexDefinition {
-	return &ReflexDefinition{Id: id, When: r.When, Decide: r.Decide, Observe: r.Observe, Readers: maps.Clone(r.Readers), Contracts: maps.Clone(r.Contracts), ClaimIds: append([]string(nil), r.Claims...), ApiVersion: uint32(r.APIVersion), QualificationJson: jsonText(r.Proof), Blocker: r.Blocker, ManifestJson: jsonText(map[string]any{"steps": r.Steps, "parameters_schema": r.Parameters})}
+func reflexDefinition(id string, r Reflex) *ReflexDefinition {
+	out := &ReflexDefinition{Id: id, When: r.When, Decide: r.Decide, Observe: r.Observe, Readers: maps.Clone(r.Readers), Contracts: maps.Clone(r.Contracts), ClaimIds: append([]string(nil), r.Claims...), Archived: r.Archived, ArchiveReason: r.ArchiveReason}
+	out.Qualification = proto.CloneOf(r.Proof)
+	if len(r.Parameters) > 0 && string(r.Parameters) != "null" {
+		out.ParametersSchema = &structpb.Value{}
+		if err := out.ParametersSchema.UnmarshalJSON(r.Parameters); err != nil {
+			out.ParametersSchema = nil
+		}
+	}
+	out.Steps = make(map[string]*ReflexStep, len(r.Steps))
+	for id, step := range r.Steps {
+		out.Steps[id] = &ReflexStep{Contract: step.Contract, Count: int64(step.Count), CountArgument: step.CountArgument}
+	}
+	return out
 }
 func (e *Extension) libraryView() *GetLibraryResponse {
 	lib := e.snapshot()
@@ -115,14 +128,6 @@ func (e *Extension) libraryView() *GetLibraryResponse {
 	sort.Strings(ids)
 	for _, id := range ids {
 		out.Reflexes = append(out.Reflexes, reflexDefinition(id, lib.Reflexes[id]))
-	}
-	ids = ids[:0]
-	for id := range lib.Candidates {
-		ids = append(ids, id)
-	}
-	sort.Strings(ids)
-	for _, id := range ids {
-		out.Candidates = append(out.Candidates, reflexDefinition(id, lib.Candidates[id]))
 	}
 	return out
 }

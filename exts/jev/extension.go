@@ -50,7 +50,7 @@ func New(config Config) *Extension {
 	idle := make(chan struct{})
 	close(idle)
 	return &Extension{config: defaults(config), tasks: map[string]taskRecord{}, queued: map[string]declaration{}, queue: make(chan string, 64), idle: idle,
-		library: library{Format: libraryFormat, Claims: map[string]claimRecord{}, Reflexes: map[string]reflexRecord{}}}
+		library: library{Claims: map[string]claimRecord{}, Reflexes: map[string]Reflex{}}}
 }
 
 func (e *Extension) Load(scope *extension.Scope) error {

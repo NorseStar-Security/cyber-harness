@@ -93,13 +93,13 @@ export function WorkflowNodeContent({ node, nodes, stage }: { node: WorkflowNode
       const remainingOutput = validation ? JSON.stringify(Object.fromEntries(Object.entries(validation).filter(([key]) => key !== 'diagnostic')), null, 2) : generation.output
       const diagnosticMessage = validation?.diagnostic && typeof validation.diagnostic === 'object' && 'message' in validation.diagnostic ? validation.diagnostic.message : undefined
       const drafts = generation.kind === 'claim_llm' ? claimDefinitions(output)
-        : generation.kind === 'reflex_llm' && generation.output ? [output && typeof output === 'object' && 'observe' in output ? output : { observe: generation.output }] : []
+        : generation.kind === 'reflex_llm' && output && typeof output === 'object' && 'observe' in output && typeof output.observe === 'string' ? [output] : []
       const targets = drafts.map(draft => nodes.find(other => {
         const change = other.record?.value.payload
         if (other.sessionId !== node.sessionId || other.turnId !== node.turnId || other.timestamp < node.timestamp || change?.case !== 'libraryChange') return false
         return 'context' in draft ? change.value.state === 'claim_published' && !!change.value.claim
           && draft.type === change.value.claim.type && draft.context === change.value.claim.context && JSON.stringify(draft.options) === JSON.stringify(change.value.claim.options)
-          : ['reflex_published', 'reflex_candidate'].includes(change.value.state) && change.value.reflex?.observe === draft.observe
+          : change.value.state === 'reflex_published' && change.value.reflex?.observe === draft.observe
       }))
       const published = generation.state === 'finished' && !generation.error && drafts.length > 0 && targets.every(Boolean)
       const publications = [...new Map(targets.filter((target): target is WorkflowNode => !!target).map(target => [target.id, target])).values()]

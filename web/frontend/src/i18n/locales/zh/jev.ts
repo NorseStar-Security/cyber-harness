@@ -1,10 +1,10 @@
 export default {
   compilerDiagnostic: '编译诊断', diagnosticAction: '修复建议', expectedBinding: '已记录的预期调用／结果', actualBinding: '生成的实际调用／结果', replayProgress: '已回放 {{replayed}} / {{recorded}} 个结果',
   diagnosticCodes: { native_call_mismatch: '原生调用不匹配', trajectory_incomplete: '执行轨迹未完成', completion_missing: '缺少完成报告', unrecorded_native_call: '缺少实际调用结果', example_arguments_invalid: '示例参数不正确', effect_identity_invalid: '副作用身份不正确', native_access_invalid: '读写分类不正确', semantic_validation_failed: '语义验收未通过', recorded_evidence_unavailable: '等待完整执行证据', recorded_capability_unavailable: '等待受支持的原生轨迹' },
-  candidateBlocker: '候选阻塞原因', mechanismChecks: '{{count}} 项机制检查 · {{replayed}} 次原生回放', mechanismScope: '机制验证不代表已覆盖所有业务场景。', coverageGaps: '{{count}} 个未覆盖分支',
+  mechanismChecks: '{{count}} 项机制检查 · {{replayed}} 次原生回放', mechanismScope: '机制验证不代表已覆盖所有业务场景。', coverageGaps: '{{count}} 个未覆盖分支',
   compilerRound: '编译 Agent 轮次', mechanismValidation: '机制验证', buildUsage: '编译用量（单独统计）', runtimeUsage: '运行用量（参数、JEV、答复）', usageMissing: '{{count}} 次用量缺失', costUnknown: '费用未确认；缺少价格或用量时不按零费用统计。',
 
-  candidate: '待验证候选', qualified: '已通过机制验证',
+  archived: '已归档', qualified: '已通过机制验证',
   control: { roles: '执行角色', title: 'Agent 控制流',
     reflexLoop: 'Reflex 闭环', loopReturned: '已交回 LLM', loopCounts: '{{decisions}} 次判断 · {{claims}} 个 Claim · {{calls}} 次工具调用',
     toolResult: '工具结果', loopScroll: '左右滑动查看 Claim 与工具',
@@ -58,7 +58,7 @@ export default {
     checking: '正在检查当前证据', context_transform: '上下文变换需要模型复核', evidence_overflow: '证据超过观测预算', contract_changed: '原生工具契约已变化，Reflex 需要重新验证',
   },
   compilation: { reviewing: '判断中', compiling: '编译中', generating: '生成中', failed: '失败', draft_rejected: '草稿待修正', deferred: '暂缓', settled: '本次 Reflex 编译已结算',
-    claim_published: 'Claim 已发布', reflex_candidate: '待验证候选', reflex_published: 'Reflex 已发布', retired: 'Reflex 已退役' },
+    claim_published: 'Claim 已发布', reflex_archived: '已归档', reflex_published: 'Reflex 已发布', retired: 'Reflex 已退役' },
   nodeStatus: { ended: '已结束', delegated: 'JEV 正在执行', model: 'LLM 运行中', running: '有限判断回路',
     checking: '检查入口',
     handed_off: '已交还控制权', executing: '执行中', observed: '已观测' },

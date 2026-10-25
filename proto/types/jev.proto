@@ -3,6 +3,7 @@ package cyber.jev;
 import "aop/content.proto";
 import "aop/event.proto";
 import "decision/claim.proto";
+import "google/protobuf/struct.proto";
 option go_package = "github.com/chainreactors/cyber/exts/jev;jev";
 
 message ClaimDefinition {
@@ -13,6 +14,19 @@ message ClaimDefinition {
   string source_task_id = 5;
   reserved 6, 7;
 }
+message ReflexQualification {
+  string source_hash = 1;
+  map<string, string> contracts = 2;
+  repeated string checks = 3;
+  string trajectory_hash = 4;
+  int64 replayed = 5;
+  repeated string coverage_gaps = 6;
+}
+message ReflexStep {
+  string contract = 1;
+  int64 count = 2;
+  string count_argument = 3;
+}
 message ReflexDefinition {
   string id = 1;
   string when = 2;
@@ -21,10 +35,11 @@ message ReflexDefinition {
   repeated string claim_ids = 5;
   map<string, string> readers = 6;
   map<string, string> contracts = 7;
-  uint32 api_version = 8;
-  string qualification_json = 9;
-  string manifest_json = 10;
-  string blocker = 11;
+  ReflexQualification qualification = 8;
+  map<string, ReflexStep> steps = 9;
+  google.protobuf.Value parameters_schema = 10;
+  bool archived = 11;
+  string archive_reason = 12;
 }
 message Boundary { string reason = 1; }
 message Observation { string state_json = 1; string candidates_json = 2; }
@@ -102,7 +117,6 @@ message GetLibraryResponse {
   string revision = 4;
   repeated ClaimDefinition claims = 5;
   repeated ReflexDefinition reflexes = 6;
-  repeated ReflexDefinition candidates = 7;
   string learning = 8;
 }
 message ProtocolMessage {

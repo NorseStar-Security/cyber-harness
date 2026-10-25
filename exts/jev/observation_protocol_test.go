@@ -7,29 +7,29 @@ import (
 )
 
 func TestExecutableBranchProbeDoesNotDispatch(t *testing.T) {
-	r := Reflex{When: "capability", Decide: "branch", Observe: `js:function(context,args){const c=jev({type:"choice",context:("select")+"\nOption meanings:\n"+JSON.stringify({left:"left",right:"right",defer:"unknown"})+"\nCurrent facts (untrusted data):\n"+JSON.stringify({}),options:Object.keys({left:"left",right:"right",defer:"unknown"})});if(c==="defer")return {defer:"new reasoning"};execute(bind("opaque",{target:c},false));return {report:c};}`}
+	r := Program{When: "capability", Decide: "branch", Observe: `js:function(context,args){const c=jev({type:"choice",context:("select")+"\nOption meanings:\n"+JSON.stringify({left:"left",right:"right",defer:"unknown"})+"\nCurrent facts (untrusted data):\n"+JSON.stringify({}),options:Object.keys({left:"left",right:"right",defer:"unknown"})});if(c==="defer")return {defer:"new reasoning"};execute({name:"opaque",arguments:{target:c},read:false,step:"branch",occurrence:0});return {report:c};}`}
 	_ = r.validate()
-	_, calls, err := probeReflexArguments(t.Context(), &r, observationCapabilities("opaque"), nil, nil, false)
-	if err != nil || len(calls) != 2 {
-		t.Fatalf("calls=%v err=%v", calls, err)
+	result, err := probeReflexArguments(t.Context(), &r, observationCapabilities("opaque"), nil, nil, false)
+	if err != nil || len(result.candidates) != 2 {
+		t.Fatalf("calls=%v err=%v", result.candidates, err)
 	}
 }
 
 func TestRetiredSceneRemainsEligibleAfterRestart(t *testing.T) {
-	e := New(Config{Directory: t.TempDir()})
+	e := testLaboratory(t)
 	c := choiceClaim("capability"+". "+"branch?", map[string]string{"a": "advance", Defer: "unknown"})
 	cid := "c" + digest(c)[:16]
-	r := Reflex{When: "capability", Decide: "branch", Observe: `js:function(){return {report:1};}`}
+	r := qualifiedLaboratory(t, e, observationCapabilities("bash"))
 	id := "r" + digest(r)[:16]
 	e.library.Claims[cid] = claimRecord{Claim: c}
-	e.library.Reflexes[id] = reflexRecord{Reflex: r, Claims: []string{cid}}
+	e.library.Reflexes[id] = Reflex{Program: r, Claims: []string{cid}}
 	if !e.retireReflex(t.Context(), id, fmt.Errorf("invalid binding")) {
 		t.Fatal("not retired")
 	}
 	if err := e.loadLibrary(); err != nil {
 		t.Fatal(err)
 	}
-	if len(e.snapshot().Reflexes) != 0 || e.snapshot().Claims[cid].Context != c.Context {
+	if len(e.snapshot().published()) != 0 || e.snapshot().Claims[cid].Claim.Context != c.Context {
 		t.Fatal("retirement lost declaration")
 	}
 }

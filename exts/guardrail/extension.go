@@ -20,7 +20,7 @@ import (
 const ConfigKey = "guardrail"
 
 type Config struct {
-	Provider      string    `config:"provider" json:"provider" description:"none or jev; empty retains legacy configuration migration"`
+	Provider      string    `config:"provider" json:"provider" description:"none (default) or jev"`
 	JEV           JEVConfig `config:"jev" json:"jev"`
 	Mode          Mode      `config:"mode" json:"mode" description:"auto asks the policy provider to assess consequences (default); safe asks a human; screening always applies"`
 	ReviewTimeout string    `config:"review_timeout" json:"review_timeout" description:"Maximum wait for tool approval (default 5m)"`
@@ -33,8 +33,8 @@ func (c Config) timeout() (time.Duration, error) {
 	if err := c.JEV.validate(); err != nil {
 		return 0, err
 	}
-	if c.Mode != "" && c.Mode != ModeSafe && c.Mode != ModeAuto && c.Mode != ModeOff {
-		return 0, fmt.Errorf("guardrail mode must be safe, auto or off")
+	if c.Mode != "" && c.Mode != ModeSafe && c.Mode != ModeAuto {
+		return 0, fmt.Errorf("guardrail mode must be safe or auto")
 	}
 	if c.ReviewTimeout == "" {
 		return 5 * time.Minute, nil

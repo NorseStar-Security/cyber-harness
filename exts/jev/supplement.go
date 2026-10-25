@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/chainreactors/cyber/core/operation"
+	coretool "github.com/chainreactors/cyber/core/tool"
 	toolhooks "github.com/chainreactors/cyber/core/tool/hooks"
 )
 
@@ -21,7 +22,7 @@ func (e *Extension) admitSupplement(ctx context.Context, event toolhooks.CallEve
 	if record.NativeEpoch == "" {
 		return toolhooks.Admission{}, nil
 	}
-	s := e.nativeSnapshot()
+	native := e.contracts.Snapshot()
 	call := NativeCall{Name: event.Call.Name, Arguments: event.Call.GetArguments().GetData()}
 	call, err := prepareBinding(call)
 	if err != nil {
@@ -30,7 +31,7 @@ func (e *Extension) admitSupplement(ctx context.Context, event toolhooks.CallEve
 	if record.NativeEpoch != digest(e.contracts.Catalog()) {
 		return toolhooks.Admission{Deny: handoffError{"qualified task contract unavailable"}}, nil
 	}
-	access, err := s.access(call)
+	access, err := native.Access(coretool.NativeCall(call))
 	if err != nil || access != ReadAccess {
 		return toolhooks.Admission{Deny: handoffError{"effect_unknown: supplementation must use trusted reads; mutations return to the Reflex"}}, nil //nolint:nilerr // The executor handles Deny.
 	}
@@ -61,8 +62,8 @@ func (e *Extension) observeSupplement(ctx context.Context, event toolhooks.Compl
 	}
 	value := runtimeResult(event.Call, event.Result)
 	e.updateTask(run, record.Key, func(r *taskRecord) { r.NativeEvidence[event.Result.CallId] = cloneJSONMap(value) })
-	if s := e.nativeSnapshot(); record.NativeEpoch == digest(e.contracts.Catalog()) && record.Ledger != nil {
-		record.Ledger.reconcile(s, call, value)
+	if native := e.contracts.Snapshot(); record.NativeEpoch == digest(e.contracts.Catalog()) && record.Ledger != nil {
+		record.Ledger.reconcile(native, call, value)
 	}
 	return struct{}{}, nil
 }

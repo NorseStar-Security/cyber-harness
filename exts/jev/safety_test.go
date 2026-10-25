@@ -84,7 +84,7 @@ func TestObservationFailureDoesNotHideCompetingCapability(t *testing.T) {
 		}},
 		coretool.Command{Name: "failed", Run: func(context.Context, *coretool.Execution) (any, error) { return nil, nil }})
 	installReflex(e, "available")
-	installObserve(e, `js:({state: JSON.parse("invalid JSON"), candidates: {}})`)
+	installObserve(e, `js:function(){return {report:JSON.parse("invalid JSON")};}`)
 	cfg.Provider = testProvider(func(context.Context, *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 		return reply(provider.TextMessage("assistant", "ordinary fallback")), nil
 	})

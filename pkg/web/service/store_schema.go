@@ -137,12 +137,6 @@ func validateSchema(db *sql.DB, schema SchemaModule) error {
 			return err
 		}
 		if !slices.Equal(columns, schema.Tables[table]) {
-			if table == "scans" && slices.Contains(columns, "scan_json") {
-				return fmt.Errorf("legacy scan_json storage: stop the server, back up the database, and migrate scan records using the v1.0.0-rc7 source checkout; see docs/changelog.md")
-			}
-			if table == "chat_aop_events" && slices.Contains(columns, "event_json") {
-				return fmt.Errorf("legacy event_json storage: stop the server, back up the database, and migrate event history using the v1.0.0-rc7 source checkout; see docs/changelog.md")
-			}
 			return fmt.Errorf("database does not match the latest schema: %s columns %v, want %v; recreate the database", table, columns, schema.Tables[table])
 		}
 	}

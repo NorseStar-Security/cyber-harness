@@ -1,10 +1,10 @@
 export default {
   compilerDiagnostic: 'Compiler diagnostic', diagnosticAction: 'Repair action', expectedBinding: 'Recorded expected call / result', actualBinding: 'Generated actual call / result', replayProgress: 'Replayed {{replayed}} / {{recorded}} results',
   diagnosticCodes: { native_call_mismatch: 'Native call mismatch', trajectory_incomplete: 'Incomplete trajectory', completion_missing: 'Missing completion report', unrecorded_native_call: 'Unrecorded native result', example_arguments_invalid: 'Invalid example arguments', effect_identity_invalid: 'Invalid effect identity', native_access_invalid: 'Invalid read/effect classification', semantic_validation_failed: 'Semantic validation rejected', recorded_evidence_unavailable: 'Waiting for complete evidence', recorded_capability_unavailable: 'Waiting for a supported native trajectory' },
-  candidateBlocker: 'Candidate blocker', mechanismChecks: '{{count}} mechanism checks · {{replayed}} native replays', mechanismScope: 'Mechanism validation does not certify every business scenario.', coverageGaps: '{{count}} uncovered branches',
+  mechanismChecks: '{{count}} mechanism checks · {{replayed}} native replays', mechanismScope: 'Mechanism validation does not certify every business scenario.', coverageGaps: '{{count}} uncovered branches',
   compilerRound: 'Compiler Agent round', mechanismValidation: 'Mechanism validation', buildUsage: 'Compilation usage (separate)', runtimeUsage: 'Runtime usage (parameters, JEV, composition)', usageMissing: '{{count}} missing usage records', costUnknown: 'Cost unconfirmed; missing prices or usage are not counted as zero.',
 
-  candidate: 'Candidate', qualified: 'Mechanism validated',
+  archived: 'Archived', qualified: 'Mechanism validated',
   control: { roles: 'Execution roles', title: 'Agent control flow',
     reflexLoop: 'Reflex loop', loopReturned: 'Returned to LLM', loopCounts: '{{decisions}} judgments · {{claims}} Claims · {{calls}} tool calls',
     toolResult: 'Tool result', loopScroll: 'Scroll horizontally to view Claims and tools',
@@ -58,7 +58,7 @@ export default {
     checking: 'Checking current evidence', context_transform: 'Context transformation requires model review', evidence_overflow: 'Evidence exceeded the observation budget', contract_changed: 'Native tool contract changed; Reflex requires validation',
   },
   compilation: { reviewing: 'Reviewing', compiling: 'Compiling', generating: 'Generating', failed: 'Failed', draft_rejected: 'Draft needs correction', deferred: 'Deferred', settled: 'Reflex compilation settled',
-    claim_published: 'Claim published', reflex_candidate: 'Candidate', reflex_published: 'Reflex published', retired: 'Reflex retired' },
+    claim_published: 'Claim published', reflex_archived: 'Archived', reflex_published: 'Reflex published', retired: 'Reflex retired' },
   nodeStatus: { ended: 'Ended', delegated: 'JEV owns this boundary', model: 'LLM running', running: 'Finite decision loop',
     checking: 'Checking entry',
     handed_off: 'Handed back', executing: 'Executing', observed: 'Observed' },

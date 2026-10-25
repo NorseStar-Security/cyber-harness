@@ -40,7 +40,7 @@ function command(name, argv) { return {name:name, argv:argv}; }
 
 // runReflexJS executes one ordinary function. Only the native JEV and Executor
 // bridges can perform external work; every bridge receives and returns JSON.
-func runReflexJS(ctx context.Context, reflex *Reflex, input, arguments map[string]any,
+func runReflexJS(ctx context.Context, reflex *Program, input, arguments map[string]any,
 	judge func(Claim) (*jevapi.Evaluation, error), execute func(binding) (map[string]any, error)) (map[string]any, error) {
 	if reflex == nil || reflex.program == nil {
 		return nil, fmt.Errorf("Reflex program has not been validated")
@@ -151,7 +151,7 @@ Math.random=function(){throw new Error("randomness unavailable")};globalThis.Dat
 		if err := decode(call.Argument(0), &explicit); err != nil || explicit.Read == nil {
 			fail(fmt.Errorf("native call needs explicit read flag"))
 		}
-		if reflex.APIVersion == reflexABI && !candidate.Read && (candidate.Step == "" || explicit.Occurrence == nil) {
+		if !candidate.Read && (candidate.Step == "" || explicit.Occurrence == nil) {
 			fail(fmt.Errorf("effect requires an explicit step and occurrence"))
 		}
 		var err error

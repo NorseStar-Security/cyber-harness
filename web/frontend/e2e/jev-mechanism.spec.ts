@@ -17,10 +17,10 @@ import { jevEvent } from '../src/lib/jev-view'
 const claim = '提交订单后结果未知时，读取当前订单状态；确认操作身份后继续，缺少查询能力时交还主模型。'
 const source = 'js:function(context,args){return {defer:"waiting for a trusted contract"};}'
 function event(seq: number, payload: MessageInitShape<typeof EventSchema>['payload']) {
-  return create(EventSchema, { id: `v2-${seq}`, sessionId: 'session-1', turnId: 'turn-1', emitter: 'jev', seq: BigInt(seq), emittedAt: timestampFromDate(new Date(1700000000000 + seq * 1000)), payload })
+  return create(EventSchema, { id: `mechanism-${seq}`, sessionId: 'session-1', turnId: 'turn-1', emitter: 'jev', seq: BigInt(seq), emittedAt: timestampFromDate(new Date(1700000000000 + seq * 1000)), payload })
 }
 function runtime(seq: number, payload: MessageInitShape<typeof RuntimeEventSchema>['payload'], background = false) {
-  return event(seq, { case: 'extension', value: anyPack(RuntimeEventSchema, create(RuntimeEventSchema, { taskId: 'v2-task', segmentId: background ? '' : 'v2-segment', background, payload })) })
+  return event(seq, { case: 'extension', value: anyPack(RuntimeEventSchema, create(RuntimeEventSchema, { taskId: 'mechanism-task', segmentId: background ? '' : 'mechanism-segment', background, payload })) })
 }
 async function render(page: import('@playwright/test').Page, events: ReturnType<typeof event>[]) {
   await page.evaluate(values => (window as any).renderJEVEvents(values), events.map(value => [...toBinary(EventSchema, value)]))
@@ -30,13 +30,15 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/e2e/fixtures/jev.html')
 })
 
-test('natural-language Claims and candidates remain distinct from qualified Reflexes', async ({ page }) => {
+test('typed library distinguishes published and archived Reflexes', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))
   await page.evaluate(({ claim, source, type }) => (window as any).renderJEVLibrary({ mode: 'auto', status: 'ready',
     claims: [{ id: 'claim-natural', type, context: claim }],
-    candidates: [{ id: 'candidate-v2', when: 'Inspect an order', observe: source, apiVersion: 2, manifestJson: '{"steps":{}}', blocker: 'no complete replay of the current recorded trajectory' }],
-    reflexes: [{ id: 'qualified-v2', when: 'Inspect an order with native contracts', observe: source, apiVersion: 2, qualificationJson: '{"format":"native-mechanism/1","checks":["syntax","recorded_replay"],"replayed":1,"coverage_gaps":["fault branch has no recorded evidence"]}', manifestJson: '{"steps":{}}' }],
+    reflexes: [
+      { id: 'archived-reflex', when: 'Inspect an order', observe: source, archived: true, archiveReason: 'Native contract changed; current validation is required' },
+      { id: 'qualified-reflex', when: 'Inspect an order with native contracts', observe: source, qualification: { checks: ['syntax', 'recorded_replay'], replayed: '1', coverageGaps: ['fault branch has no recorded evidence'] }, steps: { inspect: { contract: 'orders', count: '1' } }, parametersSchema: { type: 'object', properties: { order: { type: 'string' } } } },
+    ],
   }), { claim, source, type: ClaimType.noul })
   await page.getByRole('button', { name: 'Reflex', exact: true }).click()
   await page.getByRole('tab', { name: 'Reflex 库' }).click()
@@ -44,12 +46,13 @@ test('natural-language Claims and candidates remain distinct from qualified Refl
   await dialog.getByRole('button').filter({ hasText: 'claim-natural' }).click()
   await expect(dialog.getByTestId('jev-claim-definition')).toContainText(claim)
   await expect(dialog.locator('[data-option-id]')).toHaveCount(0)
-  await dialog.getByRole('button').filter({ hasText: 'candidate-v2' }).click()
-  await expect(dialog.getByTestId('jev-reflex-definition')).toContainText('待验证候选 · API 2')
-  await expect(dialog.getByTestId('jev-candidate-blocker')).toContainText('no complete replay')
-  await dialog.getByRole('button').filter({ hasText: 'qualified-v2' }).click()
-  await expect(dialog.getByTestId('jev-reflex-definition')).toContainText('已通过机制验证 · API 2')
+  await dialog.getByRole('button').filter({ hasText: 'archived-reflex' }).click()
+  await expect(dialog.getByTestId('jev-reflex-definition')).toContainText('已归档')
+  await expect(dialog.getByTestId('jev-archive-reason')).toContainText('Native contract changed')
+  await dialog.getByRole('button').filter({ hasText: 'qualified-reflex' }).click()
+  await expect(dialog.getByTestId('jev-reflex-definition')).toContainText('已通过机制验证')
   await expect(dialog.getByTestId('jev-reflex-definition')).toContainText('fault branch has no recorded evidence')
+  await expect(dialog.getByTestId('jev-reflex-definition')).toContainText('parametersSchema')
   expect(errors).toEqual([])
 })
 
@@ -64,7 +67,7 @@ test('compiler rounds and mechanism diagnostics retain separate usage', async ({
     event(8, { case: 'usage', value: { inputTokens: 50n, outputTokens: 5n } }),
     runtime(9, { case: 'decisionResult', value: { requestId: 'missing-usage' } })]
   await render(page, [...events, ...events])
-  await page.locator('[data-record-id="v2-3"]').click()
+  await page.locator('[data-record-id="mechanism-3"]').click()
   const detail = page.locator('[data-control-current=true]')
   await expect(detail).toContainText('native read flag contradicts trusted contract')
   await expect(detail).not.toContainText('用量缺失')
@@ -79,26 +82,26 @@ test('compiler rounds and mechanism diagnostics retain separate usage', async ({
   await page.screenshot({ path: info.outputPath('compile-runtime-usage.png'), fullPage: true })
 })
 
-test('typed Claim generation rejects legacy drafts and links to publication', async ({ page }) => {
+test('typed Claim generation rejects invalid drafts and links to publication', async ({ page }) => {
   expect(claimDefinitions({ claims: [{ text: claim }, '检查当前查询能力是否可用。'] })).toEqual([])
   await render(page, [event(1, { case: 'turnStarted', value: {} }),
     runtime(2, { case: 'generation', value: { kind: 'claim_llm', state: 'finished', output: JSON.stringify({ claims: [{ type: 'noul', context: claim }, { type: 'noul', context: '检查当前查询能力是否可用。' }] }) } }, true)])
-  await page.locator('[data-record-id="v2-2"]').click()
+  await page.locator('[data-record-id="mechanism-2"]').click()
   await expect(page.locator('[data-control-current=true]').getByTestId('jev-claim-definition')).toHaveCount(2)
   await expect(page.locator('[data-control-current=true]')).toContainText(claim)
   await render(page, [event(1, { case: 'turnStarted', value: {} }),
     runtime(2, { case: 'generation', value: { kind: 'claim_llm', state: 'finished', output: JSON.stringify({ claims: [{ type: 'noul', context: claim }] }) } }, true),
     runtime(3, { case: 'libraryChange', value: { state: 'claim_published', claim: { id: 'claim-natural', type: ClaimType.noul, context: claim } } }, true)])
-  await page.locator('[data-record-id="v2-2"]').click()
+  await page.locator('[data-record-id="mechanism-2"]').click()
   await page.getByRole('button', { name: '查看发布内容' }).click()
   await expect(page.locator('[data-control-current=true]')).toContainText(claim)
 })
 
 test('handoff preserves reason, effect states and the computed result before any call', async ({ page }) => {
   await render(page, [event(1, { case: 'turnStarted', value: {} }),
-    runtime(2, { case: 'takeover', value: { definition: { id: 'v2', apiVersion: 2, when: 'Inspect orders', observe: source } } }),
+    runtime(2, { case: 'takeover', value: { definition: { id: 'mechanism', when: 'Inspect orders', observe: source } } }),
     runtime(3, { case: 'handoff', value: { reason: 'defer', code: 'missing_input', detail: 'Order identity is required', effectsJson: '{"effect-1":{"step":"submit","occurrence":0,"state":"unknown"}}', resultJson: '{"defer":"missing parameters","parameters":"order_id"}' } })])
-  await page.locator('[data-record-id="v2-3"]').click()
+  await page.locator('[data-record-id="mechanism-3"]').click()
   const detail = page.locator('[data-control-current=true]')
   await expect(detail).toContainText('Order identity is required')
   await expect(detail).toContainText('missing_input')
@@ -113,7 +116,7 @@ test('compiler diagnostics explain replay position, exact mismatch and repair ac
   await render(page, [event(1, { case: 'turnStarted', value: {} }), runtime(2, { case: 'generation', value: {
     kind: 'reflex_validation', state: 'finished', attempt: 5, error: diagnostic.message, output: JSON.stringify({ artifact: {}, diagnostic }),
   } }, true)])
-  await page.locator('[data-record-id="v2-2"]').click()
+  await page.locator('[data-record-id="mechanism-2"]').click()
   const detail = page.locator('[data-control-current=true]').getByTestId('jev-compiler-diagnostic')
   await expect(detail).toContainText('原生调用不匹配')
   await expect(detail).toContainText('已回放 1 / 4 个结果')
@@ -132,12 +135,12 @@ test('completion and unsupported evidence diagnostics retain distinct repair act
   await render(page, [event(1, { case: 'turnStarted', value: {} }), ...diagnostics.map((diagnostic, index) => runtime(index + 2, {
     case: 'generation', value: { kind: 'reflex_validation', state: 'finished', attempt: index + 1, error: diagnostic.message, output: JSON.stringify({ artifact: {}, diagnostic }) },
   }, true))])
-  await page.locator('[data-record-id="v2-2"]').click()
+  await page.locator('[data-record-id="mechanism-2"]').click()
   const detail = page.locator('[data-control-current=true]').getByTestId('jev-compiler-diagnostic')
   await expect(detail).toContainText('缺少完成报告')
   await expect(detail).toContainText('已回放 3 / 3 个结果')
   await expect(detail).toContainText('fresh execute return value')
-  await page.locator('[data-record-id="v2-3"]').click()
+  await page.locator('[data-record-id="mechanism-3"]').click()
   await expect(detail).toContainText('等待受支持的原生轨迹')
   await expect(detail).toContainText('preserve the candidate')
 })

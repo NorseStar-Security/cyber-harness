@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -18,7 +20,7 @@ import (
 	coretool "github.com/chainreactors/cyber/core/tool"
 )
 
-func TestReflexV2ReplayLiteralShellEncoding(t *testing.T) {
+func TestReflexReplayLiteralShellEncoding(t *testing.T) {
 	call := func(command any, timeout int) binding {
 		return binding{Name: "bash", Arguments: json.RawMessage(jsonText(map[string]any{"command": command, "timeout": timeout}))}
 	}
@@ -39,7 +41,7 @@ func TestReflexV2ReplayLiteralShellEncoding(t *testing.T) {
 	}
 }
 
-func TestReflexV2FrozenReusesWithoutLearning(t *testing.T) {
+func TestReflexFrozenReusesWithoutLearning(t *testing.T) {
 	effects := 0
 	client := fakeJEV(t, func(req inferenceRequest) map[string]inferenceAnswer { return runtimeAnswers(req, "run") })
 	e, cfg, _ := testInstallation(t, Config{Mode: "auto", Learning: "frozen"}, client, coretool.Command{Name: "lab", Run: func(_ context.Context, ex *coretool.Execution) (any, error) {
@@ -57,7 +59,7 @@ func TestReflexV2FrozenReusesWithoutLearning(t *testing.T) {
 		t.Fatal(err)
 	}
 	r := qualifiedLaboratory(t, e, caps)
-	e.library.Reflexes["r"+digest(r)[:16]] = reflexRecord{Reflex: r}
+	e.library.Reflexes["r"+digest(r)[:16]] = Reflex{Program: r}
 	before := digest(e.snapshot())
 	parameters, composition := 0, 0
 	cfg.Provider = testProvider(func(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
@@ -89,11 +91,10 @@ func TestReflexV2FrozenReusesWithoutLearning(t *testing.T) {
 	}
 }
 
-func TestReflexV2CompilerRetainsCoverageCandidateOnFailure(t *testing.T) {
+func TestReflexCompilerFailureKeepsDiagnosticsWithoutPersistingDraft(t *testing.T) {
 	e := testLaboratory(t)
 	r := laboratoryReflex()
-	r.LegacySuite = ""
-	artifact := jsonText(map[string]any{"api_version": r.APIVersion, "observe": r.Observe, "steps": r.Steps, "parameters_schema": r.Parameters, "arguments": r.arguments})
+	artifact := jsonText(map[string]any{"when": r.When, "decide": r.Decide, "observe": r.Observe, "steps": r.Steps, "parameters_schema": r.Parameters, "arguments": r.arguments})
 	requests := 0
 	cfg := agent.Config{Model: "test", Provider: testProvider(func(_ context.Context, req *provider.ChatCompletionRequest) (*provider.ChatCompletionResponse, error) {
 		requests++
@@ -110,20 +111,18 @@ func TestReflexV2CompilerRetainsCoverageCandidateOnFailure(t *testing.T) {
 		t.Fatal("compiler failure disappeared")
 	}
 	lib := e.snapshot()
-	if len(lib.Reflexes) != 0 || len(lib.Candidates) != 1 {
-		t.Fatalf("lost candidate or published unverified source: %+v", lib)
+	if len(lib.Reflexes) != 0 {
+		t.Fatal("compiler failure persisted an unqualified draft")
 	}
-	for _, candidate := range lib.Candidates {
-		if candidate.Observe != r.Observe || candidate.Proof != nil || !strings.Contains(candidate.Blocker, "recorded trajectory") {
-			t.Fatal("candidate lost source/blocker")
-		}
+	data, readErr := os.ReadFile(filepath.Join(e.config.Directory, "decisions.jsonl"))
+	if readErr != nil || !strings.Contains(string(data), "recorded trajectory") || !strings.Contains(string(data), "reflex_validation") {
+		t.Fatalf("compiler diagnostic missing: %v", readErr)
 	}
 }
 
-func TestReflexV2MechanismRequiresRecordedEvidence(t *testing.T) {
+func TestReflexMechanismRequiresRecordedEvidence(t *testing.T) {
 	e := testLaboratory(t)
 	r := laboratoryReflex()
-	r.LegacySuite = ""
 	if err := e.qualify(t.Context(), &r, observationCapabilities("bash")); err == nil || !strings.Contains(err.Error(), "no recorded trajectory") {
 		t.Fatalf("missing evidence accepted: %v", err)
 	}
@@ -136,9 +135,9 @@ func TestReflexV2MechanismRequiresRecordedEvidence(t *testing.T) {
 	}
 }
 
-func TestReflexV2ReplayRequiresReportAfterAllResults(t *testing.T) {
+func TestReflexReplayRequiresReportAfterAllResults(t *testing.T) {
 	e := testLaboratory(t)
-	r := Reflex{APIVersion: 2, When: "Inspect current state", Decide: "Read and report its receipt", Observe: `js:function(context){execute({name:'bash',arguments:{command:'lab status current'},read:true});return{defer:'waiting for entry history to grow'};}`}
+	r := Program{When: "Inspect current state", Decide: "Read and report its receipt", Observe: `js:function(context){execute({name:'bash',arguments:{command:'lab status current'},read:true});return{defer:'waiting for entry history to grow'};}`}
 	if err := r.validate(); err != nil {
 		t.Fatal(err)
 	}
@@ -155,18 +154,18 @@ func TestReflexV2ReplayRequiresReportAfterAllResults(t *testing.T) {
 	if err := e.qualify(t.Context(), &r, observationCapabilities("bash"), state); err != nil || r.Proof == nil {
 		t.Fatalf("grounded fresh return value cannot qualify: err=%v proof=%+v", err, r.Proof)
 	}
-	if !e.qualified(reflexRecord{Reflex: r}) {
+	if !e.qualified(r) {
 		t.Fatal("current completed proof cannot run")
 	}
 	r.Proof.Checks = r.Proof.Checks[:len(r.Proof.Checks)-1]
-	if e.qualified(reflexRecord{Reflex: r}) {
-		t.Fatal("legacy proof without entry report check can still take over")
+	if e.qualified(r) {
+		t.Fatal("proof without entry report check can still take over")
 	}
 }
 
-func TestReflexV2UnsupportedRecordedOperationWaitsForNativeEvidence(t *testing.T) {
+func TestReflexUnsupportedRecordedOperationWaitsForNativeEvidence(t *testing.T) {
 	e := testLaboratory(t)
-	r := Reflex{APIVersion: 2, When: "Inspect current state", Decide: "Read current state", Observe: `js:function(){return{report:'done'};}`}
+	r := Program{When: "Inspect current state", Decide: "Read current state", Observe: `js:function(){return{report:'done'};}`}
 	if err := r.validate(); err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +177,7 @@ func TestReflexV2UnsupportedRecordedOperationWaitsForNativeEvidence(t *testing.T
 	}
 }
 
-func TestReflexV2RuntimeSemanticJudgmentsDefer(t *testing.T) {
+func TestReflexRuntimeSemanticJudgmentsDefer(t *testing.T) {
 	for _, kind := range []string{"input", "binding", "completion"} {
 		t.Run(kind, func(t *testing.T) {
 			e := testLaboratory(t)

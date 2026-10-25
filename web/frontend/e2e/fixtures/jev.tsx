@@ -2,7 +2,7 @@ import { ClaimType } from '../../src/gen/decision/claim_pb'
 import { startFixtureRuntime } from './runtime'
 import React, { useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { create, fromBinary } from '@bufbuild/protobuf'
+import { create, fromBinary, fromJson } from '@bufbuild/protobuf'
 import { anyPack, timestampFromDate } from '@bufbuild/protobuf/wkt'
 import { CircuitBoard } from 'lucide-react'
 import { TooltipProvider } from '@cyber/ui'
@@ -48,7 +48,7 @@ Object.defineProperty(aopClient, 'connected', { configurable: true, get: () => t
 let fixtureLibrary = create(GetLibraryResponseSchema, { mode: 'auto', status: 'ready',
   reflexes: [definition], claims: [{ id: 'claim-browser', type: ClaimType.choice, context: definition.when + '\nChoose the next operation: inspect reads fresh page state; report uses observed content; defer asks for new reasoning.',
     options: ['inspect', 'report', 'defer'], sourceTaskId: 'task-1' }] })
-;(window as any).renderJEVLibrary = (value: any) => { fixtureLibrary = create(GetLibraryResponseSchema, value) }
+;(window as any).renderJEVLibrary = (value: any) => { fixtureLibrary = fromJson(GetLibraryResponseSchema, value) }
 aopClient.request = async () => create(ProtocolMessageSchema, { message: { case: 'library', value: fixtureLibrary } })
 
 function Fixture() {
