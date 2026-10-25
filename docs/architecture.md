@@ -37,6 +37,8 @@ flowchart TD
 
 CLI flag、配置 section 和连接检查先在声明阶段贡献，冻结并解析配置后才构造运行扩展。声明不会启动模型、进程或服务。工具安装通过所属 Extension 完成，宿主借用业务接口并持有 Set；扫描流水线的任务 DAG 不参与扩展加载排序。可运行组合与关闭示例见[扩展开发](developer/extensions.md)和[宿主集成](developer/hosting.md)。
 
+能力实现本身通过 imports 复用。`full` 仅选择 aiscan 的全量组合，browser、passive、Katana 扩展不要求该标签。原生 recorder、平台和资源内嵌标签保留各自的构建约束。独立组合示例见[扩展开发](developer/extensions.md#按导入组合可选能力)。
+
 ## Agent 运行时
 
 Session 持有对话、队列和身份，一次外部提交形成 Turn。Turn 内执行 Agent Run，标准循环每轮请求模型、执行工具、追加结果；Goal Evaluation 还可根据验收反馈执行下一次 Run。外部 Turn、Agent Run 与模型轮次有不同计数和取消边界。
@@ -51,7 +53,7 @@ Session 持有对话、队列和身份，一次外部提交形成 Turn。Turn �
 4. 校验工具调用和 token 预算，执行有效调用，按原调用顺序追加结果。
 5. 检查停止条件；继续下一轮，或等待尚未返回的后台结果。
 
-同一响应的工具调用可并行执行，默认上限为 16；批次内没有隐式依赖排序。被输出上限截断的响应不执行工具，缺失 ID、名称或合法 JSON object 参数的调用被拒绝。工具错误与 panic 转为结果交回模型；不可恢复的 Provider 错误结束 Run；取消通过 context 向执行工作传播。
+同一响应的工具调用可并行执行，默认上限为 16；批次内没有隐式依赖排序。被输出上限截断的响应不执行工具，缺失 ID、名称或合法 JSON object 参数的调用被拒绝。工具错误与 panic 转为结果交回模型，部分输出不会遮住失败原因；不可恢复的 Provider 错误结束 Run；取消通过 context 向执行工作传播。
 
 ### Inbox 与后台生产者
 

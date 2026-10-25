@@ -10,7 +10,9 @@
 
 描述和 schema 应使模型能判断何时调用、需要提供什么输入；它们不替代业务校验。涉及网络或长时间计算的实现必须响应 context。结果中给模型的文本应足以推进下一步；需要保留完整数据时使用结构化产物，避免把大量原始输出全部塞入对话。
 
-使用 `tool.TextResult` 返回文本，`tool.Result.Details` 返回结构化数据；执行失败返回 Go error。构造参数显式传入工具所需的目录、客户端或业务服务，避免运行时查找全局注册表。
+工具直接返回 `(*aop.ToolResult, error)`，定义直接使用 `*aop.ToolDefinition`。使用 `tool.TextResult` 返回文本，在 `ToolResult.Output` 中保留文本、媒体等内容；执行失败返回 Go error。构造参数显式传入工具所需的目录、客户端或业务服务，避免运行时查找全局注册表。
+
+普通执行错误通过 `core/tool/hooks.Feedback` 追加到模型可见结果，并设置 `IsError`；已有部分输出和媒体继续保留。原始 error 仍交给直接调用方和完成 hooks，支持 `errors.Is` / `errors.As`。相同错误经过多个执行入口不会重复追加，普通错误不会自动终止父 Agent。工具自行提供可操作的纠错原因，公共层不推断重试或再次执行副作用。
 
 工具可以并行调用，因此共享字段需要自己的同步策略。扩展关闭时，注册表会处理该贡献的撤销与在途调用；工具背后的共享连接、缓存或后台线程仍由它们的所有者关闭。
 
@@ -23,6 +25,24 @@
 [OKF 扩展](../../exts/okf/extension.go)是一个小而完整的参考：Load 同时贡献命令、说明文档与提示词策略。阅读它时，可以沿着 `tools/okf` 的命令实现确认业务逻辑并没有依赖 Scope。
 
 已有标准 MCP 服务时可使用 [MCP → CLI 扩展](../mcp.md)：Load 使用 mcp-go 连接服务、发现工具并贡献以服务别名命名的命令，如 `ida decompile --addr 0x401000`。Agent 从 bash 按需列举、查看工具帮助并使用 Schema 参数调用工具。
+
+## 按导入组合可选能力
+
+browser、passive 和 Katana 可以直接安装到 `harness.BaseExtensions` 之后，无需 `full` 标签。三个独立示例在仓库根目录运行，只初始化注册和说明文档，不调用模型或外部目标：
+
+```sh
+go run ./examples/browser
+go run ./examples/passive
+go run ./examples/crawl
+```
+
+对应入口分别是 [browser](../../examples/browser/main.go)、[passive](../../examples/passive/main.go)、[crawl](../../examples/crawl/main.go)。每个入口只导入所需扩展；passive 不依赖 scanner 或浏览器，Katana 不依赖 scanner 或 Playwright。实际浏览器操作仍需要本机 Chrome，测绘查询按来源要求配置凭证。
+
+`exts/scanner.Config.Crawler` 接受 `scan.Crawler`；组合根传入 `katana.Crawl` 后，quick 扫描增加普通爬取，full 扫描增加浏览器爬取。未注入 crawler 时，scan 只运行自身能力。scan 保留目标过滤、去重和流水线事件，Katana 适配器负责网络与浏览器生命周期。
+
+passive 的配置声明位于 `exts/passive/config`，运行扩展位于 `exts/passive`。宿主可以声明并保存配置而不链接运行实现；`recon` section、环境变量和现有 CLI flag 名称保持兼容，是否显示 flag 由宿主决定。
+
+`cmd/aiscan` 用成对的 `discovery_full.go` / `discovery_standard.go` 选择产品 imports，保留 `full` 作为全量发行版组合。无需新增 browser、passive 或 crawl 标签。`record` 仍受原生 SDK、CGO 和平台约束，可以独立于 `full` 组合。
 
 ## 子 Agent 贡献
 
