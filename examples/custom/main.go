@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/chainreactors/cyber/agent/provider"
+	aop "github.com/chainreactors/cyber/aop"
 	"github.com/chainreactors/cyber/core/extension"
 	coretool "github.com/chainreactors/cyber/core/tool"
 	"github.com/chainreactors/cyber/pkg/harness"
@@ -29,10 +30,10 @@ type helloArgs struct {
 
 func (helloTool) Name() string        { return "hello" }
 func (helloTool) Description() string { return "Return a greeting without external effects." }
-func (t helloTool) Definition() *coretool.Definition {
+func (t helloTool) Definition() *aop.ToolDefinition {
 	return coretool.Def(t.Name(), t.Description(), helloArgs{})
 }
-func (helloTool) Execute(_ context.Context, arguments string) (*coretool.Result, error) {
+func (helloTool) Execute(_ context.Context, arguments string) (*aop.ToolResult, error) {
 	args, err := coretool.ParseArgs[helloArgs](arguments)
 	if err != nil {
 		return nil, err

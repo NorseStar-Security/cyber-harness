@@ -38,7 +38,7 @@ func laboratoryReflex() Program {
 	return Program{When: "add requested items", Decide: "use actual results", Observe: laboratorySource, Steps: map[string]StepDefinition{"add": {Contract: "lab", CountArgument: "count"}}, Parameters: json.RawMessage(`{"type":"object","required":["actor","query","count"],"properties":{"actor":{"type":"string"},"query":{"type":"boolean"},"count":{"type":"integer","minimum":1,"maximum":2}},"additionalProperties":false}`), arguments: map[string]any{"actor": "initial", "query": true, "count": 2}}
 }
 func laboratorySuite() VerificationSuite {
-	contract := NativeContract{ID: "lab", Version: "1", Classify: func(c NativeCall) (Access, error) {
+	contract := NativeContract{ID: "lab", Version: "1", Classify: func(c NativeCall) (coretool.NativeAccess, error) {
 		if c.Name != "bash" || len(c.Argv) != 3 || c.Argv[0] != "lab" {
 			return UnsupportedAccess, nil
 		}

@@ -68,7 +68,7 @@ func testConnection(ctx context.Context, incoming, stored *types.DistributeConfi
 	client := jevapi.New(config.APIKey, config.Model, duration)
 	defer client.Close()
 	claim := choiceClaim("Classify this inert connection-test description: read public README.md locally, no writes or network. Do not execute anything.", map[string]string{"record": "Reading a public local document.", "review": "Uncertain effects.", "block": "Destructive effects."})
-	out, err := client.Evaluate(ctx, map[string]Claim{"action": claim})
+	out, err := client.Evaluate(ctx, map[string]jevapi.Claim{"action": claim})
 	choice := ""
 	if err == nil {
 		choice, err = out.Choice("action", claim)

@@ -57,8 +57,8 @@ func TestOrdinaryReflexPublishesAndCompilesItsOwnReplacement(t *testing.T) {
 		return declarationAnswers(req, true)
 	})
 	e, cfg, _ := testInstallation(t, Config{Mode: "auto"}, client)
-	c := Claim{Type: jevapi.ClaimNoul, Context: "Publish the current requested semantic judgment and report its content ID."}
-	ids, err := e.publishClaims(t.Context(), []Claim{c}, "recorded")
+	c := jevapi.Claim{Type: jevapi.ClaimNoul, Context: "Publish the current requested semantic judgment and report its content ID."}
+	ids, err := e.publishClaims(t.Context(), []jevapi.Claim{c}, "recorded")
 	cid := ""
 	if err == nil {
 		cid = ids[0]
@@ -87,7 +87,7 @@ func TestOrdinaryReflexPublishesAndCompilesItsOwnReplacement(t *testing.T) {
 	if err := e.qualify(t.Context(), &parent, caps, state); err != nil {
 		t.Fatal(err)
 	}
-	plan := &compilation{claims: map[string]Claim{cid: c}, ids: []string{cid}, capabilities: caps}
+	plan := &compilation{claims: map[string]jevapi.Claim{cid: c}, ids: []string{cid}, capabilities: caps}
 	if err := e.publishReflex(plan, &parent); err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +135,7 @@ func TestOrdinaryReflexPublishesAndCompilesItsOwnReplacement(t *testing.T) {
 
 func TestClaimCommandIsOrdinaryDeduplicatedPublication(t *testing.T) {
 	e := New(Config{Directory: t.TempDir()})
-	c := Claim{Type: jevapi.ClaimChoice, Context: "Choose current progress.", Options: []string{"inspect", "defer"}}
+	c := jevapi.Claim{Type: jevapi.ClaimChoice, Context: "Choose current progress.", Options: []string{"inspect", "defer"}}
 	var output bytes.Buffer
 	ex := &coretool.Execution{Args: []string{"claim", jsonText(c)}, Stdout: &output}
 	if _, err := e.runLibraryCommand(t.Context(), ex); err != nil {
@@ -204,8 +204,8 @@ func TestEmptyLibraryCompilesAtFirstReadyBoundary(t *testing.T) {
 
 func TestOrdinaryReflexReplacementPreservesClaimAndRollsBack(t *testing.T) {
 	e := testLaboratory(t)
-	c := Claim{Type: jevapi.ClaimNoul, Context: "Add the requested items and report current evidence."}
-	ids, err := e.publishClaims(t.Context(), []Claim{c}, "source")
+	c := jevapi.Claim{Type: jevapi.ClaimNoul, Context: "Add the requested items and report current evidence."}
+	ids, err := e.publishClaims(t.Context(), []jevapi.Claim{c}, "source")
 	cid := ""
 	if err == nil {
 		cid = ids[0]
@@ -215,7 +215,7 @@ func TestOrdinaryReflexReplacementPreservesClaimAndRollsBack(t *testing.T) {
 	}
 	caps := observationCapabilities("bash")
 	previous := qualifiedLaboratory(t, e, caps)
-	plan := &compilation{claims: map[string]Claim{cid: c}, ids: []string{cid}, capabilities: caps}
+	plan := &compilation{claims: map[string]jevapi.Claim{cid: c}, ids: []string{cid}, capabilities: caps}
 	if err = e.publishReflex(plan, &previous); err != nil {
 		t.Fatal(err)
 	}

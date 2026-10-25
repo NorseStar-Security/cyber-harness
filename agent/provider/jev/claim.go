@@ -13,8 +13,6 @@ import (
 	"github.com/chainreactors/cyber/core/decision"
 )
 
-type ClaimType = decision.ClaimType
-
 const (
 	ClaimChoice = decision.ClaimType_choice
 	ClaimScore  = decision.ClaimType_score
@@ -25,9 +23,9 @@ const (
 // ordered options define the closed choice or score scale. Noul has no options.
 // Persistence, evidence, compilation and execution are owned by consumers.
 type Claim struct {
-	Type    ClaimType `json:"type"`
-	Context string    `json:"context"`
-	Options []string  `json:"options,omitempty"`
+	Type    decision.ClaimType `json:"type"`
+	Context string             `json:"context"`
+	Options []string           `json:"options,omitempty"`
 }
 
 func (c Claim) Validate() error {
@@ -97,7 +95,7 @@ func (c *Claim) UnmarshalJSON(data []byte) error {
 	if !ok || kind == 0 {
 		return errors.New("unsupported Claim type")
 	}
-	claim := Claim{Type: ClaimType(kind), Context: value.Context, Options: value.Options}
+	claim := Claim{Type: decision.ClaimType(kind), Context: value.Context, Options: value.Options}
 	if err := claim.Validate(); err != nil {
 		return err
 	}
@@ -105,10 +103,7 @@ func (c *Claim) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// Evaluation is a closed result union; only one of choice, score or noul exists.
-type Evaluation = decision.Evaluation
-
-func (c Claim) Choice(e *Evaluation) (string, error) {
+func (c Claim) Choice(e *decision.Evaluation) (string, error) {
 	if e != nil && c.Type == ClaimChoice {
 		if v, ok := e.Value.(*decision.Evaluation_Choice); ok && slices.Contains(c.Options, v.Choice) {
 			return v.Choice, nil
@@ -116,7 +111,7 @@ func (c Claim) Choice(e *Evaluation) (string, error) {
 	}
 	return "", errors.New("invalid JEV choice binding")
 }
-func (c Claim) Score(e *Evaluation) (float64, error) {
+func (c Claim) Score(e *decision.Evaluation) (float64, error) {
 	if e != nil && c.Type == ClaimScore {
 		if v, ok := e.Value.(*decision.Evaluation_Score); ok {
 			return boundedNumber(v.Score, float64(len(c.Options)-1), "score")
@@ -124,7 +119,7 @@ func (c Claim) Score(e *Evaluation) (float64, error) {
 	}
 	return 0, errors.New("invalid JEV score response")
 }
-func (c Claim) Noul(e *Evaluation) (float64, error) {
+func (c Claim) Noul(e *decision.Evaluation) (float64, error) {
 	if e != nil && c.Type == ClaimNoul {
 		if v, ok := e.Value.(*decision.Evaluation_Noul); ok {
 			return boundedNumber(v.Noul, 1, "noul")

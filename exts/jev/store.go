@@ -15,6 +15,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/chainreactors/cyber/agent/provider"
+	jev "github.com/chainreactors/cyber/agent/provider/jev"
 	aop "github.com/chainreactors/cyber/aop"
 	"google.golang.org/protobuf/proto"
 )
@@ -256,7 +257,7 @@ func (e *Extension) retireReflex(ctx context.Context, id string, reason error) b
 func publishedGroups(lib library) map[string]bool {
 	groups := map[string]bool{}
 	for _, r := range lib.published() {
-		members := map[string]Claim{}
+		members := map[string]jev.Claim{}
 		for _, claim := range r.Claims {
 			members[claim] = lib.Claims[claim].Claim
 		}

@@ -51,10 +51,10 @@ func compilerReadPlan(t *testing.T, review func(inferenceRequest) map[string]inf
 	if err != nil {
 		t.Fatal(err)
 	}
-	claim := Claim{Type: jevapi.ClaimNoul, Context: "Read the current receipt using the requested actor."}
+	claim := jevapi.Claim{Type: jevapi.ClaimNoul, Context: "Read the current receipt using the requested actor."}
 	id := "c" + digest(claim)[:16]
 	e.library.Claims[id] = claimRecord{Claim: claim}
-	return e, &compilation{job: declaration{cfg: cfg}, claims: map[string]Claim{id: claim}, ids: []string{id}, capabilities: caps, state: state, input: map[string]any{"input": input}}, actor
+	return e, &compilation{job: declaration{cfg: cfg}, claims: map[string]jevapi.Claim{id: claim}, ids: []string{id}, capabilities: caps, state: state, input: map[string]any{"input": input}}, actor
 }
 
 func compilerReadArtifact(actor string) map[string]any {
@@ -396,7 +396,7 @@ func TestReflexCompilerRepairsOversizedSemanticReview(t *testing.T) {
 		}
 		artifact := compilerReadArtifact(actor)
 		if requests == 1 {
-			unused := Claim{Type: jevapi.ClaimChoice, Context: strings.Repeat("Redundant current branch context. ", 140), Options: []string{"a", "b", "c", "d", "e", "f", "g", "h"}}
+			unused := jevapi.Claim{Type: jevapi.ClaimChoice, Context: strings.Repeat("Redundant current branch context. ", 140), Options: []string{"a", "b", "c", "d", "e", "f", "g", "h"}}
 			artifact["observe"] = strings.Replace(artifact["observe"].(string), "{if", "{jev("+jsonText(unused)+");if", 1)
 		}
 		return reply(compilerTool("validate_reflex", map[string]any{"artifact": artifact})), nil

@@ -12,6 +12,7 @@ import (
 	"github.com/chainreactors/cyber/agent"
 	"github.com/chainreactors/cyber/agent/hooks"
 	"github.com/chainreactors/cyber/agent/provider"
+	jev "github.com/chainreactors/cyber/agent/provider/jev"
 	aop "github.com/chainreactors/cyber/aop"
 	coretool "github.com/chainreactors/cyber/core/tool"
 )
@@ -89,7 +90,7 @@ func TestGeneratedDeclarationsRejectUnknownFieldsAndCapabilities(t *testing.T) {
 				}
 				return reply(provider.TextMessage("assistant", output)), nil
 			})
-			var c []Claim
+			var c []jev.Claim
 			_ = json.Unmarshal([]byte(fixtureClaim), &c)
 			id := "c" + digest(c[0])[:16]
 			e.mu.Lock()
