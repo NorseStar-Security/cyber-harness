@@ -33,14 +33,16 @@ test('live judgments show choice distribution, native score and noul before actu
   await expect(page.locator('[data-selected=true]')).toHaveCount(0)
   await expect(page.getByTestId('jev-question').filter({ hasText: '正在判断' })).toHaveCount(3)
   const call = { id: 'read', name: 'read-evidence', arguments: { data: new TextEncoder().encode('{"target":"public"}') } }
-  await render(page, [runtime(4, { case: 'decisionResult', value: { requestId: 'live', elapsedMs: 275, usage: {inputTokens:120n,outputTokens:15n}, evaluations: {
+  await render(page, [runtime(4, { case: 'decisionResult', value: { requestId: 'live', elapsedMs: 275,
+    usage: { inputTokens: 120n, outputTokens: 15n, detail: { cache_read: 60n, cache_write: 10n } }, evaluations: {
     next: { value: { case: 'choice', value: 'picked' }, confidence: .7, probabilities: { winner: .7, picked: .3 } },
     risk: { value: { case: 'score', value: 1.4 }, confidence: .8 }, enough: { value: { case: 'noul', value: .73 }, confidence: .6 },
   } } }), runtime(5, { case: 'takeover', value: { definition } }), runtime(6, { case: 'dispatch', value: { call, candidateId: 'picked', read: true } })], true)
   await expect(page.getByTestId('jev-check')).toHaveCount(0)
   await expect(page.getByTestId('agent-workflow')).toHaveAttribute('open', '')
   await page.locator('[data-record-id="event-3"]').click()
-  await expect(page.getByTestId('jev-token-usage')).toContainText('JEV · 输入 120 · 输出 15 token')
+  await expect(page.getByTestId('token-usage')).toHaveText('↓120↑1550%')
+  await expect(page.getByTestId('token-usage')).toHaveAccessibleName('输入 120 token · 输出 15 token · 合计 135 token · 缓存读取 60 token · 缓存写入 10 token · 缓存 50%')
   const choice = page.locator('[data-question-id=next]')
   await expect(choice.locator('[data-option-id]')).toHaveCount(3)
   expect(await choice.locator('[data-option-id]').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-option-id')))).toEqual(['winner', 'picked', 'unknown'])
@@ -87,5 +89,5 @@ test('compilation keeps generation, review, publication and a failed retry in ch
   await expect(page.locator('[data-control-current=true]')).toContainText('生成失败')
   await expect(page.locator('[data-control-current=true]')).toContainText('Invalid binding')
   await expect(page.locator('[data-generation-request-id="reflex-draft-2"]')).toContainText('第 2 次生成 · 错误阶段：reader')
-  await expect(page.getByTestId('jev-token-usage').filter({hasText:'Reflex LLM'})).toContainText('token 用量未知')
+  await expect(page.locator('[data-generation-request-id="reflex-draft-2"]').locator('..').getByTestId('token-usage')).toHaveCount(0)
 })

@@ -1,4 +1,10 @@
 export default {
+  tokenInput: '{{count}} input tokens',
+  tokenOutput: '{{count}} output tokens',
+  tokenTotal: '{{count}} total tokens',
+  tokenCacheRead: '{{count}} cache read tokens',
+  tokenCacheWrite: '{{count}} cache write tokens',
+  tokenCacheHit: '{{percent}}% cached',
   connectNodeHint: 'Enter a target to begin. Connect an execution node in the node panel first.',
   chat: 'Chat',
   terminal: 'Terminal',

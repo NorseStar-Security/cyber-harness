@@ -9,7 +9,8 @@ import { DecisionRequestSchema } from '../../gen/types/jev_pb'
 import { ClaimSchema } from '../../gen/decision/claim_pb'
 import { claimDefinitions, parseJEVJSON, evaluationType } from '../../lib/jev-decisions'
 import type { JEVSegment, JEVCompilation, JEVCheck } from '../../lib/jev-view'
-import { DecisionBatch, TokenUsageLine } from './JEVDecision'
+import { DecisionBatch } from './JEVDecision'
+import { TokenUsageBadge } from './TokenUsageBadge'
 import { JEVDefinition } from './JEVDefinition'
 import { JEVReference } from './JEVReference'
 import { recordWorkflows, type WorkflowNode } from '../../lib/workflow-view'
@@ -103,10 +104,15 @@ export function WorkflowNodeContent({ node, nodes, stage }: { node: WorkflowNode
       }))
       const published = generation.state === 'finished' && !generation.error && drafts.length > 0 && targets.every(Boolean)
       const publications = [...new Map(targets.filter((target): target is WorkflowNode => !!target).map(target => [target.id, target])).values()]
+      // Compiler rounds own their individual counters; the parent includes
+      // those same calls and already contributes to the panel's aggregate.
+      const hasRounds = generation.kind === 'reflex_llm' && generation.requestId && nodes.some(other => other.sessionId === node.sessionId
+        && other.turnId === node.turnId && other.related?.some(record => record.value.payload.case === 'generation'
+          && record.value.payload.value.parentRequestId === generation.requestId && record.value.payload.value.usage))
       return <div className="space-y-3">
-        <p className="text-xs text-muted-foreground">{t(generation.state === 'started' ? 'generationStarted' : generation.error ? 'generationFailed' : 'generationFinished')}</p>
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground"><span>{t(generation.state === 'started' ? 'generationStarted' : generation.error ? 'generationFailed' : 'generationFinished')}</span>
+          {generation.state === 'finished' && generation.kind !== 'reflex_validation' && !hasRounds && <TokenUsageBadge usage={generation.usage} />}</div>
         {(generation.attempt > 0 || generation.errorStage) && <p className="text-[11px] text-muted-foreground" data-generation-request-id={generation.requestId}>{t('generationAttempt', { count: generation.attempt })}{generation.errorStage && ` · ${t('errorStage', { stage: generation.errorStage })}`}</p>}
-        {generation.state === 'finished' && generation.kind !== 'reflex_validation' && <TokenUsageLine source={generation.kind === 'parameters_llm' ? t('foregroundLLM') : generation.kind === 'claim_llm' ? 'Claim LLM' : 'Reflex LLM'} usage={generation.usage} />}
         {generation.error && generation.error !== diagnosticMessage && <CompilationFeedback reason={generation.error} />}
         {generation.kind === 'reflex_validation' && generation.output && <CompilerDiagnosticView output={generation.output} />}
         {published ? <div className="space-y-2"><p className="text-xs text-muted-foreground">{t('workflow.artifactAtPublication')}</p>

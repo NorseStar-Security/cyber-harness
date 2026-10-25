@@ -62,6 +62,7 @@ import { withRecaps } from '../lib/recap-view'
 import { isJEVBoundary, jevTimelineEvents, projectJEV, runtimeEvents, withJEV } from '../lib/jev-view'
 import { withWorkflows, type WorkflowTurn } from '../lib/workflow-view'
 import { Workflow } from './chat/Workflow'
+import { TokenUsageBadge } from './chat/TokenUsageBadge'
 import { emptyExtensionResolver, type ExtensionResolver } from '../runtime/conversation'
 import { ContributionBoundary } from '../runtime/contribution-boundary'
 import { ReviewState, type Review } from '../cyber-proto'
@@ -911,6 +912,7 @@ function timelineContent(
               </div>}
               {node.response?.content.trim() && <div data-testid="assistant-response-content"><MarkdownContent content={trimDisplayContent(node.response.content)} compact /></div>}
               {typeof node.response?.metadata?.recap === 'string' && <div data-testid="assistant-response-footer" className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground"><span data-testid="task-recap">{node.response.metadata.recap}</span></div>}
+              <TokenUsageBadge usage={node.response?.metadata?.usage} />
             </div>
           : node.kind === 'extension' && node.extensionType === 'guardrail'
           ? <GuardrailReviewCard review={node.data.review as Review} unavailable={node.data.unavailable === true} intercepted={node.data.intercepted === true}
@@ -1164,8 +1166,11 @@ function AssistantResponseEntry({
         </div>
       ) : undefined}
       response={hasResponse ? <MarkdownContent content={trimDisplayContent(message?.content || '')} compact /> : undefined}
-      footer={!embedded && typeof message?.metadata?.recap === 'string'
-        ? <span data-testid="task-recap">{message.metadata.recap}</span> : undefined}
+      footer={message?.metadata?.usage || !embedded && typeof message?.metadata?.recap === 'string'
+        ? <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+            {!embedded && typeof message?.metadata?.recap === 'string' && <span data-testid="task-recap">{message.metadata.recap}</span>}
+            <TokenUsageBadge usage={message?.metadata?.usage} />
+          </div> : undefined}
       labels={{ tools: toolsLabel, thinking: t('thinkingLabel'), response: t('responseLabel') }}
       headerClassName="xl:hidden"
       timeLabel={formatRailTime(response)}

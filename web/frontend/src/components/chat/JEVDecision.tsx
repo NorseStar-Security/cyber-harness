@@ -2,17 +2,11 @@ import { ClaimType, type Claim, type Evaluation } from '../../gen/decision/claim
 import { Check, CircuitBoard, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { DecisionRequest, DecisionResult } from '../../gen/types/jev_pb'
-import type { TokenUsage } from '../../../cyber-ui/packages/aop/src/gen/aop/event_pb'
+import { TokenUsageBadge } from './TokenUsageBadge'
 import { decisionOptions, decisionQuestions, evaluationNumber, evaluationChoice } from '../../lib/jev-decisions'
 import './JEVTimeline.css'
 
 const percent = (value: number) => `${(value * 100).toFixed(1)}%`
-
-export function TokenUsageLine({ source, usage }: { source: string; usage?: TokenUsage }) {
-  const { t } = useTranslation('jev')
-  return <p className="mt-2 text-[10px] tabular-nums text-muted-foreground" data-testid="jev-token-usage" title={t('tokenExplanation')}>{source} · {usage && !usage.detail.usage_missing
-    ? t('tokenUsage', { input: usage.inputTokens.toString(), output: usage.outputTokens.toString() }) : t('usageUnknown')}</p>
-}
 
 export function ChoiceBranches({ question, answer, definition = false }: { question: Claim; answer?: Evaluation; definition?: boolean }) {
   const { t } = useTranslation('jev')
@@ -65,13 +59,13 @@ export function DecisionBatch({ request, result, bodyOnly = false }: { request: 
   const header = <div className="flex flex-wrap items-center gap-2 text-xs">
       <CircuitBoard className="h-4 w-4 text-emerald-500" /><span className="font-semibold">JEV</span><span>{t('judgment')}</span>
       <span className="text-[10px] text-muted-foreground">{questions.length > 1 ? t('parallelQuestions', { count: questions.length }) : t('singleQuestion')}</span>
-      {result ? <span className="ml-auto text-[10px] tabular-nums text-muted-foreground">{Number(result.elapsedMs)} ms</span> : <Loader2 className="ml-auto h-3 w-3 animate-spin" />}
+      {result ? <span className="ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-1"><TokenUsageBadge usage={result.usage} /><span className="text-[10px] tabular-nums text-muted-foreground">{Number(result.elapsedMs)} ms</span></span> : <Loader2 className="ml-auto h-3 w-3 animate-spin" />}
     </div>
-  const body = <>{result && <TokenUsageLine source="JEV" usage={result.usage} />}{result?.error && <p className="mt-2 break-words text-xs text-destructive">{result.error}</p>}
+  const body = <>{result?.error && <p className="mt-2 break-words text-xs text-destructive">{result.error}</p>}
     <div className="jev-question-grid">{questions.map(([id, question]) => <QuestionView key={id} id={id} question={question} answer={result?.evaluations[id]} purpose={request.purpose} finished={!!result} />)}</div></>
   const attributes = { 'data-testid': 'jev-decision', 'data-request-id': request.requestId, 'data-runtime-request': request.requestId, 'data-state': result ? result.error ? 'failed' : 'answered' : 'judging' }
   return <div className={`jev-decision ${bodyOnly ? 'jev-decision-body' : ''}`} {...attributes}>{bodyOnly ? <div className="flex items-center justify-between text-[10px] text-muted-foreground">
     <span>{questions.length > 1 ? t('parallelQuestions', { count: questions.length }) : t('singleQuestion')}</span>
-    {result ? <span>{Number(result.elapsedMs)} ms</span> : <Loader2 className="h-3 w-3 animate-spin" />}
+    {result ? <span className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1"><TokenUsageBadge usage={result.usage} /><span>{Number(result.elapsedMs)} ms</span></span> : <Loader2 className="h-3 w-3 animate-spin" />}
   </div> : header}{body}</div>
 }

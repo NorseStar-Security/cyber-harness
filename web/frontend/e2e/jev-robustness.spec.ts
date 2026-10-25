@@ -141,7 +141,7 @@ test('foreground arguments and tool-free generated results stay in the execution
   const segment = page.getByTestId('agent-workflow')
   await page.locator('[data-record-id="deep-2"]').click()
   await expect(segment).toContainText('当前任务参数')
-  await expect(segment.getByTestId('jev-token-usage')).toContainText('前台 LLM')
+  await expect(segment.getByTestId('token-usage')).toHaveText('↓20↑8')
   await page.locator('[data-record-id="deep-4"]').click()
   await expect(segment).toContainText('answer')
   await expect(segment).toContainText('12')
