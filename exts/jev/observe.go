@@ -13,26 +13,22 @@ import (
 	"mvdan.cc/sh/v3/syntax"
 )
 
-// A binding is a native Executor call emitted by the generated function.
-type NativeCall coretool.NativeCall
-
-func (b NativeCall) call() *aop.ToolCall {
+// Project the tool payload; the foreground host assigns invocation identity.
+func nativeToolCall(b coretool.NativeCall) *aop.ToolCall {
 	return &aop.ToolCall{Name: b.Name, Arguments: &aop.EncodedValue{Data: b.Arguments, MediaType: aop.JSONMediaType}}
 }
-
-func (b NativeCall) canonical() string { return canonical(b.call()) }
 
 // Shell quoting is transport encoding. Compare decoded literal argv when both
 // calls are a single expansion-free command, retaining every other argument.
 // Compound scripts and opaque tools still require exact recorded arguments.
-func (b NativeCall) replayKey() string {
+func replayKey(b coretool.NativeCall) string {
 	prepared, err := prepareBinding(b)
 	if err != nil || len(prepared.Argv) == 0 {
-		return b.canonical()
+		return canonical(nativeToolCall(b))
 	}
 	var args map[string]any
 	if json.Unmarshal(prepared.Arguments, &args) != nil {
-		return b.canonical()
+		return canonical(nativeToolCall(b))
 	}
 	args["command"] = prepared.Argv
 	return jsonText([]any{b.Name, args})
@@ -86,7 +82,7 @@ func (e *Extension) capabilities(cfg agent.Config, states ...json.RawMessage) (m
 // Semantic authorization needs the proposed operation's protocol, not every
 // installed tool's manual or the host's deterministic verification catalog.
 // Keep current constraints and evidence intact while avoiding catalog overflow.
-func bindingCapabilities(candidate NativeCall, capabilities map[string]any) map[string]any {
+func bindingCapabilities(candidate coretool.NativeCall, capabilities map[string]any) map[string]any {
 	tools, commands := []any{}, []any{}
 	definitions, _ := capabilities["tools"].([]any)
 	for _, value := range definitions {
@@ -204,7 +200,7 @@ func observeInput(state json.RawMessage, capabilities map[string]any) (map[strin
 		text, _ := message["text"].(string)
 		normalized, data := normalizedResult(text)
 		row := map[string]any{"call_id": id, "name": call["name"], "arguments": call["arguments"], "text": normalized, "data": data, "is_error": message["is_error"], "terminate": message["terminate"]}
-		if native, err := prepareBinding(NativeCall{Name: fmt.Sprint(call["name"]), Arguments: json.RawMessage(jsonText(call["arguments"]))}); err == nil && len(native.Argv) > 0 {
+		if native, err := prepareBinding(coretool.NativeCall{Name: fmt.Sprint(call["name"]), Arguments: json.RawMessage(jsonText(call["arguments"]))}); err == nil && len(native.Argv) > 0 {
 			row["decoded_argv"] = native.Argv
 		}
 		history = append(history, row)

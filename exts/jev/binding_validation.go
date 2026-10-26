@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync"
 
+	coretool "github.com/chainreactors/cyber/core/tool"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
@@ -21,7 +22,7 @@ func (localSchemas) Load(url string) (any, error) {
 }
 
 // Compile only registered schemas; validation never fetches schema URLs.
-func validateBindingSchema(candidate NativeCall, capabilities map[string]any) error {
+func validateBindingSchema(candidate coretool.NativeCall, capabilities map[string]any) error {
 	tools, _ := capabilities["tools"].([]any)
 	for _, value := range tools {
 		tool, ok := value.(map[string]any)

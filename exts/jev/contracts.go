@@ -2,6 +2,8 @@ package jev
 
 import (
 	"encoding/json"
+
+	coretool "github.com/chainreactors/cyber/core/tool"
 )
 
 func (e *Extension) contractsAvailable(r Program) bool {
@@ -58,7 +60,7 @@ func reflexContracts(capabilities map[string]any, witnesses []map[string]any) ma
 				}
 			}
 		}
-		for _, candidate := range witness["candidates"].(map[string]NativeCall) {
+		for _, candidate := range witness["candidates"].(map[string]coretool.NativeCall) {
 			selected["tool:"+candidate.Name] = catalog["tool:"+candidate.Name]
 			var arguments any
 			_ = json.Unmarshal(candidate.Arguments, &arguments)

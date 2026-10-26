@@ -155,10 +155,10 @@ func (e *Extension) prepareCompilation(ctx context.Context, job declaration, see
 	}
 	native := e.contracts.Snapshot()
 	for _, row := range programInput["history"].([]map[string]any) {
-		call, classifyErr := prepareBinding(NativeCall{Name: fmt.Sprint(row["name"]), Arguments: json.RawMessage(jsonText(row["arguments"]))})
+		call, classifyErr := prepareBinding(coretool.NativeCall{Name: fmt.Sprint(row["name"]), Arguments: json.RawMessage(jsonText(row["arguments"]))})
 		var access coretool.NativeAccess
 		if classifyErr == nil {
-			access, classifyErr = native.Access(coretool.NativeCall(call))
+			access, classifyErr = native.Access(call)
 		}
 		row["native_access"] = access
 		if classifyErr != nil {

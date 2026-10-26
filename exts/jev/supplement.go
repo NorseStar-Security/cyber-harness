@@ -23,7 +23,7 @@ func (e *Extension) admitSupplement(ctx context.Context, event toolhooks.CallEve
 		return toolhooks.Admission{}, nil
 	}
 	native := e.contracts.Snapshot()
-	call := NativeCall{Name: event.Call.Name, Arguments: event.Call.GetArguments().GetData()}
+	call := coretool.NativeCall{Name: event.Call.Name, Arguments: event.Call.GetArguments().GetData()}
 	call, err := prepareBinding(call)
 	if err != nil {
 		return toolhooks.Admission{Deny: err}, nil //nolint:nilerr // Denial is an admission result, not a hook failure.
@@ -31,8 +31,8 @@ func (e *Extension) admitSupplement(ctx context.Context, event toolhooks.CallEve
 	if record.NativeEpoch != digest(e.contracts.Catalog()) {
 		return toolhooks.Admission{Deny: handoffError{"qualified task contract unavailable"}}, nil
 	}
-	access, err := native.Access(coretool.NativeCall(call))
-	if err != nil || access != ReadAccess {
+	access, err := native.Access(call)
+	if err != nil || access != coretool.NativeRead {
 		return toolhooks.Admission{Deny: handoffError{"effect_unknown: supplementation must use trusted reads; mutations return to the Reflex"}}, nil //nolint:nilerr // The executor handles Deny.
 	}
 	call.Read = true
@@ -55,7 +55,7 @@ func (e *Extension) observeSupplement(ctx context.Context, event toolhooks.Compl
 	if record.NativeEpoch == "" || event.Result == nil {
 		return struct{}{}, nil
 	}
-	call := NativeCall{Name: event.Call.Name, Arguments: event.Call.GetArguments().GetData(), Read: true}
+	call := coretool.NativeCall{Name: event.Call.Name, Arguments: event.Call.GetArguments().GetData(), Read: true}
 	call, err := prepareBinding(call)
 	if err != nil {
 		return struct{}{}, nil //nolint:nilerr // Malformed bindings have no evidence to reconcile.

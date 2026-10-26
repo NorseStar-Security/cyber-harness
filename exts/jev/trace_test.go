@@ -59,7 +59,7 @@ func TestProjectionKeepsFullConstraintsAndEvictsCallResultGroups(t *testing.T) {
 func TestRuntimeBindingJudgmentKeepsConstraintsWithoutWholeCatalog(t *testing.T) {
 	constraint := strings.Repeat("current authorization ", 1400)
 	request := json.RawMessage(jsonText(map[string]any{"messages": []any{map[string]any{"role": "system", "text": constraint}, map[string]any{"role": "user", "text": "Read the current native receipt"}}}))
-	call := NativeCall{Name: "bash", Arguments: json.RawMessage(`{"command":"lab status current"}`), Read: true}
+	call := coretool.NativeCall{Name: "bash", Arguments: json.RawMessage(`{"command":"lab status current"}`), Read: true}
 	catalog := map[string]any{
 		"tools":            []any{map[string]any{"name": "bash", "description": "Dispatch the named native command", "input_schema": map[string]any{"type": "object"}}, map[string]any{"name": "unrelated", "description": strings.Repeat("unrelated manual ", 1600)}},
 		"commands":         []any{map[string]any{"name": "lab", "usage": "lab status <actor>: read the actor's current receipt"}},

@@ -11,6 +11,7 @@ import (
 
 	jevapi "github.com/chainreactors/cyber/agent/provider/jev"
 	decision "github.com/chainreactors/cyber/core/decision"
+	coretool "github.com/chainreactors/cyber/core/tool"
 	"github.com/dop251/goja"
 	"github.com/dop251/goja/ast"
 	"github.com/dop251/goja/parser"
@@ -42,7 +43,7 @@ function command(name, argv) { return {name:name, argv:argv}; }
 // runReflexJS executes one ordinary function. Only the native JEV and Executor
 // bridges can perform external work; every bridge receives and returns JSON.
 func runReflexJS(ctx context.Context, reflex *Program, input, arguments map[string]any,
-	judge func(jevapi.Claim) (*decision.Evaluation, error), execute func(NativeCall) (map[string]any, error)) (map[string]any, error) {
+	judge func(jevapi.Claim) (*decision.Evaluation, error), execute func(coretool.NativeCall) (map[string]any, error)) (map[string]any, error) {
 	if reflex == nil || reflex.program == nil {
 		return nil, fmt.Errorf("Reflex program has not been validated")
 	}
@@ -141,7 +142,7 @@ Math.random=function(){throw new Error("randomness unavailable")};globalThis.Dat
 		return goja.Undefined()
 	})
 	_ = runtime.Set("execute", func(call goja.FunctionCall) goja.Value {
-		var candidate NativeCall
+		var candidate coretool.NativeCall
 		if err := decode(call.Argument(0), &candidate); err != nil {
 			fail(fmt.Errorf("native arguments: %w", err))
 		}

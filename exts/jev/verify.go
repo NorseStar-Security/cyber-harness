@@ -10,11 +10,12 @@ import (
 
 	jevapi "github.com/chainreactors/cyber/agent/provider/jev"
 	"github.com/chainreactors/cyber/core/decision"
+	coretool "github.com/chainreactors/cyber/core/tool"
 )
 
 type replayResult struct {
 	facts      json.RawMessage
-	candidates map[string]NativeCall
+	candidates map[string]coretool.NativeCall
 	branches   []replayBranch
 }
 type replayBranch struct {
@@ -87,7 +88,7 @@ func probeReflexArguments(ctx context.Context, reflex *Program, input, args map[
 	// A pure JS loop must return a repair diagnostic without blocking the job.
 	probeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	candidates := map[string]NativeCall{}
+	candidates := map[string]coretool.NativeCall{}
 	states := []any{}
 	branches := []replayBranch{}
 	queue := []map[string]string{{}}
@@ -173,7 +174,7 @@ func probeReflexArguments(ctx context.Context, reflex *Program, input, args map[
 			}
 			return nil, fmt.Errorf("unsupported Claim type")
 		}
-		execute := func(candidate NativeCall) (map[string]any, error) {
+		execute := func(candidate coretool.NativeCall) (map[string]any, error) {
 			dispatched++
 			if dispatched > maxCandidates {
 				return nil, fmt.Errorf("native replay exceeds finite budget")
@@ -192,7 +193,7 @@ func probeReflexArguments(ctx context.Context, reflex *Program, input, args map[
 			if cursor < len(results) {
 				result := results[cursor]
 				args, _ := json.Marshal(result["arguments"])
-				if (NativeCall{Name: fmt.Sprint(result["name"]), Arguments: args}).replayKey() == candidate.replayKey() {
+				if replayKey(coretool.NativeCall{Name: fmt.Sprint(result["name"]), Arguments: args}) == replayKey(candidate) {
 					cursor++
 					evidence[fmt.Sprint(result["call_id"])] = result
 					if !candidate.Read {
@@ -202,11 +203,11 @@ func probeReflexArguments(ctx context.Context, reflex *Program, input, args map[
 				}
 				gap = fmt.Sprintf("native call %d differs from the recorded call", cursor)
 				index := cursor
-				diagnostic = &CompilerDiagnostic{Code: "native_call_mismatch", Stage: "replay", Status: "repair", Message: gap, Call: &index, Expected: json.RawMessage((NativeCall{Name: fmt.Sprint(result["name"]), Arguments: args}).replayKey()), Actual: json.RawMessage(candidate.replayKey()), Replayed: cursor, Recorded: len(results), Action: "Compare the decoded argv and every native option. Recover exact current example values with inspect_evidence. Replay can supply only this recorded call's result; a different operation needs its own actual evidence."}
+				diagnostic = &CompilerDiagnostic{Code: "native_call_mismatch", Stage: "replay", Status: "repair", Message: gap, Call: &index, Expected: json.RawMessage(replayKey(coretool.NativeCall{Name: fmt.Sprint(result["name"]), Arguments: args})), Actual: json.RawMessage(replayKey(candidate)), Replayed: cursor, Recorded: len(results), Action: "Compare the decoded argv and every native option. Recover exact current example values with inspect_evidence. Replay can supply only this recorded call's result; a different operation needs its own actual evidence."}
 			} else {
 				gap = "generated call has no recorded result"
 				index := cursor
-				diagnostic = &CompilerDiagnostic{Code: "unrecorded_native_call", Stage: "replay", Status: "repair", Message: gap, Call: &index, Actual: json.RawMessage(candidate.replayKey()), Replayed: cursor, Recorded: len(results), Action: "Remove redundant work if current evidence already satisfies the request. If this new operation is necessary, obtain its actual result in an isolated task before qualifying this path; never fabricate the result."}
+				diagnostic = &CompilerDiagnostic{Code: "unrecorded_native_call", Stage: "replay", Status: "repair", Message: gap, Call: &index, Actual: json.RawMessage(replayKey(candidate)), Replayed: cursor, Recorded: len(results), Action: "Remove redundant work if current evidence already satisfies the request. If this new operation is necessary, obtain its actual result in an isolated task before qualifying this path; never fabricate the result."}
 			}
 			return nil, errProbeStop
 		}
@@ -273,20 +274,6 @@ func (r *observationReplay) evaluate(ctx context.Context, input json.RawMessage)
 	}
 	return result, err
 }
-func observationWitnesses(ctx context.Context, reflex *Program, state json.RawMessage, capabilities map[string]any) ([]map[string]any, error) {
-	r, err := newObservationReplay(reflex, state, capabilities)
-	if err != nil {
-		return nil, err
-	}
-	return r.witnesses(ctx)
-}
-func verifyObserve(ctx context.Context, reflex *Program, state json.RawMessage, capabilities map[string]any) error {
-	r, err := newObservationReplay(reflex, state, capabilities)
-	if err != nil {
-		return err
-	}
-	return r.verify(ctx)
-}
 func (r *observationReplay) witnesses(ctx context.Context) ([]map[string]any, error) {
 	rows := []map[string]any{}
 	for _, end := range r.boundaries(false) {
@@ -308,16 +295,16 @@ func (r *observationReplay) witnesses(ctx context.Context) ([]map[string]any, er
 	}
 	return rows, nil
 }
-func compactWitnesses(witnesses []map[string]any) ([]map[string]any, map[string]NativeCall) {
+func compactWitnesses(witnesses []map[string]any) ([]map[string]any, map[string]coretool.NativeCall) {
 	rows := []map[string]any{}
-	bindings := map[string]NativeCall{}
+	bindings := map[string]coretool.NativeCall{}
 	for _, witness := range witnesses {
 		row := map[string]any{}
 		for k, v := range witness {
 			row[k] = v
 		}
 		refs := map[string]string{}
-		for id, c := range witness["candidates"].(map[string]NativeCall) {
+		for id, c := range witness["candidates"].(map[string]coretool.NativeCall) {
 			ref := "b" + digest(c)
 			bindings[ref] = c
 			refs[id] = ref

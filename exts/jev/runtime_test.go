@@ -8,11 +8,12 @@ import (
 	"time"
 
 	"github.com/chainreactors/cyber/agent/provider"
+	coretool "github.com/chainreactors/cyber/core/tool"
 )
 
 func TestRuntimeWaitDoesNotConsumeComputationBudget(t *testing.T) {
 	r := observationReflex(t, `js:function(context,args){const r=execute({name:'native',arguments:{},read:true});return {report:r.data};}`)
-	result, err := runReflexJS(t.Context(), &r, observationCapabilities("native"), nil, nil, func(NativeCall) (map[string]any, error) {
+	result, err := runReflexJS(t.Context(), &r, observationCapabilities("native"), nil, nil, func(coretool.NativeCall) (map[string]any, error) {
 		time.Sleep(160 * time.Millisecond)
 		return map[string]any{"data": "actual"}, nil
 	})
@@ -24,7 +25,7 @@ func TestRuntimeWaitDoesNotConsumeComputationBudget(t *testing.T) {
 func TestRuntimeCancellationCannotBeCaughtByGeneratedCode(t *testing.T) {
 	r := observationReflex(t, `js:function(context,args){try{execute({name:'native',arguments:{},read:true});}catch(e){}return {report:'invented completion'};}`)
 	ctx, cancel := context.WithCancel(t.Context())
-	result, err := runReflexJS(ctx, &r, observationCapabilities("native"), nil, nil, func(NativeCall) (map[string]any, error) { cancel(); return nil, ctx.Err() })
+	result, err := runReflexJS(ctx, &r, observationCapabilities("native"), nil, nil, func(coretool.NativeCall) (map[string]any, error) { cancel(); return nil, ctx.Err() })
 	if err == nil || result != nil {
 		t.Fatal("generated catch concealed host cancellation")
 	}
@@ -46,7 +47,10 @@ func TestParameterResponseRejectsTrailingDataAndUnknownInput(t *testing.T) {
 func TestRuntimeHandsOffUnsafeNumericIdentityBeforeDispatch(t *testing.T) {
 	r := observationReflex(t, `js:function(context,args){execute({name:'native',arguments:{id:args.id},read:false,step:"effect",occurrence:0});return {report:args.id};}`)
 	calls := 0
-	execute := func(NativeCall) (map[string]any, error) { calls++; return map[string]any{"data": "actual"}, nil }
+	execute := func(coretool.NativeCall) (map[string]any, error) {
+		calls++
+		return map[string]any{"data": "actual"}, nil
+	}
 	_, err := runReflexJS(t.Context(), &r, observationCapabilities("native"), map[string]any{"id": json.Number("9007199254740993")}, nil, execute)
 	if err == nil || calls != 0 || !strings.Contains(interruptedCause(err).Error(), "safe range") {
 		t.Fatalf("unsafe identity dispatched: calls=%d err=%v", calls, err)
@@ -56,7 +60,7 @@ func TestRuntimeHandsOffUnsafeNumericIdentityBeforeDispatch(t *testing.T) {
 	}
 	r = observationReflex(t, `js:function(context,args){try{const r=execute({name:'native',arguments:{},read:true});execute({name:'native',arguments:{id:r.data.id},read:false,step:"effect",occurrence:0});}catch(e){}return {report:'done'};}`)
 	calls = 0
-	_, err = runReflexJS(t.Context(), &r, observationCapabilities("native"), nil, nil, func(NativeCall) (map[string]any, error) {
+	_, err = runReflexJS(t.Context(), &r, observationCapabilities("native"), nil, nil, func(coretool.NativeCall) (map[string]any, error) {
 		calls++
 		return map[string]any{"data": map[string]any{"id": json.Number("9007199254740993")}}, nil
 	})

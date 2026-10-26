@@ -99,14 +99,14 @@ func TestReflexNativeAndJudgmentLimits(t *testing.T) {
 				return nil, nil
 			}})
 			contract := laboratorySuite().Contracts["lab"]
-			s := VerificationSuite{ID: "bounded-" + mode, Version: "1", Contracts: map[string]NativeContract{"lab": contract},
+			s := VerificationSuite{ID: "bounded-" + mode, Version: "1", Contracts: coretool.NativeContracts{"lab": contract},
 				CheckInput: func(map[string]any, map[string]any) error { return nil }, CheckCall: func(VerificationCall) error { return nil }, CheckReport: func(VerificationReport) error { return errors.New("pending cannot report") },
 				Cases: func(map[string]any) []VerificationCase {
 					return []VerificationCase{{ID: "bounded", Input: map[string]any{},
 						Judge: func(jevapi.Claim) (*decision.Evaluation, error) {
 							return &decision.Evaluation{Value: &decision.Evaluation_Choice{Choice: "continue"}}, nil
 						},
-						Execute: func(NativeCall) (map[string]any, error) {
+						Execute: func(coretool.NativeCall) (map[string]any, error) {
 							return map[string]any{"data": map[string]any{"complete": false}}, nil
 						},
 						Check: func(run VerificationRun) error {

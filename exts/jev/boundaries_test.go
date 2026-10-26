@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/chainreactors/cyber/core/decision"
+	coretool "github.com/chainreactors/cyber/core/tool"
 
 	"github.com/chainreactors/cyber/agent"
 	"github.com/chainreactors/cyber/agent/hooks"
@@ -18,7 +19,6 @@ import (
 	jevapi "github.com/chainreactors/cyber/agent/provider/jev"
 	"github.com/chainreactors/cyber/aop"
 	"github.com/chainreactors/cyber/core/operation"
-	coretool "github.com/chainreactors/cyber/core/tool"
 )
 
 func qualifiedLaboratory(t *testing.T, e *Extension, caps map[string]any) Program {
@@ -153,7 +153,7 @@ func TestReflexMissingNativeEvidenceDoesNotPersistDraft(t *testing.T) {
 
 func TestReflexKnownFailureAndUnknownResolution(t *testing.T) {
 	s := laboratorySuite()
-	c := NativeCall{Name: "bash", Arguments: json.RawMessage(`{"command":"lab add actor"}`), Step: "add"}
+	c := coretool.NativeCall{Name: "bash", Arguments: json.RawMessage(`{"command":"lab add actor"}`), Step: "add"}
 	c, _ = prepareBinding(c)
 	l := newEffectLedger()
 	_, _, _ = l.reserve("task", c)
@@ -163,14 +163,14 @@ func TestReflexKnownFailureAndUnknownResolution(t *testing.T) {
 	if _, _, err := l.reserve("task", second); err == nil {
 		t.Fatal("unknown outcome allowed another mutation")
 	}
-	read, _ := prepareBinding(NativeCall{Name: "bash", Arguments: json.RawMessage(`{"command":"lab status other"}`), Read: true})
-	l.reconcile(s.native(), read, map[string]any{"data": map[string]any{"complete": true}})
+	read, _ := prepareBinding(coretool.NativeCall{Name: "bash", Arguments: json.RawMessage(`{"command":"lab status other"}`), Read: true})
+	l.reconcile(s.Contracts, read, map[string]any{"data": map[string]any{"complete": true}})
 	if _, _, err := l.reserve("task", second); err == nil {
 		t.Fatal("unrelated status resolved an effect")
 	}
 	read.Arguments = json.RawMessage(`{"command":"lab status actor"}`)
 	read, _ = prepareBinding(read)
-	l.reconcile(s.native(), read, map[string]any{"call_id": "actual-read", "data": map[string]any{"complete": true}})
+	l.reconcile(s.Contracts, read, map[string]any{"call_id": "actual-read", "data": map[string]any{"complete": true}})
 	if _, cached, err := l.reserve("task", c); err != nil || !cached {
 		t.Fatal("resolved occurrence redispatched")
 	}
@@ -178,11 +178,11 @@ func TestReflexKnownFailureAndUnknownResolution(t *testing.T) {
 		t.Fatal("resolved effect did not allow the next occurrence")
 	}
 	contract := s.Contracts["lab"]
-	contract.Outcome = func(NativeCall, map[string]any) string { return "not_applied" }
+	contract.Outcome = func(coretool.NativeCall, map[string]any) string { return "not_applied" }
 	s.Contracts["lab"] = contract
 	l.complete("task", second, map[string]any{"is_error": true}, errors.New("explicit rejection"))
-	l.classifyOutcome("task", second, s.native(), map[string]any{"is_error": true}, "lab")
-	if _, _, err := l.reserve("task", NativeCall{Step: "another"}); err != nil {
+	l.classifyOutcome("task", second, s.Contracts, map[string]any{"is_error": true}, "lab")
+	if _, _, err := l.reserve("task", coretool.NativeCall{Step: "another"}); err != nil {
 		t.Fatal("trusted definite rejection was treated as unknown")
 	}
 }
@@ -191,17 +191,17 @@ func TestReflexOutcomeUsesDeclaredContract(t *testing.T) {
 	s := laboratorySuite()
 	other := s.Contracts["lab"]
 	other.ID = "other"
-	other.Outcome = func(NativeCall, map[string]any) string { return "applied" }
-	other.Resolve = func(NativeCall, NativeCall, map[string]any) bool { return true }
+	other.Outcome = func(coretool.NativeCall, map[string]any) string { return "applied" }
+	other.Resolve = func(coretool.NativeCall, coretool.NativeCall, map[string]any) bool { return true }
 	s.Contracts[other.ID] = other
 	l := newEffectLedger()
-	c, _ := prepareBinding(NativeCall{Name: "bash", Arguments: json.RawMessage(`{"command":"lab add actor"}`), Step: "add"})
+	c, _ := prepareBinding(coretool.NativeCall{Name: "bash", Arguments: json.RawMessage(`{"command":"lab add actor"}`), Step: "add"})
 	_, _, _ = l.reserve("task", c)
 	result := map[string]any{"is_error": false, "data": map[string]any{"status": 503}}
 	l.complete("task", c, result, nil)
-	l.classifyOutcome("task", c, s.native(), result, "lab")
-	read, _ := prepareBinding(NativeCall{Name: "bash", Arguments: json.RawMessage(`{"command":"lab status wrong"}`), Read: true})
-	l.reconcile(s.native(), read, map[string]any{"data": map[string]any{"complete": true}})
+	l.classifyOutcome("task", c, s.Contracts, result, "lab")
+	read, _ := prepareBinding(coretool.NativeCall{Name: "bash", Arguments: json.RawMessage(`{"command":"lab status wrong"}`), Read: true})
+	l.reconcile(s.Contracts, read, map[string]any{"data": map[string]any{"complete": true}})
 	next := c
 	next.Occurrence = 1
 	if _, _, err := l.reserve("task", next); err == nil {
@@ -314,16 +314,16 @@ func TestReflexEvidencePathsTraverseCurrentArrays(t *testing.T) {
 
 func TestReflexShellAndEvidenceBoundaries(t *testing.T) {
 	for _, script := range []string{"lab add $ACTOR", "lab add $(whoami)", "lab add actor > file", "lab add actor; lab add actor", "lab add *", "lab add ~", "lab add {a,b}"} {
-		c, err := prepareBinding(NativeCall{Name: "bash", Arguments: json.RawMessage(jsonText(map[string]any{"command": script})), Argv: []string{"lab", "add", "forged"}})
+		c, err := prepareBinding(coretool.NativeCall{Name: "bash", Arguments: json.RawMessage(jsonText(map[string]any{"command": script})), Argv: []string{"lab", "add", "forged"}})
 		if err != nil || len(c.Argv) != 0 {
 			t.Fatalf("opaque shell gained trusted argv: %s %v", script, c.Argv)
 		}
-		if _, err := laboratorySuiteAccess(c); err == nil {
+		if _, err := laboratorySuite().Contracts.Access(c); err == nil {
 			t.Fatal("opaque shell was admitted")
 		}
 	}
-	a, _ := prepareBinding(NativeCall{Name: "bash", Arguments: json.RawMessage(`{"command":"lab add actor"}`)})
-	b, _ := prepareBinding(NativeCall{Name: "bash", Arguments: json.RawMessage(`{"command":" lab   add 'actor' "}`)})
+	a, _ := prepareBinding(coretool.NativeCall{Name: "bash", Arguments: json.RawMessage(`{"command":"lab add actor"}`)})
+	b, _ := prepareBinding(coretool.NativeCall{Name: "bash", Arguments: json.RawMessage(`{"command":" lab   add 'actor' "}`)})
 	if logicalBinding(a) != logicalBinding(b) {
 		t.Fatal("cosmetic shell changes altered operation identity")
 	}
@@ -335,11 +335,6 @@ func TestReflexShellAndEvidenceBoundaries(t *testing.T) {
 	if _, err := resolveReport(ref, map[string]map[string]any{"foreign-call": {"data": map[string]any{"receipt": "real"}}}); err == nil {
 		t.Fatal("missing evidence field accepted")
 	}
-}
-
-func laboratorySuiteAccess(c NativeCall) (coretool.NativeAccess, error) {
-	s := laboratorySuite()
-	return s.access(c)
 }
 
 func TestReflexCompilerEffortAndCancellationOwnItsLifetime(t *testing.T) {
@@ -376,7 +371,7 @@ func TestReflexReportChecksCurrentRequest(t *testing.T) {
 }
 
 func TestReflexPureSemanticCapabilityAndFreshArguments(t *testing.T) {
-	s := VerificationSuite{ID: "semantic", Version: "1", Contracts: map[string]NativeContract{}, CheckInput: func(input, args map[string]any) error {
+	s := VerificationSuite{ID: "semantic", Version: "1", Contracts: coretool.NativeContracts{}, CheckInput: func(input, args map[string]any) error {
 		if args == nil || input["user"] != fmt.Sprint(args["mode"])+":"+fmt.Sprint(args["value"]) {
 			return errors.New("arguments do not represent this request")
 		}
@@ -403,7 +398,9 @@ func TestReflexPureSemanticCapabilityAndFreshArguments(t *testing.T) {
 				Judge: func(claim jevapi.Claim) (*decision.Evaluation, error) {
 					return &decision.Evaluation{Value: &decision.Evaluation_Choice{Choice: mode}}, nil
 				},
-				Execute: func(NativeCall) (map[string]any, error) { return nil, errors.New("pure capability must not dispatch") },
+				Execute: func(coretool.NativeCall) (map[string]any, error) {
+					return nil, errors.New("pure capability must not dispatch")
+				},
 				Check: func(run VerificationRun) error {
 					if run.Error != nil {
 						return run.Error

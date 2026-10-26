@@ -16,19 +16,21 @@ import (
 )
 
 type effectRecord struct {
-	Call     NativeCall     `json:"call"`
-	Result   map[string]any `json:"result,omitempty"`
-	State    string         `json:"state"`
-	Contract string         `json:"contract,omitempty"`
+	Call     coretool.NativeCall `json:"call"`
+	Result   map[string]any      `json:"result,omitempty"`
+	State    string              `json:"state"`
+	Contract string              `json:"contract,omitempty"`
 }
 type effectLedger struct {
 	mu      sync.Mutex
 	records map[string]*effectRecord
 }
 
-func newEffectLedger() *effectLedger            { return &effectLedger{records: map[string]*effectRecord{}} }
-func effectID(task string, c NativeCall) string { return digest([]any{task, c.Step, c.Occurrence}) }
-func logicalBinding(c NativeCall) string {
+func newEffectLedger() *effectLedger { return &effectLedger{records: map[string]*effectRecord{}} }
+func effectID(task string, c coretool.NativeCall) string {
+	return digest([]any{task, c.Step, c.Occurrence})
+}
+func logicalBinding(c coretool.NativeCall) string {
 	if len(c.Argv) > 0 {
 		var args map[string]any
 		d := json.NewDecoder(bytes.NewReader(c.Arguments))
@@ -37,9 +39,9 @@ func logicalBinding(c NativeCall) string {
 		delete(args, "command")
 		return digest([]any{c.Name, args, c.Argv})
 	}
-	return c.canonical()
+	return canonical(nativeToolCall(c))
 }
-func (l *effectLedger) reserve(task string, c NativeCall, contracts ...string) (map[string]any, bool, error) {
+func (l *effectLedger) reserve(task string, c coretool.NativeCall, contracts ...string) (map[string]any, bool, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	id := effectID(task, c)
@@ -64,7 +66,7 @@ func (l *effectLedger) reserve(task string, c NativeCall, contracts ...string) (
 	l.records[id] = &effectRecord{Call: c, State: "executing", Contract: contract}
 	return nil, false, nil
 }
-func (l *effectLedger) complete(task string, c NativeCall, result map[string]any, err error) {
+func (l *effectLedger) complete(task string, c coretool.NativeCall, result map[string]any, err error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	record := l.records[effectID(task, c)]
@@ -78,7 +80,7 @@ func (l *effectLedger) complete(task string, c NativeCall, result map[string]any
 		record.State = "returned"
 	}
 }
-func (l *effectLedger) classifyOutcome(task string, c NativeCall, native coretool.NativeContracts, result map[string]any, contractID string) {
+func (l *effectLedger) classifyOutcome(task string, c coretool.NativeCall, native coretool.NativeContracts, result map[string]any, contractID string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	r := l.records[effectID(task, c)]
@@ -88,9 +90,9 @@ func (l *effectLedger) classifyOutcome(task string, c NativeCall, native coretoo
 	r.Contract = contractID
 	known := false
 	if contract, ok := native[contractID]; ok && result != nil {
-		a, err := contract.Classify(coretool.NativeCall(c))
-		if err == nil && a == EffectAccess && contract.Outcome != nil {
-			outcome := contract.Outcome(coretool.NativeCall(c), cloneJSONMap(result))
+		a, err := contract.Classify(c)
+		if err == nil && a == coretool.NativeEffect && contract.Outcome != nil {
+			outcome := contract.Outcome(c, cloneJSONMap(result))
 			if outcome == "applied" || outcome == "not_applied" || outcome == "pending" {
 				known = true
 			}
@@ -103,7 +105,7 @@ func (l *effectLedger) classifyOutcome(task string, c NativeCall, native coretoo
 	}
 }
 
-func (l *effectLedger) reconcile(native coretool.NativeContracts, read NativeCall, result map[string]any) {
+func (l *effectLedger) reconcile(native coretool.NativeContracts, read coretool.NativeCall, result map[string]any) {
 	if result == nil || result["is_error"] == true {
 		return
 	}
@@ -117,7 +119,7 @@ func (l *effectLedger) reconcile(native coretool.NativeContracts, read NativeCal
 			if record.Contract != "" && record.Contract != id {
 				continue
 			}
-			if c.Resolve != nil && c.Resolve(coretool.NativeCall(record.Call), coretool.NativeCall(read), cloneJSONMap(result)) {
+			if c.Resolve != nil && c.Resolve(record.Call, read, cloneJSONMap(result)) {
 				record.Result = cloneJSONMap(result)
 				record.State = "returned"
 				break
@@ -148,7 +150,7 @@ func (l *effectLedger) unresolved() bool {
 
 // command(name, argv) is a structured value until the host encodes it. It is
 // only valid in bash.arguments.command; arbitrary command strings stay opaque.
-func prepareBinding(c NativeCall) (NativeCall, error) {
+func prepareBinding(c coretool.NativeCall) (coretool.NativeCall, error) {
 	c.ID = ""    // Invocation identity is assigned by the host, never generated code.
 	c.Argv = nil // Generated metadata must never override the actual native call.
 	if c.Name != "bash" {
