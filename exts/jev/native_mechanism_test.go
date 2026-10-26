@@ -21,21 +21,21 @@ import (
 )
 
 func TestReflexReplayLiteralShellEncoding(t *testing.T) {
-	call := func(command any, timeout int) NativeCall {
-		return NativeCall{Name: "bash", Arguments: json.RawMessage(jsonText(map[string]any{"command": command, "timeout": timeout}))}
+	call := func(command any, timeout int) coretool.NativeCall {
+		return coretool.NativeCall{Name: "bash", Arguments: json.RawMessage(jsonText(map[string]any{"command": command, "timeout": timeout}))}
 	}
 	recorded := call(`experiment append "actor with spaces"`, 30)
 	generated := call(map[string]any{"name": "experiment", "argv": []string{"append", "actor with spaces"}}, 30)
-	if recorded.replayKey() != generated.replayKey() {
+	if replayKey(recorded) != replayKey(generated) {
 		t.Fatal("equivalent literal argv did not replay")
 	}
-	for _, other := range []NativeCall{
+	for _, other := range []coretool.NativeCall{
 		call(`experiment append "another actor"`, 30),
 		call(`experiment append "actor with spaces"`, 31),
 		call(`experiment append "actor with spaces" && experiment summary "actor with spaces"`, 30),
 		call(`experiment append "$ACTOR"`, 30),
 	} {
-		if other.replayKey() == generated.replayKey() {
+		if replayKey(other) == replayKey(generated) {
 			t.Fatal("changed target/options or nonliteral script matched evidence")
 		}
 	}

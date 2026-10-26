@@ -39,7 +39,11 @@ func TestParameterVariationPreservesPathQuoting(t *testing.T) {
 		r := observationReflex(t, `js:function(context,args){if(!args)return {defer:'missing',parameters:'path'};execute({name:'native',arguments:{command:'inspect '+quote(args.path)},read:true});return {report:args.path};}`)
 		r.arguments = map[string]any{"path": path}
 		input, _ := json.Marshal(map[string]any{"messages": []any{map[string]any{"role": "user", "text": path}}})
-		if err := verifyObserve(t.Context(), &r, input, observationCapabilities("native")); err != nil {
+		replay, err := newObservationReplay(&r, input, observationCapabilities("native"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := replay.verify(t.Context()); err != nil {
 			t.Fatalf("parameter path=%q: %v", path, err)
 		}
 	}

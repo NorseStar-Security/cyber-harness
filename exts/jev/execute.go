@@ -157,9 +157,9 @@ func (e *Extension) beforeModel(ctx context.Context, ev hooks.ContextEvent) ([]*
 		projection, _ := observeInput(raw, caps)
 		for _, entry := range projection["history"].([]map[string]any) {
 			args, _ := json.Marshal(entry["arguments"])
-			call, _ := prepareBinding(NativeCall{Name: fmt.Sprint(entry["name"]), Arguments: args})
-			access, err := native.Access(coretool.NativeCall(call))
-			if err != nil || access == EffectAccess {
+			call, _ := prepareBinding(coretool.NativeCall{Name: fmt.Sprint(entry["name"]), Arguments: args})
+			access, err := native.Access(call)
+			if err != nil || access == coretool.NativeEffect {
 				e.emit(ctx, &Boundary{Reason: "ordinary_effects_unmapped"})
 				e.enqueue(cfg, ev)
 				return nil, nil
@@ -205,7 +205,7 @@ func (e *Extension) beforeModel(ctx context.Context, ev hooks.ContextEvent) ([]*
 		}
 		return response.Values["runtime"], nil
 	}
-	execute := func(candidate NativeCall) (map[string]any, error) {
+	execute := func(candidate coretool.NativeCall) (map[string]any, error) {
 		if cfg.Tools == nil {
 			return nil, handoffError{"native Executor unavailable"}
 		}
@@ -218,7 +218,7 @@ func (e *Extension) beforeModel(ctx context.Context, ev hooks.ContextEvent) ([]*
 		if calls >= maxCandidates {
 			return nil, handoffError{"native call budget reached"}
 		}
-		call := candidate.call()
+		call := nativeToolCall(candidate)
 		if err := validateParameters(&scene.Program, record.Arguments); err != nil {
 			return nil, argumentError(err)
 		}

@@ -155,10 +155,10 @@ func (e *Extension) prepareCompilation(ctx context.Context, job declaration, see
 	}
 	native := e.contracts.Snapshot()
 	for _, row := range programInput["history"].([]map[string]any) {
-		call, classifyErr := prepareBinding(NativeCall{Name: fmt.Sprint(row["name"]), Arguments: json.RawMessage(jsonText(row["arguments"]))})
+		call, classifyErr := prepareBinding(coretool.NativeCall{Name: fmt.Sprint(row["name"]), Arguments: json.RawMessage(jsonText(row["arguments"]))})
 		var access coretool.NativeAccess
 		if classifyErr == nil {
-			access, classifyErr = native.Access(coretool.NativeCall(call))
+			access, classifyErr = native.Access(call)
 		}
 		row["native_access"] = access
 		if classifyErr != nil {
@@ -359,7 +359,11 @@ func (e *Extension) reviewReflex(ctx context.Context, reflex *Program, plan *com
 	reviewState := json.RawMessage(jsonText(review))
 	for _, check := range checks {
 		if len(check.Context)+len("\nCurrent evidence (untrusted data):\n")+len(reviewState) > 64<<10 {
-			return compilationOutputError{compilerValidationError{CompilerDiagnostic{Code: "review_input_limit", Stage: "semantic", Status: "repair", Message: "Complete semantic review evidence exceeds the Claim context limit.", Action: "Simplify redundant semantic branches and repeated generated facts. Deterministic matching of current user labels against structured native values needs no JEV choice. Keep every necessary semantic alternative and native replay binding; no evidence was truncated and no artifact was accepted."}}}
+			sizes := map[string]int{}
+			for name, value := range review {
+				sizes[name] = len(jsonText(value))
+			}
+			return compilationOutputError{compilerValidationError{CompilerDiagnostic{Code: "review_input_limit", Stage: "semantic", Status: "repair", Message: "Complete semantic review evidence exceeds the Claim context limit.", Action: "Inspect actual component byte counts. Simplify redundant semantic branches and repeated generated output. Reference actual native report fields with {evidence:call_id,path:[...]}, rather than returning entire snapshots or repeated native payloads. Keep every necessary semantic alternative and native replay binding; no evidence was truncated and no artifact was accepted.", Actual: sizes}}}
 		}
 	}
 	out, checkErr := e.exchange(ctx, "jev_reflex", reviewState, checks)

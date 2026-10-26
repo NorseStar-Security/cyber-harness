@@ -19,12 +19,6 @@ type StepDefinition struct {
 	CountArgument string `json:"count_argument,omitempty"`
 }
 
-const (
-	ReadAccess        = coretool.NativeRead
-	EffectAccess      = coretool.NativeEffect
-	UnsupportedAccess = coretool.NativeUnsupported
-)
-
 func reflexSourceHash(r Program) string { r.Proof = nil; return digest(r) }
 func (e *Extension) qualified(r Program) bool {
 	p := r.Proof
@@ -54,12 +48,12 @@ func (e *Extension) qualified(r Program) bool {
 	}
 	return true
 }
-func (r *Program) validateCall(native coretool.NativeContracts, c NativeCall, args map[string]any) error {
-	access, err := native.Access(coretool.NativeCall(c))
+func (r *Program) validateCall(native coretool.NativeContracts, c coretool.NativeCall, args map[string]any) error {
+	access, err := native.Access(c)
 	if err != nil {
 		return err
 	}
-	if c.Read != (access == ReadAccess) {
+	if c.Read != (access == coretool.NativeRead) {
 		return errors.New("native read/effect assertion contradicts trusted contract")
 	}
 	if c.Read {
@@ -73,8 +67,8 @@ func (r *Program) validateCall(native coretool.NativeContracts, c NativeCall, ar
 	if !ok {
 		return errors.New("step references unknown native contract")
 	}
-	classified, err := contract.Classify(coretool.NativeCall(c))
-	if err != nil || classified != EffectAccess {
+	classified, err := contract.Classify(c)
+	if err != nil || classified != coretool.NativeEffect {
 		return errors.New("effect does not match its step contract")
 	}
 	count := step.Count
@@ -160,9 +154,9 @@ func (e *Extension) qualify(ctx context.Context, r *Program, caps map[string]any
 		return err
 	}
 	for i, result := range recorded {
-		call, err := prepareBinding(NativeCall{Name: fmt.Sprint(result["name"]), Arguments: json.RawMessage(jsonText(result["arguments"]))})
+		call, err := prepareBinding(coretool.NativeCall{Name: fmt.Sprint(result["name"]), Arguments: json.RawMessage(jsonText(result["arguments"]))})
 		if err == nil {
-			_, err = native.Access(coretool.NativeCall(call))
+			_, err = native.Access(call)
 		}
 		if err != nil {
 			index := i
@@ -185,8 +179,8 @@ func (e *Extension) qualify(ctx context.Context, r *Program, caps map[string]any
 				return fmt.Errorf("boundary %d native contract: %w; evaluated call=%s", end, err, jsonText(call))
 			}
 			for id, c := range native {
-				a, _ := c.Classify(coretool.NativeCall(call))
-				if a != UnsupportedAccess {
+				a, _ := c.Classify(call)
+				if a != coretool.NativeUnsupported {
 					proof.Contracts[id] = c.Version
 				}
 			}

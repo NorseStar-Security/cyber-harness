@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sort"
 	"sync"
 
 	jevapi "github.com/chainreactors/cyber/agent/provider/jev"
@@ -20,7 +19,7 @@ func independentRuntimeJudgments(req inferenceRequest) map[string]inferenceAnswe
 	var payload struct {
 		State struct {
 			Arguments map[string]any            `json:"arguments"`
-			Call      NativeCall                `json:"call"`
+			Call      coretool.NativeCall       `json:"call"`
 			Report    map[string]any            `json:"report"`
 			Evidence  map[string]map[string]any `json:"evidence"`
 		} `json:"state"`
@@ -50,13 +49,6 @@ func independentRuntimeJudgments(req inferenceRequest) map[string]inferenceAnswe
 
 var testTrajectories sync.Map
 
-type NativeContract struct {
-	ID, Version, Description string
-	Classify                 func(NativeCall) (coretool.NativeAccess, error)
-	Outcome                  func(NativeCall, map[string]any) string
-	Resolve                  func(NativeCall, NativeCall, map[string]any) bool
-}
-
 // VerificationCase supplies a fresh simulator and independent postcondition.
 // It must never use the foreground Executor or user resources.
 type VerificationCase struct {
@@ -64,11 +56,11 @@ type VerificationCase struct {
 	Input     map[string]any
 	Arguments map[string]any
 	Judge     func(jevapi.Claim) (*decision.Evaluation, error)
-	Execute   func(NativeCall) (map[string]any, error)
+	Execute   func(coretool.NativeCall) (map[string]any, error)
 	Check     func(VerificationRun) error
 }
 type VerificationRun struct {
-	Calls    []NativeCall
+	Calls    []coretool.NativeCall
 	Evidence map[string]map[string]any
 	Output   map[string]any
 	Error    error
@@ -85,7 +77,7 @@ type VerificationReport struct {
 type VerificationCall struct {
 	Input     map[string]any
 	Arguments map[string]any
-	Call      NativeCall
+	Call      coretool.NativeCall
 	Effects   map[string]any
 	Evidence  map[string]map[string]any
 }
@@ -94,7 +86,7 @@ type VerificationSuite struct {
 	ID          string
 	Version     string
 	Description string
-	Contracts   map[string]NativeContract
+	Contracts   coretool.NativeContracts
 	Cases       func(map[string]any) []VerificationCase
 	CheckInput  func(map[string]any, map[string]any) error
 	CheckCall   func(VerificationCall) error
@@ -112,7 +104,7 @@ func (h testRegistryHandle) Register(s VerificationSuite) error {
 	r, _ := testRegistries.LoadOrStore(h.e, &VerificationRegistry{suites: map[string]*VerificationSuite{}})
 	r.(*VerificationRegistry).suites[s.ID] = &s
 	h.e.contracts = coretool.NewNativeContractRegistry()
-	for _, c := range s.native() {
+	for _, c := range s.Contracts {
 		if err := h.e.contracts.Register(c); err != nil {
 			return err
 		}
@@ -132,48 +124,6 @@ func (h testRegistryHandle) suite(id string) *VerificationSuite {
 		return s
 	}
 	return nil
-}
-func (s *VerificationSuite) native() coretool.NativeContracts {
-	n := coretool.NativeContracts{}
-	for id, c := range s.Contracts {
-		n[id] = coretool.NativeContract{ID: c.ID, Version: c.Version, Description: c.Description, Classify: func(call coretool.NativeCall) (coretool.NativeAccess, error) { return c.Classify(NativeCall(call)) }, Outcome: func(call coretool.NativeCall, r map[string]any) string {
-			if c.Outcome == nil {
-				return "unknown"
-			}
-			return c.Outcome(NativeCall(call), r)
-		}, Resolve: func(a, b coretool.NativeCall, r map[string]any) bool {
-			return c.Resolve != nil && c.Resolve(NativeCall(a), NativeCall(b), r)
-		}}
-	}
-	return n
-}
-func (s *VerificationSuite) access(c NativeCall) (coretool.NativeAccess, error) {
-	ids := make([]string, 0, len(s.Contracts))
-	for id := range s.Contracts {
-		ids = append(ids, id)
-	}
-	sort.Strings(ids)
-	result := UnsupportedAccess
-	for _, id := range ids {
-		a, err := s.Contracts[id].Classify(c)
-		if err != nil {
-			return UnsupportedAccess, err
-		}
-		if a == UnsupportedAccess {
-			continue
-		}
-		if a != ReadAccess && a != EffectAccess {
-			return UnsupportedAccess, errors.New("invalid native access classification")
-		}
-		if result != UnsupportedAccess && result != a {
-			return UnsupportedAccess, errors.New("conflicting native contracts")
-		}
-		result = a
-	}
-	if result == UnsupportedAccess {
-		return result, errors.New("unsupported native operation")
-	}
-	return result, nil
 }
 func qualifyIndependent(e *Extension, ctx context.Context, r *Program, caps map[string]any, suiteIDs ...string) error {
 	if err := r.validate(); err != nil {
@@ -223,11 +173,11 @@ func qualifyIndependent(e *Extension, ctx context.Context, r *Program, caps map[
 		rows := []map[string]any{{"role": "user", "text": jsonText(input)}}
 		run := VerificationRun{Evidence: map[string]map[string]any{}}
 		ledger := newEffectLedger()
-		execute := func(call NativeCall) (map[string]any, error) {
+		execute := func(call coretool.NativeCall) (map[string]any, error) {
 			if len(run.Calls) >= maxCandidates {
 				return nil, handoffError{"native call budget reached"}
 			}
-			if err := r.validateCall(s.native(), call, c.Arguments); err != nil {
+			if err := r.validateCall(s.Contracts, call, c.Arguments); err != nil {
 				return nil, err
 			}
 			if err := s.CheckCall(VerificationCall{Input: input, Arguments: c.Arguments, Call: call, Effects: ledger.summary(), Evidence: cloneEvidence(run.Evidence)}); err != nil {
@@ -252,9 +202,9 @@ func qualifyIndependent(e *Extension, ctx context.Context, r *Program, caps map[
 			}
 			if !call.Read {
 				ledger.complete("case", call, result, err)
-				ledger.classifyOutcome("case", call, s.native(), result, r.Steps[call.Step].Contract)
+				ledger.classifyOutcome("case", call, s.Contracts, result, r.Steps[call.Step].Contract)
 			} else {
-				ledger.reconcile(s.native(), call, result)
+				ledger.reconcile(s.Contracts, call, result)
 			}
 			return result, err
 		}

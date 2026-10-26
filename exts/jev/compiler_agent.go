@@ -106,7 +106,9 @@ func (e *Extension) newCompilerAgent(plan *compilation) *compilerAgent {
 
 func (c *compilerAgent) ToolDefinitions() []*aop.ToolDefinition {
 	return []*aop.ToolDefinition{
-		{Name: "validate_reflex", Description: "Validate the complete artifact: syntax, native contracts, recorded replay and independent JEV semantic review. Repair failures using diagnostic.code, expected, actual and action. Accepted artifacts complete compilation. No real user tool is executed.", InputSchema: &aop.EncodedValue{MediaType: aop.JSONMediaType, Data: []byte(`{"type":"object","required":["artifact"],"properties":{"artifact":{"type":"object"}},"additionalProperties":false}`)}},
+		coretool.Def("validate_reflex", "Validate the complete artifact: syntax, native contracts, recorded replay and independent JEV semantic review. Repair failures using diagnostic.code, expected, actual and action. Accepted artifacts complete compilation. No real user tool is executed.", struct {
+			Artifact reflexArtifact `json:"artifact"`
+		}{}),
 		{Name: "inspect_evidence", Description: "Read the actual compilation evidence with decoded native argv, exact argument strings, current tool schemas and native contracts. Use this to locate a replay mismatch or missing prerequisite. This tool never dispatches a user operation or invents results.", InputSchema: &aop.EncodedValue{MediaType: aop.JSONMediaType, Data: []byte(`{"type":"object","properties":{},"additionalProperties":false}`)}},
 	}
 }
@@ -199,6 +201,19 @@ func (c *compilerAgent) ExecuteTool(ctx context.Context, name, arguments string)
 		_ = c.extension.audit("reflex_validation", record)
 		c.extension.emit(ctx, record)
 		feedback := map[string]any{"accepted": false, "diagnostic": diagnostic}
+		if diagnostic.Stage == "replay" && diagnostic.Boundary != nil && diagnostic.Call != nil {
+			replay, replayErr := newObservationReplay(r, c.plan.state, c.plan.capabilities)
+			if replayErr == nil {
+				remaining, remainingErr := replay.resultsAfter(replay.input(*diagnostic.Boundary, true))
+				if remainingErr == nil && *diagnostic.Call >= 0 && *diagnostic.Call < len(remaining) {
+					calls := make([]map[string]any, 0, len(remaining)-*diagnostic.Call)
+					for _, row := range remaining[*diagnostic.Call:] {
+						calls = append(calls, map[string]any{"call_id": row["call_id"], "name": row["name"], "arguments": row["arguments"], "decoded_argv": row["decoded_argv"], "is_error": row["is_error"]})
+					}
+					feedback["remaining_recorded_calls"] = calls
+				}
+			}
+		}
 		if updated {
 			feedback["current_evidence"], _ = compilerInput(c.plan.state, c.plan.capabilities)
 			feedback["evidence_update"] = "The foreground task supplied newer actual results. Use this current evidence for repair; the original Agent input is an earlier snapshot."

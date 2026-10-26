@@ -4,9 +4,11 @@
 
 ## Unreleased
 
+- Reflex 编译工具公开完整产物字段和 `js:` 源码约束，回放失败时返回剩余原生调用，语义评审超限时报告各部分大小。纯离线回放在 5 秒后中断空转源码并返回可修复诊断，避免单个草稿占住编译任务。
 - 工具返回部分输出时保留失败原因；后台 subagent 仅返回错误时也通知父任务。联网搜索要求实际搜索执行记录，失败时保留后端原因。
 - browser、passive 与 Katana 可由入口直接导入组装，`full` 保留为 aiscan 的全量组合；原生 `record` 可独立于 `full` 构建。
 - Go 源码 API：工具结果与定义直接使用 `aop.ToolResult` / `aop.ToolDefinition`；Provider 类型和构造函数改从 `agent/provider` 引用，停止原因从 `agent/hooks` 引用。Context hook 直接返回 `[]*aop.Message`，nil 表示不替换。删除重复转导出别名，AOP wire 字段保持兼容。
+- JEV 原生调用与契约统一使用 `core/tool.NativeCall`、`NativeContract` 和 `NativeContracts`，访问分类直接使用 `NativeRead` / `NativeEffect` / `NativeUnsupported`；删除重复类型、转换和测试专用回放入口。
 - passive 的 `recon` 声明与连接检查迁至 `exts/passive/config`，运行实现不再依赖 scanner engine；CyberHub 索引查询迁至 `tools/cyberhub`。原有配置键与 CLI 参数保持兼容。
 
 ## v1.0.0-rc8 — 工作台重构、节点接入与任务复用

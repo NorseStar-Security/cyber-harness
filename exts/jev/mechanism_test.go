@@ -38,27 +38,27 @@ func laboratoryReflex() Program {
 	return Program{When: "add requested items", Decide: "use actual results", Observe: laboratorySource, Steps: map[string]StepDefinition{"add": {Contract: "lab", CountArgument: "count"}}, Parameters: json.RawMessage(`{"type":"object","required":["actor","query","count"],"properties":{"actor":{"type":"string"},"query":{"type":"boolean"},"count":{"type":"integer","minimum":1,"maximum":2}},"additionalProperties":false}`), arguments: map[string]any{"actor": "initial", "query": true, "count": 2}}
 }
 func laboratorySuite() VerificationSuite {
-	contract := NativeContract{ID: "lab", Version: "1", Classify: func(c NativeCall) (coretool.NativeAccess, error) {
+	contract := coretool.NativeContract{ID: "lab", Version: "1", Classify: func(c coretool.NativeCall) (coretool.NativeAccess, error) {
 		if c.Name != "bash" || len(c.Argv) != 3 || c.Argv[0] != "lab" {
-			return UnsupportedAccess, nil
+			return coretool.NativeUnsupported, nil
 		}
 		if c.Argv[1] == "add" {
-			return EffectAccess, nil
+			return coretool.NativeEffect, nil
 		}
 		if c.Argv[1] == "status" {
-			return ReadAccess, nil
+			return coretool.NativeRead, nil
 		}
-		return UnsupportedAccess, nil
-	}, Outcome: func(_ NativeCall, r map[string]any) string {
+		return coretool.NativeUnsupported, nil
+	}, Outcome: func(_ coretool.NativeCall, r map[string]any) string {
 		if data, ok := r["data"].(map[string]any); ok && fmt.Sprint(data["status"]) == "200" {
 			return "applied"
 		}
 		return "unknown"
-	}, Resolve: func(effect, read NativeCall, r map[string]any) bool {
+	}, Resolve: func(effect, read coretool.NativeCall, r map[string]any) bool {
 		data, ok := r["data"].(map[string]any)
 		return ok && len(effect.Argv) == 3 && len(read.Argv) == 3 && effect.Argv[2] == read.Argv[2] && read.Argv[1] == "status" && data["complete"] == true
 	}}
-	return VerificationSuite{ID: "laboratory", Version: "1", Contracts: map[string]NativeContract{"lab": contract}, CheckInput: func(_ map[string]any, args map[string]any) error {
+	return VerificationSuite{ID: "laboratory", Version: "1", Contracts: coretool.NativeContracts{"lab": contract}, CheckInput: func(_ map[string]any, args map[string]any) error {
 		if args == nil {
 			return errors.New("missing current input")
 		}
@@ -96,7 +96,7 @@ func laboratorySuite() VerificationSuite {
 				query := condition != "no_query"
 				args := map[string]any{"actor": actor, "query": query, "count": 2}
 				c := VerificationCase{ID: fmt.Sprintf("%s/%d", condition, seed), Input: map[string]any{"user": "add two current items"}, Arguments: args}
-				c.Execute = func(call NativeCall) (map[string]any, error) {
+				c.Execute = func(call coretool.NativeCall) (map[string]any, error) {
 					if len(call.Argv) != 3 || call.Argv[2] != actor {
 						return nil, errors.New("wrong current actor or encoding")
 					}
@@ -196,7 +196,7 @@ func TestReflexIndependentQualification(t *testing.T) {
 	}
 }
 func TestReflexEffectIdentityConflictAndConcurrency(t *testing.T) {
-	call := NativeCall{Name: "native", Arguments: json.RawMessage(`{"x":1}`), Step: "add"}
+	call := coretool.NativeCall{Name: "native", Arguments: json.RawMessage(`{"x":1}`), Step: "add"}
 	ledger := newEffectLedger()
 	if _, cached, err := ledger.reserve("task", call); err != nil || cached {
 		t.Fatal(err)

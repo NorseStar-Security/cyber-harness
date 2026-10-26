@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	coretool "github.com/chainreactors/cyber/core/tool"
 )
 
 func TestObservationReplayPreservesSamplingAndInputIdentity(t *testing.T) {
@@ -61,7 +63,11 @@ return {state:{handle:handle || null},candidates:choices(handle ? [bind(tools[0]
 		t.Fatal(err)
 	}
 	input := json.RawMessage(`{"messages":[{"role":"user","text":"Inspect a resource"},{"role":"assistant","calls":[{"id":"open","name":"native","arguments":{}}]},{"role":"tool","call_id":"open","text":"{\"handle\":\"current\"}"}]}`)
-	if err := verifyObserve(t.Context(), &r, input, map[string]any{"tools": []any{map[string]any{"name": "native"}}, "commands": []any{}}); err != nil {
+	replay, err := newObservationReplay(&r, input, map[string]any{"tools": []any{map[string]any{"name": "native"}}, "commands": []any{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := replay.verify(t.Context()); err != nil {
 		t.Fatalf("useful partial scene cannot reach semantic review: %v", err)
 	}
 }
@@ -84,7 +90,11 @@ func TestFreshnessReviewRetainsConcreteRejectionWithEitherGlobalVerdict(t *testi
 			r := observationReflex(t, `js:function(context,args){const r=execute({name:'native',arguments:{},read:false,step:"effect",occurrence:0});return {report:r.data};}`)
 			caps := observationCapabilities("native")
 			state := json.RawMessage(`{"messages":[{"role":"user","text":"Inspect fresh state"}]}`)
-			witnesses, err := observationWitnesses(t.Context(), &r, state, caps)
+			replay, err := newObservationReplay(&r, state, caps)
+			if err != nil {
+				t.Fatal(err)
+			}
+			witnesses, err := replay.witnesses(t.Context())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -110,7 +120,7 @@ func TestReviewRetainsBoundaryRejectionWithGlobalDefer(t *testing.T) {
 	})
 	e, _, _ := testInstallation(t, Config{Mode: "auto"}, client)
 	r := observationReflex(t, `js:function(){return{defer:'missing next operation'};}`)
-	boundary := map[string]any{"boundary": 2, "state": map[string]any{"current": "actual"}, "candidates": map[string]NativeCall{}, "next_calls": []any{map[string]any{"name": "native", "arguments": map[string]any{"operation": "required"}}}}
+	boundary := map[string]any{"boundary": 2, "state": map[string]any{"current": "actual"}, "candidates": map[string]coretool.NativeCall{}, "next_calls": []any{map[string]any{"name": "native", "arguments": map[string]any{"operation": "required"}}}}
 	err := e.reviewReflex(t.Context(), &r, &compilation{state: json.RawMessage(`{"messages":[]}`)}, []map[string]any{boundary})
 	if err == nil {
 		t.Fatal("rejected boundary accepted")
@@ -132,7 +142,7 @@ func TestResultReviewDistinguishesCompletionFromReadClassification(t *testing.T)
 	})
 	e, _, _ := testInstallation(t, Config{Mode: "auto"}, client)
 	r := observationReflex(t, `js:function(){const r=execute({name:'native',arguments:{},read:true});return{report:'done'};}`)
-	witness := map[string]any{"boundary": 1, "report": "done", "candidates": map[string]NativeCall{"read": {Name: "native", Arguments: json.RawMessage(`{}`), Read: true}}}
+	witness := map[string]any{"boundary": 1, "report": "done", "candidates": map[string]coretool.NativeCall{"read": {Name: "native", Arguments: json.RawMessage(`{}`), Read: true}}}
 	err := e.reviewReflex(t.Context(), &r, &compilation{capabilities: observationCapabilities("native"), state: json.RawMessage(`{"messages":[]}`)}, []map[string]any{witness})
 	diagnostic := compilerDiagnostic(err)
 	if requests != 1 || diagnostic.Code != "semantic_validation_failed" || diagnostic.Stage != "completion" || !strings.Contains(jsonText(diagnostic.Actual), "done") {
@@ -142,10 +152,10 @@ func TestResultReviewDistinguishesCompletionFromReadClassification(t *testing.T)
 
 func TestReviewSharesBindingsWithoutLosingActualBoundaryEvidence(t *testing.T) {
 	args, _ := json.Marshal(map[string]any{"program": strings.Repeat("native program ", 1000), "version": json.Number("9007199254740993")})
-	candidate := NativeCall{Name: "ordinary", Arguments: args, Read: true}
+	candidate := coretool.NativeCall{Name: "ordinary", Arguments: args, Read: true}
 	var witnesses []map[string]any
 	for i := 0; i < 8; i++ {
-		witnesses = append(witnesses, map[string]any{"boundary": i, "latest": fmt.Sprintf("actual result %d", i), "candidates": map[string]NativeCall{"current": candidate}, "next_calls": []string{fmt.Sprintf("next %d", i)}})
+		witnesses = append(witnesses, map[string]any{"boundary": i, "latest": fmt.Sprintf("actual result %d", i), "candidates": map[string]coretool.NativeCall{"current": candidate}, "next_calls": []string{fmt.Sprintf("next %d", i)}})
 	}
 	raw, _ := json.Marshal(witnesses)
 	rows, bindings := compactWitnesses(witnesses)
@@ -158,7 +168,7 @@ func TestReviewSharesBindingsWithoutLosingActualBoundaryEvidence(t *testing.T) {
 		if canonicalBinding := bindings[ref]; canonicalBinding.Name != candidate.Name || string(canonicalBinding.Arguments) != string(args) || !canonicalBinding.Read || row["latest"] != witnesses[i]["latest"] || row["next_calls"] == nil {
 			t.Fatal("compaction changed an actual binding or its boundary evidence")
 		}
-		if _, ok := witnesses[i]["candidates"].(map[string]NativeCall); !ok {
+		if _, ok := witnesses[i]["candidates"].(map[string]coretool.NativeCall); !ok {
 			t.Fatal("compaction mutated original evidence")
 		}
 	}
@@ -189,10 +199,14 @@ func TestReviewSharesActualResultsAcrossReportBoundaries(t *testing.T) {
 		messages = append(messages, map[string]any{"role": "assistant", "calls": []any{map[string]any{"id": id, "name": "native", "arguments": map[string]any{"index": i}}}}, map[string]any{"role": "tool", "call_id": id, "data": map[string]any{"payload": data}})
 	}
 	state := json.RawMessage(jsonText(map[string]any{"messages": messages}))
-	if err := verifyObserve(t.Context(), &r, state, caps); err != nil {
+	replay, err := newObservationReplay(&r, state, caps)
+	if err != nil {
 		t.Fatal(err)
 	}
-	witnesses, err := observationWitnesses(t.Context(), &r, state, caps)
+	if err := replay.verify(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	witnesses, err := replay.witnesses(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -208,7 +222,11 @@ func TestReviewSharesActualResultsAcrossReportBoundaries(t *testing.T) {
 	if err := r.validate(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := observationWitnesses(t.Context(), &r, state, caps); err == nil {
+	replay, err = newObservationReplay(&r, state, caps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := replay.witnesses(t.Context()); err == nil {
 		t.Fatal("retaining references bypassed report provenance validation")
 	}
 }
@@ -222,7 +240,11 @@ func TestCompilerChecksEarlierBoundariesAndNativeRequiredArguments(t *testing.T)
 		`js:function(context,args){execute({name:'native',arguments:{selector:context.user.split('Select ')[2]},read:false,step:"effect",occurrence:0});return {report:'done'};}`,
 	} {
 		r := observationReflex(t, code)
-		if err := verifyObserve(t.Context(), &r, input, caps); err == nil {
+		replay, err := newObservationReplay(&r, input, caps)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := replay.verify(t.Context()); err == nil {
 			t.Fatal("invalid earlier boundary or native arguments were admitted")
 		}
 	}
